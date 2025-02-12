@@ -1,7 +1,5 @@
 # installation
-install.packages("randomForest")
 
-library(randomForest)
 library(cluster)  # For clustering
 library(factoextra)  # For visualization
 library(readxl)
@@ -9,6 +7,7 @@ library(dplyr)
 library(stringr)
 library(tidyr)
 library(dplyr)
+library(purrr)
 
 ########## DATA LOADING #####----
 # Define the function to process each sheet
@@ -38,15 +37,44 @@ labour_begin_group <- function(data,workers,nh_h_workers_permanent_seasonal) {
       group_workers=="mujeres adultas mayores (>65 años)"~paste0(nh_h_workers_permanent_seasonal,"_adults_old_female"),
       group_workers=="niñas (<18 años)"~ paste0(nh_h_workers_permanent_seasonal,"_children_female"),
       group_workers=="niños varones (<18 años)"~paste0(nh_h_workers_permanent_seasonal,"_children_male"),
+      group_workers %in%c("Monoculture with perennial crops")~"Monoculture_perennial",
+      
       TRUE ~ group_workers))%>%
     select(kobo_farmer_id,n_workers,group_workers)%>%
     pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = n_workers,values_fill = 0)
   
 }
 
+practices_begin_group <- function(data, cropland_practices,cropland_practices_area) {
+ data%>%
+    mutate(cropland_practices= case_when(
+      #simplified farming practices
+      cropland_practices %in%c("Monoculture with perennial crops")~ "sfs_monoculture_perennial_area",
+      cropland_practices %in%c("Monoculture with annual crops")~ "sfs_monoculture_annual_area",
+      cropland_practices %in%c("Land clearing for agriculture")~ "sfs_land_clearing_area",
+      #diversified farming practices
+      cropland_practices %in%c("Crop rotation")~ "dfs_crop_rotation_area",
+      cropland_practices %in%c("Agroforestry")~ "dfs_agroforestry_area",
+      cropland_practices %in%c("Cover crops")~ "dfs_cover_crops_area",
+      cropland_practices %in%c("Homegarden")~ "dfs_homegarden_area",
+      cropland_practices %in%c("Intercropping")~ "dfs_intercropping_area",
+      cropland_practices %in%c("Fallow (leave land unproductive)" )~ "dfs_fallow_area",
+      cropland_practices %in%c("Natural strips/vegetation" )~ "dfs_strip_vegetation_area",
+      cropland_practices %in%c("Hedgerows/Live fences")~ "dfs_hedgerows_area",
+      
+      #good agricultural practices
+      cropland_practices %in%c("Mulching")~ "gfs_mulching_area",
+      
+      TRUE ~ cropland_practices))%>%
+    select(kobo_farmer_id,cropland_practices,cropland_practices_area)%>%
+    pivot_wider(id_cols=kobo_farmer_id, names_from = cropland_practices, values_from = cropland_practices_area,values_fill = "0")
+}
+        
+
+
 ##### ALL ----
 # Read the Excel file
-factors_list <- read_excel("C:/Users/andreasanchez/OneDrive - CGIAR/3_chapter_PhD/r_code/factors_list.xlsx")
+factors_list <- read_excel("C:/Users/andreasanchez/OneDrive - CGIAR/3_chapter_PhD/HOLPA_factors_influencing_adoption_dfs/factors_list.xlsx")
 
 factors_list_holpa<-factors_list%>%
   filter(data_source=="holpa")
@@ -92,6 +120,16 @@ per_3_4_1_2_1_2_begin_repeat<-per_3_4_1_2_1_2_begin_repeat%>%
   labour_begin_group(.,.$hired_seasonal_workers,"hired_labour_seasonal")
 
 
+
+per_3_3_3_2_begin_repeat<-per_3_3_3_2_begin_repeat%>%
+  rename("cropland_practices"="_3_3_3_1_calculate_2",
+         "cropland_practices_area"="_3_3_3_2_2")%>%
+  mutate(cropland_practices = str_extract(cropland_practices, "(?<=//).*"))%>%
+practices_begin_group(.,.$cropland_practices,.$cropland_practices_area)
+
+
+
+
 sheet_names
 [1] ""                   ""        ""          ""       ""       
 [6] ""          ""          ""          ""          ""         
@@ -102,7 +140,7 @@ sheet_names
 
 [26] "per_3_4_2_2_2_begin_repeat"     "per_3_4_2_2_6_begin_repeat"     "per_3_4_2_3_2_begin_repeat"     "per_3_4_2_3_2_4_begin_repeat"   "per_4_1_7_1_begin_group"       
 [31] "per_4_2_1_begin_group"          "per_3_3_4_begin_group"          "per_3_3_4_1_3_begin_repeat"     "per_2_8_4_begin_group"          "per_3_3_1_begin_group"         
-[36] "per_3_3_3_2_begin_repeat"       "per_2_12_1_begin_group"         "per_2_3_1_begin_group"          "per_3_4_3_1_1_Corregido"        "per_3_4_3_4_2_begin_repeat"    
+[36]        "per_2_12_1_begin_group"         "per_2_3_1_begin_group"          "per_3_4_3_1_1_Corregido"        "per_3_4_3_4_2_begin_repeat"    
 [41] "per_3_4_3_3_1_1_Corregido"  
 
 
@@ -125,7 +163,10 @@ per_data<- per_maintable%>%
   left_join(per_4_1_4_begin_group, by=c("kobo_farmer_id","country"))%>%
   left_join(per_4_1_3_begin_group, by=c("kobo_farmer_id","country"))%>%
   left_join(per_4_1_1_5_begin_group, by=c("kobo_farmer_id","country"))%>%
-  left_join(per_4_1_1_7_begin_group, by=c("kobo_farmer_id","country"))
+  left_join(per_4_1_1_7_begin_group, by=c("kobo_farmer_id","country"))%>%
+  left_join(per_3_3_3_2_begin_repeat, by=c("kobo_farmer_id"))
+  
+  
   
 
 
@@ -145,6 +186,7 @@ print(colnames(per_data))
 ########## DATA SELECTION ----
 per_data<-per_data %>% select(-matches("-desc$"))
 print(colnames(per_data))
+
 
   rename(
     ### HUMAN CAPITAL
@@ -413,10 +455,12 @@ print(numeric_valid_columns)  # Check if it holds expected values
 str(per_data)
 
 per_data_clean<- per_data%>%
-  mutate(across(all_of(numeric_valid_columns), as.numeric))
-
-#as factor
-factor_valid_columns <- intersect(factors_list_holpa$column_name_new[factors_list_holpa$metric_type == "categorical"], colnames(per_data))
+  mutate(across(all_of(numeric_valid_columns), as.numeric))%>%
+  mutate(across(starts_with("nonhired_labour_"), ~ replace_na(.x, 0)))%>%
+  mutate(across(starts_with("hired_labour_"), ~ replace_na(.x, 0)))
+  
+#as factor 
+factor_valid_columns <- intersect(factors_list_holpa$column_name_new[factors_list_holpa$metric_type %in%c("categorical","binary")], colnames(per_data))
 print(factor_valid_columns)  # Check if it holds expected values
 str(per_data_clean)
 
@@ -424,22 +468,30 @@ per_data_clean<- per_data_clean%>%
   mutate(across(all_of(factor_valid_columns), as.factor))
 
 ########## DATA CALCULATION #####-----
-per_data_clean$age <- 2025-per_data_clean$year_birth #household head age
-per_data_clean$n_adults_working_age <- per_data_clean$n_adults_male+per_data_clean$n_adults_female #total adults of working age
-per_data_clean$n_adults_old <- per_data_clean$n_adults_old_male+per_data_clean$n_adults_female #total adults old
-per_data_clean$n_children <- per_data_clean$n_children_male+per_data_clean$n_children_female # total children
-per_data_clean$n_adults_total <- per_data_clean$n_adults_working_age+per_data_clean$n_adults_old #total adults
-per_data_clean$n_people <- per_data_clean$n_adults_total+per_data_clean$n_children # total number of people in household
+### Potential factors ----
+#household head age
+per_data_clean$age <- 2025-per_data_clean$year_birth 
+#total adults (18-65 years old) in household
+per_data_clean$n_adults_working_age <- per_data_clean$n_adults_male+per_data_clean$n_adults_female 
+#total adults (>65 years old) in household
+per_data_clean$n_adults_old <- per_data_clean$n_adults_old_male+per_data_clean$n_adults_female 
+# total children in household
+per_data_clean$n_children <- per_data_clean$n_children_male+per_data_clean$n_children_female 
+#total adults in household
+per_data_clean$n_adults_total <- per_data_clean$n_adults_working_age+per_data_clean$n_adults_old 
+# total number of people in household
+per_data_clean$n_people <- per_data_clean$n_adults_total+per_data_clean$n_children 
+### Outcomes ----
+# total area (ha) of cropland under diversified farming systems
+per_data_clean$dfs_total_area <- rowSums(select(per_data_clean, starts_with("dfs_") & ends_with("_area")), na.rm = TRUE)
+
+# adoption of diversified farming systems binary (1=yes,0=no)
+per_data_clean$dfs_adoption_binary <- ifelse(per_data_clean$dfs_total_area > 0, "1","0")
+
+## to check: controlar si hay otras preguntas donde se citen dfs, ver las practicas de livestock
 
 
-
-
-
-
-
-
-
-
+##########----------------
 ## Select variables for clustering farmers
 per_selected_features <- per_data[, c("read_write", "education_level")]
 
