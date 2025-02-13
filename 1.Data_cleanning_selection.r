@@ -486,12 +486,16 @@ per_data_clean$n_people <- per_data_clean$n_adults_total+per_data_clean$n_childr
 per_data_clean$dfs_total_area <- rowSums(select(per_data_clean, starts_with("dfs_") & ends_with("_area")), na.rm = TRUE)
 
 # adoption of diversified farming systems binary (1=yes,0=no)
-per_data_clean$dfs_adoption_binary <- ifelse(per_data_clean$dfs_total_area > 0, "1","0")
+per_data_clean$dfs_adoption_binary <- as.factor(ifelse(per_data_clean$dfs_total_area > 0, "1","0"))
 
 ## to check: controlar si hay otras preguntas donde se citen dfs, ver las practicas de livestock
 
+names(per_data_clean)
 
-##########----------------
+
+
+
+##########---------------- OLD
 ## Select variables for clustering farmers
 per_selected_features <- per_data[, c("read_write", "education_level")]
 
