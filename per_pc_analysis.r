@@ -22,6 +22,30 @@ per_data_analysis<- per_data_analysis%>%
   select(!all_of(zero_sd_vars))
 names(per_data_analysis)
 
+#######################################################
+############# BACKGROUND KNOWLEDGE ############################
+#######################################################----
+variables<-unique(factors_list$column_name_new)
+
+bk <- matrix(TRUE, length(variables), length(variables), dimnames = list(variables, variables))
+bk
+
+##### RULE: Prohibition of paths ----
+bk["age", setdiff(variables, "year_birth")] <- FALSE  # Prohibition of paths leading to “year_birth”, unless "age"->"year_birth
+bk["year_birth", setdiff(variables, "age")] <- FALSE  # Prohibition of paths leading to “age”, unless "year_birth"->"age
+bk[setdiff(variables, c("age","year_birth")),"years_in_community"] <- FALSE  # Prohibition of paths leading to "years_in_community" unless "age"->"years_in_community" or "year_birth"->"years_in_community" 
+
+t.bk <-t(bk)
+bk.list <- melt(t.bk)
+bk.list
+colnames(bk.list) <- c("from", "to", "weight")  # Rename columns
+
+bk.list <- bk.list[bk.list$weight == TRUE, ]  # Keep only edges that can be TRUE
+bk.list
+
+
+
+
 
 
 ############
@@ -32,11 +56,11 @@ names(per_data_analysis)
 ############# PC ALGORITHM ############################
 #######################################################----
 #All information that is needed in the conditional independence test can be passed in the argument suffStat
-suffStat.per <- list(C = cor(per_data_analysis), n = nrow(per_data_analysis))
-suffStat.per
+per.suffStat <- list(C = cor(per_data_analysis), n = nrow(per_data_analysis))
+per.suffStat
 
-varNames.per <- colnames(per_data_analysis)
-varNames.per
+per.varNames <- colnames(per_data_analysis)
+per.varNames
 
 #### STEP 1. 	Estimation of the skeleton of the DAG. 
 #The skeleton of a DAG is the undirected graph that has the same edges as the DAG but no edge orientations.
@@ -44,73 +68,112 @@ varNames.per
 
 #If used in the PC algorithm, it estimates the order-independent “PC-stable” (method="stable")
 
-skeleton.per <- skeleton(suffStat.per, indepTest = gaussCItest,labels = varNames.per, alpha = 0.01,method = "stable")
-skeleton.per
+per.skeleton <- skeleton(per.suffStat, indepTest = gaussCItest,labels = per.varNames, alpha = 0.01,method = "stable")
+per.skeleton
 
 #### STEP 2. The PC-algorithm is implemented in function pc()
 #The PC algorithm is known to be order-dependent, in the sense that the computed skeleton depends on the order in which the variables are given. 
 #skel.method ="stable" (default) provides an order-independent skeleton
-pc.per <- pc(suffStat.per, indepTest = gaussCItest,labels = varNames.per, alpha = 0.05,skel.method ="stable")
-pc.per
+per.pc <- pc(per.suffStat, indepTest = gaussCItest,labels = per.varNames, alpha = 0.05,skel.method ="stable")
+per.pc
 
 par(mfrow = c(1,2))
-plot(skeleton.per, main = "Skeleton of DAG")
-plot(pc.per, main = "PC Algorithm DAG")
+plot(per.skeleton, main = "Skeleton of DAG")
+plot(per.pc, main = "PC Algorithm DAG")
 
-
-# Extract adjacency matrix
-amat.per <- as(pc.per, "amat")
-amat.per <- as(amat.per, "matrix")  # Convert to standard matrix
-amat.per
-
+#### Plot results using ggplot2
 library(tidygraph)
 library(ggraph)
 library(ggplot2)
 library(reshape2)
 
+# Extract adjacency matrix
+per.pc.amat <- as(per.pc, "amat")
+per.pc.matrix <- as(per.pc.amat, "matrix")  # Convert to standard matrix
+per.pc.matrix
+per.pc.t.matrix<-t(per.pc.matrix)
+
 # Convert adjacency matrix to data frame for visualization
-edge_list <- melt(amat.per)
-edge_list
-edge_list <- edge_list[edge_list$value == 1, ]  # Keep only edges that exist
-edge_list
-colnames(edge_list) <- c("from", "to", "weight")  # Rename columns
-edge_list
+per.pc.edge_list <- melt(per.pc.t.matrix)
+per.pc.edge_list
+colnames(per.pc.edge_list) <- c("from", "to", "weight")  # Rename columns
+per.pc.edge_list
+per.pc.edge_list <- per.pc.edge_list[per.pc.edge_list$weight == 1, ]  # Keep only edges that exist
+per.pc.edge_list
 
 # Create a node data frame with proper variable names
-nodes <- data.frame(name = node_names, stringsAsFactors = FALSE)
-
-# Ensure `edge_list` uses factor levels matching `nodes`
-edge_list$from <- factor(edge_list$from, levels = nodes$name)
-edge_list$to <- factor(edge_list$to, levels = nodes$name)
-
-# Convert factor levels to indices explicitly
-edge_list$from <- as.integer(edge_list$from)
-edge_list$to <- as.integer(edge_list$to)
-edge_list
+per.pc.node.names <- unique(c(per.pc.edge_list$from, per.pc.edge_list$to))
+per.pc.nodes <- data.frame(name = per.pc.node.names, stringsAsFactors = FALSE)
 
 # Convert edge list to a graph object
-graph <- tbl_graph(nodes = nodes, edges = edge_list, directed = TRUE)
-graph
+per.pc.graph <- tbl_graph(nodes = per.pc.nodes, edges = per.pc.edge_list, directed = TRUE)
+per.pc.graph
 
-graph <- graph %>% 
+per.pc.graph <- per.pc.graph %>% 
   activate(nodes) %>% 
   mutate(name = as.character(name))  # Ensure names remain characters
-graph
+per.pc.graph
 
-ggraph(graph, layout = "fr") +  
+ggraph(per.pc.graph, layout = "fr") +  
   geom_edge_link(arrow = arrow(length = unit(4, "mm")), 
                  end_cap = circle(4, "mm"),  
                  edge_width = 1) +  
   geom_node_point(size = 6, color = "darkblue") +  
   geom_node_text(aes(label = name), repel = TRUE, size = 5) +  
   theme_void() +  
-  ggtitle("PC Algorithm Causal Graph with Variable Names")
+  ggtitle("PC Algorithm")
 
 
-#### Add previous knowledge ###
+
+
+#### Add background knowledge ###
+per.pc.edge_list
+
+per.pc.edge_list.bk <- per.pc.edge_list %>%
+  semi_join(bk.list, by = c("from", "to"))
+
+
+# Create a node data frame with proper variable names
+per.pc.node.names.bk <- unique(c(per.pc.edge_list.bk$from, per.pc.edge_list.bk$to))
+per.pc.nodes.bk <- data.frame(name = per.pc.node.names.bk, stringsAsFactors = FALSE)
+
+# Convert edge list to a graph object
+per.pc.graph.bk <- tbl_graph(nodes = per.pc.nodes.bk, edges = per.pc.edge_list.bk, directed = TRUE)
+per.pc.graph.bk
+
+per.pc.graph.bk <- per.pc.graph.bk %>% 
+  activate(nodes) %>% 
+  mutate(name = as.character(name))  # Ensure names remain characters
+per.pc.graph.bk
+
+ggraph(per.pc.graph.bk, layout = "fr") +  
+  geom_edge_link(arrow = arrow(length = unit(4, "mm")), 
+                 end_cap = circle(4, "mm"),  
+                 edge_width = 1) +  
+  geom_node_point(size = 6, color = "darkblue") +  
+  geom_node_text(aes(label = name), repel = TRUE, size = 5) +  
+  theme_void() +  
+  ggtitle("PC Algorithm + Background knowledge")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#######################
 #If you want to forbid only one direction, use addBgKnowledge() (asymmetric).
-
-amat.per
+# Extract adjacency matrix
 amat.per <- as(pc.per, "amat")
 amat.per <- as(amat.per, "matrix")  # Convert to standard matrix
 amat.per

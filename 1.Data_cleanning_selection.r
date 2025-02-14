@@ -32,13 +32,12 @@ labour_begin_group <- function(data,workers,nh_h_workers_permanent_seasonal) {
            n_workers= as.numeric(n_workers))%>%
     mutate(group_workers= case_when(
       group_workers %in% c("adultos varones mayores (>65 años)","adultos mayores varones (>65 años)")~ paste0(nh_h_workers_permanent_seasonal,"_adults_old_male"),
-      group_workers%in%c("Adultos varones (≥18 y ≤65 años)","adultos varones (≥18 y ≤65)")~paste0(nh_h_workers_permanent_seasonal,"_adults_male"),
-      group_workers%in%c("Mujeres adultas (≥18 y ≤65 años)","mujeres adultas (≥18 y ≤65)")~paste0(nh_h_workers_permanent_seasonal,"_adults_female"),
+      group_workers%in%c("Adultos varones (≥18 y ≤65 años)","adultos varones (≥18 y ≤65)")~paste0(nh_h_workers_permanent_seasonal,"_adults_wa_male"),
+      group_workers%in%c("Mujeres adultas (≥18 y ≤65 años)","mujeres adultas (≥18 y ≤65)")~paste0(nh_h_workers_permanent_seasonal,"_adults_wa_female"),
       group_workers=="mujeres adultas mayores (>65 años)"~paste0(nh_h_workers_permanent_seasonal,"_adults_old_female"),
       group_workers=="niñas (<18 años)"~ paste0(nh_h_workers_permanent_seasonal,"_children_female"),
       group_workers=="niños varones (<18 años)"~paste0(nh_h_workers_permanent_seasonal,"_children_male"),
-      group_workers %in%c("Monoculture with perennial crops")~"Monoculture_perennial",
-      
+
       TRUE ~ group_workers))%>%
     select(kobo_farmer_id,n_workers,group_workers)%>%
     pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = n_workers,values_fill = 0)
@@ -105,19 +104,19 @@ walk(sheet_names, function(sheet) {
 per_maintable <- permaintable
 per_3_4_1_1_7_1_begin_repeat<-per_3_4_1_1_7_1_begin_repeat%>%
   rename("nonhired_permanent_workers"="_3_4_1_1_7_1_calculate")%>%
-  labour_begin_group(.,.$nonhired_permanent_workers,"nonhired_labour_permanent")
+  labour_begin_group(.,.$nonhired_permanent_workers,"n_nhlabour_permanent")
   
 per_3_4_1_1_7_2_begin_repeat<-per_3_4_1_1_7_2_begin_repeat%>%
   rename("nonhired_seasonal_workers"="_3_4_1_1_7_2_calculate")%>%
-  labour_begin_group(.,.$nonhired_seasonal_workers,"nonhired_labour_seasonal")
+  labour_begin_group(.,.$nonhired_seasonal_workers,"n_nhlabour_seasonal")
 
 per_3_4_1_2_1_1_begin_repeat<-per_3_4_1_2_1_1_begin_repeat%>%
   rename("hired_permanent_workers"="_3_4_1_2_1_1_calculate")%>%
-  labour_begin_group(.,.$hired_permanent_workers,"hired_labour_permanent")
+  labour_begin_group(.,.$hired_permanent_workers,"n_hlabour_permanent")
 
 per_3_4_1_2_1_2_begin_repeat<-per_3_4_1_2_1_2_begin_repeat%>%
   rename("hired_seasonal_workers"="_3_4_1_2_1_2_calculate")%>%
-  labour_begin_group(.,.$hired_seasonal_workers,"hired_labour_seasonal")
+  labour_begin_group(.,.$hired_seasonal_workers,"n_hlabour_seasonal")
 
 
 
@@ -466,31 +465,6 @@ str(per_data_clean)
 
 per_data_clean<- per_data_clean%>%
   mutate(across(all_of(factor_valid_columns), as.factor))
-
-########## DATA CALCULATION #####-----
-### Potential factors ----
-#household head age
-per_data_clean$age <- 2025-per_data_clean$year_birth 
-#total adults (18-65 years old) in household
-per_data_clean$n_adults_working_age <- per_data_clean$n_adults_male+per_data_clean$n_adults_female 
-#total adults (>65 years old) in household
-per_data_clean$n_adults_old <- per_data_clean$n_adults_old_male+per_data_clean$n_adults_female 
-# total children in household
-per_data_clean$n_children <- per_data_clean$n_children_male+per_data_clean$n_children_female 
-#total adults in household
-per_data_clean$n_adults_total <- per_data_clean$n_adults_working_age+per_data_clean$n_adults_old 
-# total number of people in household
-per_data_clean$n_people <- per_data_clean$n_adults_total+per_data_clean$n_children 
-### Outcomes ----
-# total area (ha) of cropland under diversified farming systems
-per_data_clean$dfs_total_area <- rowSums(select(per_data_clean, starts_with("dfs_") & ends_with("_area")), na.rm = TRUE)
-
-# adoption of diversified farming systems binary (1=yes,0=no)
-per_data_clean$dfs_adoption_binary <- as.factor(ifelse(per_data_clean$dfs_total_area > 0, "1","0"))
-
-## to check: controlar si hay otras preguntas donde se citen dfs, ver las practicas de livestock
-
-names(per_data_clean)
 
 
 

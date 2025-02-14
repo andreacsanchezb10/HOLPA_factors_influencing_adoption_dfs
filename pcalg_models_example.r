@@ -25,7 +25,6 @@ varNames
 
 skel.gmG8 <- skeleton(suffStat, indepTest = gaussCItest,labels = varNames, alpha = 0.01,method = "stable")
 
-
 #### STEP 2. The PC-algorithm is implemented in function pc()
 #The PC algorithm is known to be order-dependent, in the sense that the computed skeleton depends on the order in which the variables are given. 
 #skel.method ="stable" (default) provides an order-independent skeleton
@@ -41,31 +40,26 @@ plot(pc.gmG8, main = "") #estimated CPDAG
 amat <- as(pc.gmG8, "amat")
 amat <- as(amat, "matrix")  # Convert to standard matrix
 amat
-
+amat.plot<-t(amat)
+amat.plot
 library(tidygraph)
 library(ggraph)
 library(ggplot2)
 library(reshape2)
 
 # Convert adjacency matrix to data frame for visualization
-edge_list <- melt(amat)
-edge_list
-edge_list <- edge_list[edge_list$value == 1, ]  # Keep only edges that exist
+edge_list <- melt(amat.plot)
 edge_list
 colnames(edge_list) <- c("from", "to", "weight")  # Rename columns
 edge_list
+edge_list <- edge_list[edge_list$weight == 1, ]  # Keep only edges that exist
+edge_list
+
+node_names <- unique(c(edge_list$from, edge_list$to))
 
 # Create a node data frame with proper variable names
 nodes <- data.frame(name = node_names, stringsAsFactors = FALSE)
 
-# Ensure `edge_list` uses factor levels matching `nodes`
-edge_list$from <- factor(edge_list$from, levels = nodes$name)
-edge_list$to <- factor(edge_list$to, levels = nodes$name)
-
-# Convert factor levels to indices explicitly
-edge_list$from <- as.integer(edge_list$from)
-edge_list$to <- as.integer(edge_list$to)
-edge_list
 
 # Convert edge list to a graph object
 graph <- tbl_graph(nodes = nodes, edges = edge_list, directed = TRUE)
@@ -88,48 +82,29 @@ ggraph(graph, layout = "fr") +
 ##################################################################################################
 ############# PCI ALGORITHM WITH BACKGROUND INFORMATION ADDED #########----
 #################################################################################################
-#Assuming that we know the there is no edge from B and E, we can supply this on prior knowledge.
-data("gmG", package = "pcalg") ## loads data sets gmG and gmG8
+### Add background knowledge
+##Note that it is currently not possible to deﬁne edge orientations before the CPDAG is estimated. 
 
-#All information that is needed in the conditional independence test can be passed in the argument suffStat
-suffStat <- list(C = cor(gmG8$x), n = nrow(gmG8$x))
-suffStat
-
-varNames <- gmG8$g@nodes
-varNames
-
-#### STEP 1. 	Estimation of the skeleton of the DAG. 
-#The skeleton of a DAG is the undirected graph that has the same edges as the DAG but no edge orientations.
-#The main task of function skeleton() in ﬁnding the skeleton is to compute and test several conditional independencies. 
-
-#If used in the PC algorithm, it estimates the order-independent “PC-stable” (method="stable")
-
-skel.gmG8 <- skeleton(suffStat, indepTest = gaussCItest,labels = varNames, alpha = 0.01,method = "stable")
-
-
-#### STEP 2. The PC-algorithm is implemented in function pc()
-#The PC algorithm is known to be order-dependent, in the sense that the computed skeleton depends on the order in which the variables are given. 
-#skel.method ="stable" (default) provides an order-independent skeleton
-pc.gmG8 <- pc(suffStat, indepTest = gaussCItest,labels = varNames, alpha = 0.01,skel.method ="stable")
-par(mfrow = c(1,1))
-plot(pc.gmG8, main = "original") #estimated CPDAG
-# Extract adjacency matrix from PC-algorithm output
+# Extract adjacency matrix
 amat <- as(pc.gmG8, "amat")
+amat <- as(amat, "matrix")  # Convert to standard matrix
 amat
-# Add background knowledge
-amat_updated <- addBgKnowledge(gInput = amat, x = "Bar", y = "Author" )
-amat_updated
+amat.plot<-t(amat)
+amat.plot
 
-amat_matrix <- as(amat_updated, "matrix")
-amat_matrix
+#Force v8 -> Author
 
-pc.gmG8.graph <- as(amat_matrix, "graphNEL")
-pc.gmG8.graph
+amat_bk <- addBgKnowledge(gInput = amat, x = "Author", y = "V7" )
+amat_bk
+
+
 
 par(mfrow = c(1,2))
-plot(pc.gmG8, main = "original") #estimated CPDAG
+plot(as(t(amat), "graphNEL")); box(col="gray") 
+plot(as(t( amat_bk ), "graphNEL")); box(col="gray")
 
-plot(pc.gmG8.graph)
+
+
 
 pc.new <- pc(suffStat, indepTest = gaussCItest,labels = varNames, alpha = 0.01,skel.method ="stable",
              edgedE=pc.gmG8.graph)
