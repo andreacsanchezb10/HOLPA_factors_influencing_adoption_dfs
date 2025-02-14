@@ -73,7 +73,7 @@ practices_begin_group <- function(data, cropland_practices,cropland_practices_ar
 
 ##### ALL ----
 # Read the Excel file
-factors_list <- read_excel("C:/Users/andreasanchez/OneDrive - CGIAR/3_chapter_PhD/HOLPA_factors_influencing_adoption_dfs/factors_list.xlsx")
+factors_list <- read_excel("factors_list.xlsx")
 
 factors_list_holpa<-factors_list%>%
   filter(data_source=="holpa")
@@ -164,9 +164,10 @@ per_data<- per_maintable%>%
   left_join(per_4_1_1_5_begin_group, by=c("kobo_farmer_id","country"))%>%
   left_join(per_4_1_1_7_begin_group, by=c("kobo_farmer_id","country"))%>%
   left_join(per_3_3_3_2_begin_repeat, by=c("kobo_farmer_id"))
+  select(gender)
+
   
-  
-  
+  names
 
 
 ### RENAME COLUMN NAMES ----
@@ -182,54 +183,38 @@ colnames(per_data) <- ifelse(existing_cols %in% names(rename_vector), rename_vec
 # Check the updated column names
 print(colnames(per_data))
 
+#####################################
 ########## DATA SELECTION ----
+#####################################
+
 per_data<-per_data %>% select(-matches("-desc$"))
 print(colnames(per_data))
 
 
-  rename(
-    ### HUMAN CAPITAL
-    "n_adults_male", # h # of adults male
-    "n_adults_female", # h # of adults female
-    "n_adults_old_male" , # h # of old adults male
-    "n_adults_old_female",# h # of old adults female
-    "n_children_male", # h # of children male
-    "n_children_female", # h # of children female
-     ### SOCIAL CAPITAL
-    "project_participation", #involvement in research or development project
-    "years_in_community", # years of living in the community
-    "n_other_farmers_visits", #number of visits from Other farmers
-    "n_visits_government", #numer of visits from Government
-    "n_visits_ngo", #numer of visits from NGOs	
-    
-         
-    ### POLITICAL AND INSTITUTIONAL CONTEXT
-    ## Access to knowledge
-    "training_best_practices", #Training in innovative or best management agricultural practices
-    "training_agribusiness" , #Training in agribusiness management and value addition
-    "training_other", # Other training (please specify)
-    "agroecology_knowledge", #Do you know what Agroecology means?
-    "n_visits_extensionist", #number of visits from Agricultural extension workers	
-    "n_visits_researchers", #number of visits from Researchers
-         
-         
-    ## Value chain
-    "n_visits_consumers", #number of visits from Consumers	
-    "n_visits_traders"= , #number of visits from Food traders
-    
-    ## Land tenure
-    "land_tenure_security", #Do you perceive that you could involuntarily lose ownership or use rights to any of the land (agricultural or not) you currently own or hold use rights to in the next 5 years?
-    
-    ### FARM MANAGEMENT CHARACTERISTICS
-    "farm_products", #  In the last 12 months [add country meaning], what did you produce on your farm?
-    
-    ## FARMER BEHAVIOUR
-    
-    ## Governance
-    "participation_nr_frequency", # How often does your household participate in activities and meetings related to the management of your community's land and natural resources?
-    "influence_nr_frequency",	#How often does your household influence the decision-making that goes into the management of your community's land and natural resources?
-    "nr_management_opinion"	#In your opinion, are your community's land and natural resources well-managed?
-  ) 
+
+#####################################
+########## DATA TYPE CONVERSION -----
+#####################################
+
+### Continuous data as numeric ----
+columns_numeric <- intersect(factors_list$column_name_new[factors_list$metric_type %in% c("continuous")], colnames(per_data))
+print(columns_numeric)  # Check if it holds expected values
+
+per_data_clean<- per_data%>%
+  mutate(across(all_of(columns_numeric), as.numeric))%>%
+  mutate(across(starts_with("nonhired_labour_"), ~ replace_na(.x, 0)))%>%
+  mutate(across(starts_with("hired_labour_"), ~ replace_na(.x, 0)))
+
+#### categorical and binary data as factor 
+columns_factor <- intersect(factors_list$column_name_new[factors_list$metric_type %in%c("categorical","binary")], colnames(per_data))
+print(columns_factor)  # Check if it holds expected values
+
+per_data_clean<- per_data_clean%>%
+  mutate(across(all_of(columns_factor), as.factor))
+
+
+
+#############################################################
 
 names(per_data)
 
@@ -447,24 +432,30 @@ names(per_data)
   
   
 
-########## DATA TYPE CONVERSION -----
-#as numeric
-numeric_valid_columns <- intersect(factors_list_holpa$column_name_new[factors_list_holpa$metric_type == "continuous"], colnames(per_data))
-print(numeric_valid_columns)  # Check if it holds expected values
-str(per_data)
 
-per_data_clean<- per_data%>%
-  mutate(across(all_of(numeric_valid_columns), as.numeric))%>%
-  mutate(across(starts_with("nonhired_labour_"), ~ replace_na(.x, 0)))%>%
-  mutate(across(starts_with("hired_labour_"), ~ replace_na(.x, 0)))
-  
-#as factor 
-factor_valid_columns <- intersect(factors_list_holpa$column_name_new[factors_list_holpa$metric_type %in%c("categorical","binary")], colnames(per_data))
-print(factor_valid_columns)  # Check if it holds expected values
+
+
+
+
+
+sort(unique(per_data_clean$project_participation))
+sort(unique(per_data_clean$marital_status))
+sort(unique(per_data_clean$marital_status))
+sort(unique(per_data_clean$marital_status))
+
+
+
+
+
+
+"marital_status"             "read_write"                 "education_level"            "project_participation"     
+[6] "training_best_practices"    "training_agribusiness"      "training_other"             "agroecology_knowledge"      "land_tenure_security"      
+[11] "farm_products"              "participation_nr_frequency" "influence_nr_frequency"     "nr_management_opinion"      "ecol_practices"            
+[16] "ecol_practices_other"      
+
+
+
 str(per_data_clean)
-
-per_data_clean<- per_data_clean%>%
-  mutate(across(all_of(factor_valid_columns), as.factor))
 
 
 
