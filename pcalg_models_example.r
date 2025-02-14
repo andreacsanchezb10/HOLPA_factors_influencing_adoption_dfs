@@ -36,6 +36,55 @@ plot(gmG8$g, main = "") #True causal DAG
 plot(skel.gmG8, main = "") #estimated skeleton
 plot(pc.gmG8, main = "") #estimated CPDAG
 
+### plot with ggplot2
+# Extract adjacency matrix
+amat <- as(pc.gmG8, "amat")
+amat <- as(amat, "matrix")  # Convert to standard matrix
+amat
+
+library(tidygraph)
+library(ggraph)
+library(ggplot2)
+library(reshape2)
+
+# Convert adjacency matrix to data frame for visualization
+edge_list <- melt(amat)
+edge_list
+edge_list <- edge_list[edge_list$value == 1, ]  # Keep only edges that exist
+edge_list
+colnames(edge_list) <- c("from", "to", "weight")  # Rename columns
+edge_list
+
+# Create a node data frame with proper variable names
+nodes <- data.frame(name = node_names, stringsAsFactors = FALSE)
+
+# Ensure `edge_list` uses factor levels matching `nodes`
+edge_list$from <- factor(edge_list$from, levels = nodes$name)
+edge_list$to <- factor(edge_list$to, levels = nodes$name)
+
+# Convert factor levels to indices explicitly
+edge_list$from <- as.integer(edge_list$from)
+edge_list$to <- as.integer(edge_list$to)
+edge_list
+
+# Convert edge list to a graph object
+graph <- tbl_graph(nodes = nodes, edges = edge_list, directed = TRUE)
+graph
+
+graph <- graph %>% 
+  activate(nodes) %>% 
+  mutate(name = as.character(name))  # Ensure names remain characters
+graph
+
+ggraph(graph, layout = "fr") +  
+  geom_edge_link(arrow = arrow(length = unit(4, "mm")), 
+                 end_cap = circle(4, "mm"),  
+                 edge_width = 1) +  
+  geom_node_point(size = 6, color = "darkblue") +  
+  geom_node_text(aes(label = name), repel = TRUE, size = 5) +  
+  theme_void() +  
+  ggtitle("PC Algorithm Causal Graph with Variable Names")
+
 ##################################################################################################
 ############# PCI ALGORITHM WITH BACKGROUND INFORMATION ADDED #########----
 #################################################################################################
