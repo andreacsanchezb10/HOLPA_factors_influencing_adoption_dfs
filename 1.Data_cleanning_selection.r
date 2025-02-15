@@ -157,7 +157,7 @@ per_3_3_3_2_begin_repeat<-per_3_3_3_2_begin_repeat%>%
   rename("cropland_practices"="_3_3_3_1_calculate_2",
          "cropland_practices_area"="_3_3_3_2_2")%>%
   mutate(cropland_practices = str_extract(cropland_practices, "(?<=//).*"))%>%
-practices_begin_group(.,.$cropland_practices,.$cropland_practices_area)
+  practices_begin_group(.,.$cropland_practices,.$cropland_practices_area)
 
 
 
@@ -199,8 +199,29 @@ per_data<- per_maintable%>%
   left_join(per_3_3_3_2_begin_repeat, by=c("kobo_farmer_id"))
   select(gender)
 
+# Process all select_multiple columns
+select_multiple<-global_survey%>%
+    filter(type_question=="select_multiple")
   
-  names
+per_select_multiple_cols <- intersect(colnames(per_data), unique(select_multiple$name_question))
+per_select_multiple_cols
+  
+per_select_multiple <- per_data %>%
+    select(kobo_farmer_id,all_of(per_select_multiple_cols)) %>%
+    pivot_longer(cols =-kobo_farmer_id, names_to = "question", values_to = "response")%>%   # Reshape to long format
+    separate_rows(response, sep = ",") %>%  # Split multiple responses into separate rows
+    mutate(value = 1)%>%  # Assign 1 for presence
+  pivot_wider(names_from = c(question, response), values_from = value, 
+              names_sep = "/", values_fill = 0) %>%
+  select(-matches("/NA$"))
+
+
+
+# add select_multiple responses
+per_data<-per_data%>%
+  left_join(per_select_multiple, by=c("kobo_farmer_id"))
+
+
 
 
 ### RENAME COLUMN NAMES ----
@@ -245,9 +266,6 @@ per_data_clean<- per_data%>%
 
 ### Change name_choice code to numeric codes for: ----
 #gender; marital_status
-
-
-
 factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
   left_join(global_survey,by=c("column_name_old"="name_question"))%>%
   filter(!is.na(column_name_new))%>%
@@ -287,12 +305,12 @@ print(columns_factor)  # Check if it holds expected values
 per_data_clean<- per_data_clean%>%
   mutate(across(all_of(columns_factor), as.factor))
 
-
 str(per_data_clean$marital_status)
 str(per_data_clean$gender)
 
 
-
+x<-per_data_clean%>%
+  select(ecol_practices)
 
 
 
@@ -311,51 +329,6 @@ names(per_data)
          "_2_7_1_4_1", # Specify other places where you sell the produced  WOOD/BARK/RUBBER/ETC (FROM TREES):
          "_2_7_1_5", # When you sell the produced HONEY, who do you sell to?
          "_2_7_1_5_1", #Specify other places where you sell the produced HONEY:
-         
-        
-         
-         
-         
-         ### FARMERS ATTITUDE
-         
-         
-         
-         
-      
-         
-
-         
-
-
-  dplyr::select("kobo_farmer_id", #farmer id
-         
-         
-         
-        
-         
-           
-
-         
-
-         ### FARMERS ATTITUDE
-       
-
-
-      
-         
-         ## NATURAL CAPITAL
-         "_1_4_1_1", # What is the total area in hectares (or acres) of land (agricultural or not) that your household:
-         "_1_4_1_1_1", #What is the total area in hectares (or acres) of land (agricultural or not) that your household: Currently OWNS:
-         "_1_4_1_1_2", #What is the total area in hectares (or acres) of land (agricultural or not) that your household: Currently LEASES  from another person:
-         "_1_4_1_1_3" #What is the total area in hectares (or acres) of land (agricultural or not) that your household: Currently HOLDS USE RIGHTS, either alone or jointly with someone else:
-           
-         )
-  
-  
-
-
-
-
 
 
 

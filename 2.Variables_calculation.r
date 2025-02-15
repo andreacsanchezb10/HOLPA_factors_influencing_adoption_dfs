@@ -23,6 +23,18 @@ per_data_clean$n_adults_total <- per_data_clean$n_adults_wa+per_data_clean$n_adu
 # total number of people in household
 per_data_clean$n_people <- per_data_clean$n_adults_total+per_data_clean$n_children 
 
+
+### FARM MANAGEMENT CHARACTERISTICS ----
+
+# total ecological practices used on cropland to improve soil quality and health
+per_data_clean <- per_data_clean %>%
+  mutate(across(starts_with("ecol_practices"), ~ as.numeric(as.character(.))))%>%
+  mutate(n_ecol_practices = rowSums(across(starts_with("ecol_practices")), na.rm = TRUE)) %>% # Sum the columns
+  mutate(across(starts_with("ecol_practices"), as.factor))
+
+
+
+
 ### Potential outcomes ----
 
 ### OUTCOMES ----
