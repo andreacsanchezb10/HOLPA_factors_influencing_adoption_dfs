@@ -26,12 +26,16 @@ categorical_choices<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
   left_join(global_survey,by=c("column_name_old"="name_question"))%>%
   filter(!is.na(column_name_new))%>%
   left_join(global_choices,by="list_name")%>%
+  mutate(name_new=as.character(name_new),
+         name_choice= if_else(is.na(name_new),name_choice,name_new))%>%
   select(column_name_new,name_choice,label_choice)%>%
   filter(!is.na(name_choice))%>%
-  mutate(variable_category=paste0(column_name_new,"_",name_choice))
+  mutate(variable_category=paste0(column_name_new,"_",name_choice))%>%
+  select(-column_name_new)
 
-
-########## FUNCTION TO CALCULATE SUMMARY STATISTICS #####-----
+#############################################################
+########## FUNCTIONS TO CALCULATE SUMMARY STATISTICS #####-----
+#############################################################
 summary_stats_num <- function(df,numeric_valid_columns) {
   df %>%
   select(-kobo_farmer_id) %>%  # Exclude 'id' column
@@ -41,12 +45,13 @@ summary_stats_num <- function(df,numeric_valid_columns) {
     sd = ~sd(. , na.rm = TRUE),
     min = ~min(. , na.rm = TRUE),
     max = ~max(. , na.rm = TRUE),
-    missing_perc = ~sum(is.na(.)) / length(.) * 100
+    missing_perc = ~sum(is.na(.)) / length(.) * 100,
+    n = ~sum(!is.na(.))
   ), .names = "{.col}_{.fn}")) %>%
   pivot_longer(cols = everything(), 
                names_to = "full_name", 
                values_to = "value") %>%
-  mutate(
+  mutate(total=length(.),
     variable = case_when(
       str_detect(full_name, "_missing_perc$") ~ str_remove(full_name, "_missing_perc$"),  # Keep "missing_perc" together
       TRUE ~ str_extract(full_name, ".*(?=_[^_]+$)")),  # Extract everything before last "_"
@@ -71,13 +76,14 @@ summary_stats_factor <- function(df,factor_valid_columns,categorical_choices) {
     ungroup()%>%
     mutate(Percentage = (Count / Total) * 100)%>%
     mutate(variable_category=paste0(Variable,"_",Category))%>%
-    left_join(categorical_choices,by= "variable_category")
-
-    
+    left_join(categorical_choices,by= "variable_category")%>%
+    select(-variable_category)
 }
     
-    
+#############################################################    
 ########## SUMMARY STATISTICS #####-----
+#############################################################
+
 ### For numeric variables
 columns_numeric <- intersect(factors_list$column_name_new[factors_list$metric_type == "continuous"], colnames(per_data_clean))
 print(columns_numeric)  # Check if it holds expected values

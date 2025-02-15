@@ -9,7 +9,6 @@ library(tidyr)
 library(dplyr)
 library(purrr)
 
-########## DATA LOADING #####----
 # Define the function to process each sheet
 process_survey_data <- function(sheet_name, country_name, column_id_rename) {
   survey_data <- read_excel(per_data_path, sheet = sheet_name)
@@ -24,24 +23,41 @@ process_survey_data <- function(sheet_name, country_name, column_id_rename) {
   return(survey_data)
 }
 
-labour_begin_group <- function(data,workers,nh_h_workers_permanent_seasonal) {
+nhlabour_begin_group <- function(data,workers,permanent_seasonal) {
   data%>%
     mutate(n_workers = str_extract(workers, "^\\d+"),
            group_workers= str_replace(workers, "^\\d+\\s+", ""),
            group_workers= as.character(group_workers),
            n_workers= as.numeric(n_workers))%>%
     mutate(group_workers= case_when(
-      group_workers %in% c("adultos varones mayores (>65 años)","adultos mayores varones (>65 años)")~ paste0(nh_h_workers_permanent_seasonal,"_adults_old_male"),
-      group_workers%in%c("Adultos varones (≥18 y ≤65 años)","adultos varones (≥18 y ≤65)")~paste0(nh_h_workers_permanent_seasonal,"_adults_wa_male"),
-      group_workers%in%c("Mujeres adultas (≥18 y ≤65 años)","mujeres adultas (≥18 y ≤65)")~paste0(nh_h_workers_permanent_seasonal,"_adults_wa_female"),
-      group_workers=="mujeres adultas mayores (>65 años)"~paste0(nh_h_workers_permanent_seasonal,"_adults_old_female"),
-      group_workers=="niñas (<18 años)"~ paste0(nh_h_workers_permanent_seasonal,"_children_female"),
-      group_workers=="niños varones (<18 años)"~paste0(nh_h_workers_permanent_seasonal,"_children_male"),
+      group_workers %in% c("adultos varones mayores (>65 años)","adultos mayores varones (>65 años)")~ paste0("nhlabour_",permanent_seasonal,"_adults_old_male"),
+      group_workers%in%c("Adultos varones (≥18 y ≤65 años)","adultos varones (≥18 y ≤65)")~paste0("nhlabour_",permanent_seasonal,"_adults_wa_male"),
+      group_workers%in%c("Mujeres adultas (≥18 y ≤65 años)","mujeres adultas (≥18 y ≤65)")~paste0("nhlabour_",permanent_seasonal,"_adults_wa_female"),
+      group_workers=="mujeres adultas mayores (>65 años)"~paste0("nhlabour_",permanent_seasonal,"_adults_old_female"),
+      group_workers=="niñas (<18 años)"~ paste0("nhlabour_",permanent_seasonal,"_children_female"),
+      group_workers=="niños varones (<18 años)"~paste0("nhlabour_",permanent_seasonal,"_children_male"),
 
       TRUE ~ group_workers))%>%
     select(kobo_farmer_id,n_workers,group_workers)%>%
     pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = n_workers,values_fill = 0)
   
+}
+
+hlabour_begin_group <- function(data,group_workers,n_workers,permanent_seasonal) {
+  data%>%
+    mutate(group_workers= as.character(group_workers),
+           n_workers= as.numeric(n_workers))%>%
+  mutate(group_workers= case_when(
+    group_workers %in% c("adultos varones mayores (>65 años)","adultos mayores varones (>65 años)")~ paste0("hlabour_",permanent_seasonal,"_adults_old_male"),
+    group_workers%in%c("Adultos varones (≥18 y ≤65 años)","adultos varones (≥18 y ≤65)")~paste0("hlabour_",permanent_seasonal,"_adults_wa_male"),
+    group_workers%in%c("Mujeres adultas (≥18 y ≤65 años)","mujeres adultas (≥18 y ≤65)")~paste0("hlabour_",permanent_seasonal,"_adults_wa_female"),
+    group_workers=="mujeres adultas mayores (>65 años)"~paste0("hlabour_",permanent_seasonal,"_adults_old_female"),
+    group_workers=="niñas (<18 años)"~ paste0("hlabour_",permanent_seasonal,"_children_female"),
+    group_workers=="niños varones (<18 años)"~paste0("hlabour_",permanent_seasonal,"_children_male"),
+    
+    TRUE ~ group_workers))%>%
+  select(kobo_farmer_id,n_workers,group_workers)%>%
+  pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = n_workers,values_fill = 0)
 }
 
 practices_begin_group <- function(data, cropland_practices,cropland_practices_area) {
@@ -70,18 +86,35 @@ practices_begin_group <- function(data, cropland_practices,cropland_practices_ar
 }
         
 
+#######################################################################################################################################################################################    
+########## DATA LOADING #####----
+#######################################################################################################################################################################################    
 
-##### ALL ----
+##### GLOBAL ----
 # Read the Excel file
 factors_list <- read_excel("factors_list.xlsx")
 
-factors_list_holpa<-factors_list%>%
-  filter(data_source=="holpa")
-print(factors_list_holpa)
+global_survey <- read_excel("factors_list.xlsx",sheet = "holpa_survey")%>%
+  #select only the necessary columns
+  select("type", "name","label::English ((en))")%>%
+  #rename columns names
+  rename("label_question" = "label::English ((en))")%>%
+  rename("name_question" = "name")%>%
+  #remove rows without questions
+  filter(!type%in%c("begin_group","begin_repeat","end_repeat","end_group","start","end"))%>%
+  #separate question type components
+  mutate(type_question = ifelse(substr(type,1,10)=="select_one","select_one",
+                                ifelse(substr(type,1,10)=="select_mul","select_multiple",type)))%>%
+  #create column with list_name codes matching the choices worksheet
+  mutate(list_name = if_else(type_question== "select_one"|type_question== "select_multiple", 
+                             str_replace(.$type, paste0(".*", .$type_question), ""),NA))%>%
+  mutate(list_name = str_replace_all(list_name, " ", ""))  #%>% mutate(global_r_list_name =  sub('*_', "", name_question)) %>%mutate(global_r_list_name = ifelse(grepl("_", global_r_list_name, fixed = TRUE)==TRUE,global_r_list_name,""))
 
-column_mapping <- factors_list %>%
-  select(column_name_old, column_name_new)  # Select only the relevant columns
-print(column_mapping)
+global_choices <- read_excel("factors_list.xlsx",sheet = "holpa_choices")%>%
+  select("list_name","name","label::English ((en))","name_new")%>%
+  rename("label_choice" = "label::English ((en))")%>%
+  rename("name_choice" = "name")
+
 
 ##### Peru ----
 # Define file path
@@ -104,21 +137,21 @@ walk(sheet_names, function(sheet) {
 per_maintable <- permaintable
 per_3_4_1_1_7_1_begin_repeat<-per_3_4_1_1_7_1_begin_repeat%>%
   rename("nonhired_permanent_workers"="_3_4_1_1_7_1_calculate")%>%
-  labour_begin_group(.,.$nonhired_permanent_workers,"n_nhlabour_permanent")
+  nhlabour_begin_group(.,.$nonhired_permanent_workers,"permanent")
   
 per_3_4_1_1_7_2_begin_repeat<-per_3_4_1_1_7_2_begin_repeat%>%
   rename("nonhired_seasonal_workers"="_3_4_1_1_7_2_calculate")%>%
-  labour_begin_group(.,.$nonhired_seasonal_workers,"n_nhlabour_seasonal")
+  nhlabour_begin_group(.,.$nonhired_seasonal_workers,"seasonal")
 
 per_3_4_1_2_1_1_begin_repeat<-per_3_4_1_2_1_1_begin_repeat%>%
-  rename("hired_permanent_workers"="_3_4_1_2_1_1_calculate")%>%
-  labour_begin_group(.,.$hired_permanent_workers,"n_hlabour_permanent")
+  rename("group_workers"="_3_4_1_2_1_1_calculate",
+         "n_workers"= "_3_4_1_2_1_1_1")%>%
+  hlabour_begin_group(.,.$group_workers,.$n_workers,"permanent")
 
 per_3_4_1_2_1_2_begin_repeat<-per_3_4_1_2_1_2_begin_repeat%>%
-  rename("hired_seasonal_workers"="_3_4_1_2_1_2_calculate")%>%
-  labour_begin_group(.,.$hired_seasonal_workers,"n_hlabour_seasonal")
-
-
+  rename("group_workers"="_3_4_1_2_1_2_calculate",
+         "n_workers"= "_3_4_1_2_1_2_1")%>%
+  hlabour_begin_group(.,.$group_workers,.$n_workers,"seasonal")
 
 per_3_3_3_2_begin_repeat<-per_3_3_3_2_begin_repeat%>%
   rename("cropland_practices"="_3_3_3_1_calculate_2",
@@ -172,6 +205,10 @@ per_data<- per_maintable%>%
 
 ### RENAME COLUMN NAMES ----
 # Ensure old column names exist in per_data
+column_mapping <- factors_list %>%
+    select(column_name_old, column_name_new)  # Select only the relevant columns
+print(column_mapping)
+  
 existing_cols <- colnames(per_data)
 
 # Create a named vector for renaming
@@ -205,12 +242,57 @@ per_data_clean<- per_data%>%
   mutate(across(starts_with("nonhired_labour_"), ~ replace_na(.x, 0)))%>%
   mutate(across(starts_with("hired_labour_"), ~ replace_na(.x, 0)))
 
+
+### Change name_choice code to numeric codes for: ----
+#gender; marital_status
+
+
+
+factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
+  left_join(global_survey,by=c("column_name_old"="name_question"))%>%
+  filter(!is.na(column_name_new))%>%
+  mutate(type_question=if_else(is.na(type_question),metric_type,type_question))
+
+categorical_choices_new<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
+  left_join(global_survey,by=c("column_name_old"="name_question"))%>%
+  filter(!is.na(column_name_new))%>%
+  left_join(global_choices,by="list_name")%>%
+  filter(!is.na(name_new))
+
+colnames(per_data_clean)
+
+common_cols <- intersect(colnames(per_data_clean), unique(categorical_choices_new$column_name_new))
+print(common_cols)
+
+per_data_clean<-per_data_clean
+# Replace values dynamically for all common columns
+for (col in common_cols) {
+  mapping <- categorical_choices_new %>%
+    filter(column_name_new == col) %>%
+    select(name_choice, name_new) %>%
+    { setNames(.$name_new, .$name_choice) }  # Alternative to deframe()
+  
+  per_data_clean[[col]] <- recode(per_data_clean[[col]], !!!mapping)
+}
+
+sort(unique(per_data_clean$marital_status))
+sort(unique(per_data_clean$gender))
+str(per_data_clean$marital_status)
+str(per_data_clean$gender)
+
 #### categorical and binary data as factor 
-columns_factor <- intersect(factors_list$column_name_new[factors_list$metric_type %in%c("categorical","binary")], colnames(per_data))
+columns_factor <- intersect(factors_list$column_name_new[factors_list$metric_type %in%c("categorical","binary")], colnames(per_data_clean))
 print(columns_factor)  # Check if it holds expected values
 
 per_data_clean<- per_data_clean%>%
   mutate(across(all_of(columns_factor), as.factor))
+
+
+str(per_data_clean$marital_status)
+str(per_data_clean$gender)
+
+
+
 
 
 
@@ -235,192 +317,31 @@ names(per_data)
          
          
          ### FARMERS ATTITUDE
-         ## Perspective on agroecology
-         "_1_3_1_1_1", ##I care a lot about nature.
-         "_1_3_1_1_2", ##Being in nature benefits me.
-         "_1_3_1_1_3", ##I live in a place where most people take good care of the land and nature.
-         "_1_3_1_1_4", ##I take care of the land and nature on my farm.
-         "_1_3_1_1_5", ##I identify myself as an agroecological farmer.
-         "_1_3_1_1_6", ##I have power and freedom to change farm production practices if I want to.
-         "_1_3_1_1_7", ##If I work together with others in my community, we have power and freedom to solve problems facing farmers.
-         "_1_3_2_1_5", ##I make decisions about what food to buy based primarily on price.
-         "_1_3_2_1_6", ##I would prefer to eat food that is produced without chemical inputs.
-         "_1_3_2_1_7", ##I would prefer to eat food that is grown locally.
-         "_1_3_1_1_10", ##I would prefer that the food I buy is produced and processed in ways that provide a fair wage and good conditions for workers.##
-         "_1_3_2_1_3", ##I think shifting to agroecological farming is a sensible business decision.
-         "_1_3_2_1_4", ##I think current farming systems are working well and do not need changing.
-         
-         ## Governance
-         "_2_2_1_1", # How often does your household participate in activities and meetings related to the management of your community's land and natural resources?
-         "_2_2_1_2",	#How often does your household influence the decision-making that goes into the management of your community's land and natural resources?
-         "_2_2_1_3",	#In your opinion, are your community's land and natural resources well-managed?
-         
-         ## Perception of fair price for products
-         "_2_6_1_4_1", #Do you get a fair price for your produced CROPS?
-         "_2_6_1_4_2", #Do you get a fair price for your produced LIVESTOCK?
-         "_2_6_1_4_3", #Do you get a fair price for your produced FISH?
-         "_2_6_1_4_4", # Do you get a fair price for your produced wood, bark, rubber, etc. (from TREES)?
-         "_2_6_1_4_5" ,#Do you get a fair price for your produced HONEY?
-         
-         ## Human wellbeing
-         "_3_1_1_1", #Thinking about your own life and personal circumstances, how satisfied are you with your life as a whole?
-         "_3_1_1_2"	, #How satisfied are you with your standard of living?
-         "_3_1_1_3", #How satisfied are you with your health?
-         "_3_1_1_4"	, #How satisfied are you with what you are achieving in life?
-         "_3_1_1_5"	, #How satisfied are you with your personal relationships?
-         "_3_1_1_6"	, #How satisfied are you with how safe you feel?
-         "_3_1_1_7", #How satisfied are you with feeling part of your community?
-         "_3_1_1_8", #How satisfied are you with your economic security?
-         "_3_1_1_9"	, #How satisfied are you with your nutritional security?
-         "_3_1_1_10", #How satisfied are you with the amount of time you have to do the things that you like doing?
-         "_3_1_1_11", #How satisfied are you with the quality of your local environment?
-         "_3_1_1_12",	#How satisfied are you with your occupation?
-         
-         ## Farmer agency
-         "_3_1_2_2", # On which step of the ladder would you position the majority of women in your household today?
-         "_3_1_2_3", #On which step of the ladder would you position the majority of women in your household 10 years ago?
-         "_3_1_2_4", #On which step of the ladder would you position the majority of men in your household today?
-         "_3_1_2_5", #On which step of the ladder would you position the majority of men in your household 10 years ago?
-         "_3_1_2_6", #On which step of the ladder would you position the majority of women in your community today?
-         "_3_1_2_6_001", #Would you position different types of women in different places on this ladder? Older people, younger people, poorer people, single people, etc.?
-         "_3_1_2_7", #On which step of the ladder would you position the majority of men in your community today?
-         "_3_1_2_7_001", #Would you position different types of men in different places on this ladder? Older people, younger people, poorer people, single people, etc.?
          
          
          
-         ## NATURAL CAPITAL
-         "_1_4_1_1", # What is the total area in hectares (or acres) of land (agricultural or not) that your household:
-         "_1_4_1_1_1", #What is the total area in hectares (or acres) of land (agricultural or not) that your household: Currently OWNS:
-         "_1_4_1_1_2", #What is the total area in hectares (or acres) of land (agricultural or not) that your household: Currently LEASES  from another person:
-         "_1_4_1_1_3" #What is the total area in hectares (or acres) of land (agricultural or not) that your household: Currently HOLDS USE RIGHTS, either alone or jointly with someone else:
          
+      
          
-  )
+
+         
+
 
   dplyr::select("kobo_farmer_id", #farmer id
-         ### HUMAN CAPITAL 
-         ## Household head
-         "_1_2_1_9", # gender
-         "_1_2_1_10", # marital status
-         "_4_1_1_1", # can you read and write
-         "_1_2_1_12_1", # highest level of school atteded
-         "_1_2_1_8", # year of birth
-         
-         ## Household
-         "_1_2_1_14_1", # # of adults male
-         "_1_2_1_14_2", # # of adults female
-         "_1_2_1_14_3", # # of adults old male
-         "_1_2_1_14_4", # # of adults old female
-         "_1_2_1_14_5", # # of children male
-         "_1_2_1_14_6", # # of children female
-         
-         ## Labour
-         "h_workers_permanent_adults_old_male", # # of old male permanent household workers 
-         "h_workers_permanent_adults_male", # of  male permanent household workers 
-         "h_workers_permanent_adults_female", # of female permanent household workers 
-         "h_workers_permanent_adults_old_female", # of old female permanent household workers 
-         "h_workers_permanent_children_female", # of children female permanent household workers 
-         "h_workers_permanent_children_male", # of children male permanent household workers
-         
-         "h_workers_seasonal_adults_old_male", # # of old male seasonal household workers 
-         "h_workers_seasonal_adults_male", # of  male seasonal household workers 
-         "h_workers_seasonal_adults_female", # of female seasonal household workers 
-         "h_workers_seasonal_adults_old_female", # of old female seasonal household workers 
-         "h_workers_seasonal_children_female", # of children female seasonal household workers 
-         "h_workers_seasonal_children_male", # of children male seasonal household workers 
-         
-         "nonh_workers_permanent_adults_old_male", # # of old male permanent non-household workers 
-         "nonh_workers_permanent_adults_male", # of  male permanent non-household workers 
-         "nonh_workers_permanent_adults_female", # of female permanent non-household workers 
-         "nonh_workers_permanent_adults_old_female", # of old female permanent non-household workers 
-         "nonh_workers_permanent_children_female", # of children female permanent non-household workers 
-         "nonh_workers_permanent_children_male", # of children male permanent non-household workers
          
          
-         ### SOCIAL CAPITAL
-         "_1_2_1_15", #involvement in research or development project
-         "_1_2_1_7", # years of living in the community
-         "_2_1_1_6", #numer of visits from Other farmers
          
-         ### POLITICAL AND INSTITUTIONAL CONTEXT
-         ## Access to knowledge
-         "_4_1_1_4_1", #Training in innovative or best management agricultural practices
-         "_4_1_1_4_3", #Training in agribusiness management and value addition
-         "_4_1_1_4_4", # Other training (please specify)
-         "_1_2_1_16_001", #Do you know what Agroecology means?
-         "_2_1_1_1", #numer of visits from Agricultural extension workers	
-         "_2_1_1_7", #numer of visits from Researchers
+        
          
-         
-         ## Value chain
-         "_2_1_1_2", #numer of visits from Consumers	
-         "_2_1_1_3", #numer of visits from Food traders
-         "_2_1_1_4", #numer of visits from Government
-         "_2_1_1_5", #numer of visits from NGOs	
-         
-         "_2_7_1_1", #When you sell the produced CROPs, who do you sell to?
-         "_2_7_1_1_1", #Specify other places where you sell the produced CROPS:
-         "_2_7_1_2", #When you sell the produced LIVESTOCK, who do you sell to?
-         "_2_7_1_2_1", #Specify other places where you sell the produced LIVESTOCK:
-         "_2_7_1_3", #When you sell the produced FISH, who do you sell to?
-         "_2_7_1_3_1", #Specify other places where you sell the produced FISH:
-         "_2_7_1_4", # When you sell the produced wood, bark, rubber, etc. (from TREES), who do you sell to?
-         "_2_7_1_4_1", # Specify other places where you sell the produced  WOOD/BARK/RUBBER/ETC (FROM TREES):
-         "_2_7_1_5", # When you sell the produced HONEY, who do you sell to?
-         "_2_7_1_5_1", #Specify other places where you sell the produced HONEY:
            
 
          
 
          ### FARMERS ATTITUDE
-         ## Perspective on agroecology
-         "_1_3_1_1_1", ##I care a lot about nature.
-         "_1_3_1_1_2", ##Being in nature benefits me.
-         "_1_3_1_1_3", ##I live in a place where most people take good care of the land and nature.
-         "_1_3_1_1_4", ##I take care of the land and nature on my farm.
-         "_1_3_1_1_5", ##I identify myself as an agroecological farmer.
-         "_1_3_1_1_6", ##I have power and freedom to change farm production practices if I want to.
-         "_1_3_1_1_7", ##If I work together with others in my community, we have power and freedom to solve problems facing farmers.
-         "_1_3_2_1_5", ##I make decisions about what food to buy based primarily on price.
-         "_1_3_2_1_6", ##I would prefer to eat food that is produced without chemical inputs.
-         "_1_3_2_1_7", ##I would prefer to eat food that is grown locally.
-         "_1_3_1_1_10", ##I would prefer that the food I buy is produced and processed in ways that provide a fair wage and good conditions for workers.##
-         "_1_3_2_1_3", ##I think shifting to agroecological farming is a sensible business decision.
-         "_1_3_2_1_4", ##I think current farming systems are working well and do not need changing.
+       
 
 
-         ## Perception of fair price for products
-         "_2_6_1_4_1", #Do you get a fair price for your produced CROPS?
-         "_2_6_1_4_2", #Do you get a fair price for your produced LIVESTOCK?
-         "_2_6_1_4_3", #Do you get a fair price for your produced FISH?
-         "_2_6_1_4_4", # Do you get a fair price for your produced wood, bark, rubber, etc. (from TREES)?
-         "_2_6_1_4_5" ,#Do you get a fair price for your produced HONEY?
-          
-        ## Human wellbeing
-         "_3_1_1_1", #Thinking about your own life and personal circumstances, how satisfied are you with your life as a whole?
-         "_3_1_1_2"	, #How satisfied are you with your standard of living?
-         "_3_1_1_3", #How satisfied are you with your health?
-         "_3_1_1_4"	, #How satisfied are you with what you are achieving in life?
-         "_3_1_1_5"	, #How satisfied are you with your personal relationships?
-         "_3_1_1_6"	, #How satisfied are you with how safe you feel?
-         "_3_1_1_7", #How satisfied are you with feeling part of your community?
-         "_3_1_1_8", #How satisfied are you with your economic security?
-         "_3_1_1_9"	, #How satisfied are you with your nutritional security?
-         "_3_1_1_10", #How satisfied are you with the amount of time you have to do the things that you like doing?
-         "_3_1_1_11", #How satisfied are you with the quality of your local environment?
-         "_3_1_1_12",	#How satisfied are you with your occupation?
-
-         ## Farmer agency
-         "_3_1_2_2", # On which step of the ladder would you position the majority of women in your household today?
-           "_3_1_2_3", #On which step of the ladder would you position the majority of women in your household 10 years ago?
-           "_3_1_2_4", #On which step of the ladder would you position the majority of men in your household today?
-           "_3_1_2_5", #On which step of the ladder would you position the majority of men in your household 10 years ago?
-           "_3_1_2_6", #On which step of the ladder would you position the majority of women in your community today?
-           "_3_1_2_6_001", #Would you position different types of women in different places on this ladder? Older people, younger people, poorer people, single people, etc.?
-           "_3_1_2_7", #On which step of the ladder would you position the majority of men in your community today?
-           "_3_1_2_7_001", #Would you position different types of men in different places on this ladder? Older people, younger people, poorer people, single people, etc.?
-           
-        
+      
          
          ## NATURAL CAPITAL
          "_1_4_1_1", # What is the total area in hectares (or acres) of land (agricultural or not) that your household:

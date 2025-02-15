@@ -1,13 +1,34 @@
-head(per_data_clean)
+library(pcalg)
+library(reshape2)
+library(tidygraph)
+library(ggraph)
+library(ggplot2)
+factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")
 
 
-per_variables <- intersect(factors_list$column_name_new, colnames(per_data_clean))
-print(per_variables)  
+#########################################################################################################################################################################################
+############# DATA TYPE CONVERSION -----
+#########################################################################################################################################################################################
+#### Convert categorical and binary variables to numeric to perform pc algorithm
+
+columns_factor <- intersect(factors_list$column_name_new[factors_list$metric_type %in%c("categorical","binary")], colnames(per_data_clean))
+print(columns_factor)  # Check if it holds expected values
 
 per_data_analysis<- per_data_clean%>%
+  mutate(across(all_of(columns_factor), as.numeric))
+
+
+##########################################################################
+############# SELECT ONLY NUMERICAL VARIABLES -----
+##########################################################################
+
+per_variables <- intersect(factors_list$column_name_new, colnames(per_data_analysis))
+print(per_variables)  
+
+per_data_analysis<- per_data_analysis%>%
   select(all_of(per_variables))%>%
   select(where(is.numeric))
-  select(age, n_people,year_birth,n_visits_extensionist,hired_labour_permanent_adults_female,dfs_total_area)
+  select(gender,age, n_people,year_birth,n_visits_extensionist,dfs_total_area)
   str(per_data_analysis)  
   
 head(per_data_analysis)
@@ -35,6 +56,9 @@ bk["age", setdiff(variables, "year_birth")] <- FALSE  # Prohibition of paths lea
 bk["year_birth", setdiff(variables, "age")] <- FALSE  # Prohibition of paths leading to “age”, unless "year_birth"->"age
 bk[setdiff(variables, c("age","year_birth")),"years_in_community"] <- FALSE  # Prohibition of paths leading to "years_in_community" unless "age"->"years_in_community" or "year_birth"->"years_in_community" 
 
+bk["n_adults_wa", c("n_adults_wa_male", "n_adults_wa_female")] <- FALSE # Prohibition of this path n_adults_wa -> "n_adults_wa_male", "n_adults_wa_female"
+bk["n_adults_old", c("n_adults_old_male", "n_adults_old_female")] <- FALSE # Prohibition of this path n_adults_old -> "n_adults_old_male", "n_adults_old_female"
+print(bk)
 t.bk <-t(bk)
 bk.list <- melt(t.bk)
 bk.list
@@ -43,13 +67,8 @@ colnames(bk.list) <- c("from", "to", "weight")  # Rename columns
 bk.list <- bk.list[bk.list$weight == TRUE, ]  # Keep only edges that can be TRUE
 bk.list
 
-
-
-
-
-
 ############
-#The dataset per_data_analysis contains n = 200 observations of p = 3 continuous variables 
+#The dataset per_data_analysis contains n = 200 observations of p = XX continuous variables 
 #with a multivariate Gaussian distribution.
 
 #######################################################
@@ -82,10 +101,7 @@ plot(per.skeleton, main = "Skeleton of DAG")
 plot(per.pc, main = "PC Algorithm DAG")
 
 #### Plot results using ggplot2
-library(tidygraph)
-library(ggraph)
-library(ggplot2)
-library(reshape2)
+
 
 # Extract adjacency matrix
 per.pc.amat <- as(per.pc, "amat")
@@ -122,8 +138,6 @@ ggraph(per.pc.graph, layout = "fr") +
   geom_node_text(aes(label = name), repel = TRUE, size = 5) +  
   theme_void() +  
   ggtitle("PC Algorithm")
-
-
 
 
 #### Add background knowledge ###
