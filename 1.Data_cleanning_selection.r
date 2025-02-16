@@ -101,7 +101,7 @@ global_survey <- read_excel("factors_list.xlsx",sheet = "holpa_survey")%>%
   rename("label_question" = "label::English ((en))")%>%
   rename("name_question" = "name")%>%
   #remove rows without questions
-  filter(!type%in%c("begin_group","begin_repeat","end_repeat","end_group","start","end"))%>%
+  filter(!type%in%c("begin_group","begin_repeat","end_repeat","end_group","start","end","audio"))%>%
   #separate question type components
   mutate(type_question = ifelse(substr(type,1,10)=="select_one","select_one",
                                 ifelse(substr(type,1,10)=="select_mul","select_multiple",type)))%>%
@@ -113,15 +113,56 @@ global_survey <- read_excel("factors_list.xlsx",sheet = "holpa_survey")%>%
 global_choices <- read_excel("factors_list.xlsx",sheet = "holpa_choices")%>%
   select("list_name","name","label::English ((en))","name_new")%>%
   rename("label_choice" = "label::English ((en))")%>%
-  rename("name_choice" = "name")
+  rename("name_choice" = "name")%>%
+  mutate(country="global")
 
 
 ##### Peru ----
 # Define file path
-per_data_path <- "C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Peru/peru_data_clean/per_holpa_household_survey_clean.xlsx" #path andrea
+per_data_path <- "C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Peru/peru_data_clean/" #path andrea
+
+
+per_choices <- read_excel(paste0(per_data_path, "per_holpa_household_form_clean.xlsx"), sheet = "choices")%>%
+  mutate(country= "peru",
+         name_new=NA)%>%
+  select("list_name","name","label::English (en)","country",name_new)%>%
+  rename("label_choice" = "label::English (en)")%>%
+  rename("name_choice" = "name")%>%
+  distinct(list_name,name_choice,label_choice,name_new, .keep_all = TRUE)
+
+#Add country choices to global choices
+per_global_choices<-global_choices%>%
+  rbind(per_choices)%>%
+  arrange(desc(country == "global")) %>%
+  #Removing duplicates
+  distinct(list_name,name_choice, .keep_all = TRUE) %>%
+  right_join(global_survey,by="list_name",relationship="many-to-many")%>%
+  mutate(label_choice.country=NA)%>%
+  dplyr::bind_rows(data.frame(
+    list_name= c(rep("3_3_1_2",8)),
+    name_choice= c(rep(c("high","medium","low","none"),2)),
+    label_choice= c(rep(c("High: five or more species with different heights, woodiness or flowering seasons.","Medium: two to four species.","Low: only one species.","None"),2)),
+    country= c(rep("peru",8)),
+    type= c(rep("select_one 3_3_1_2",8)),
+    type_question=c(rep("select_one",8)),
+    name_question= c(rep("_3_3_1_2_10",4),rep("_3_3_1_2_11",4)),
+    label_question = c("How would you describe the plant diversity (i.e., number of plant species) in: Young fallow (less than 10 years)",
+                       "How would you describe the plant diversity (i.e., number of plant species) in: Old fallow (more or equal than 10 years)"),
+    label_choice.country= c(rep(NA,8)),
+    stringsAsFactors = FALSE))%>%
+  mutate(label_choice = case_when(
+    type =="select_one 1_2_1_12_1"& name_choice %in%c(1,2)~"Primary",
+    type =="select_one 1_2_1_12_1"& name_choice %in%c(3,4)~"Seconday",
+    type =="select_one 1_2_1_12_1"& name_choice %in%c(5:10)~"Higher",
+    type =="select_one 1_2_1_12_1"& name_choice==11~"None",
+    TRUE ~ label_choice))
 
 # Read all sheet names
-sheet_names <- excel_sheets(per_data_path)
+sheet_names <- excel_sheets(paste0(per_data_path, "per_holpa_household_survey_clean.xlsx"))
+sheet_names
+
+print(paste0(per_data_path, "per_holpa_household_survey_clean.xlsx"))
+file.exists(paste0(per_data_path, "per_holpa_household_survey_clean.xlsx"))
 
 # Define country name and column to rename (adjust accordingly)
 country_name <- "peru"  # Replace with actual country name
@@ -163,16 +204,16 @@ per_3_3_3_2_begin_repeat<-per_3_3_3_2_begin_repeat%>%
 
 
 sheet_names
-[1] ""                   ""        ""          ""       ""       
-[6] ""          ""          ""          ""          ""         
-[11] ""          ""          ""   ""   "per_3_4_1_2_7_2_1_begin_repeat"
-[16] ""   ""   "per_3_4_1_2_1_2_1_begin_repeat" "per_2_4_1_begin_group"          "per_3_2_1_3_1_begin_group"     
-[21] ""          ""          ""        ""        "per_3_4_3_1_2_begin_repeat"    
+     
+        
+[11]  "per_3_4_1_2_7_2_1_begin_repeat"
+[16] "per_3_4_1_2_1_2_1_begin_repeat" "per_2_4_1_begin_group"          "per_3_2_1_3_1_begin_group"     
+[21]       "per_3_4_3_1_2_begin_repeat"    
 
 
-[26] "per_3_4_2_2_2_begin_repeat"     "per_3_4_2_2_6_begin_repeat"     "per_3_4_2_3_2_begin_repeat"     "per_3_4_2_3_2_4_begin_repeat"   "per_4_1_7_1_begin_group"       
-[31] "per_4_2_1_begin_group"          "per_3_3_4_begin_group"          "per_3_3_4_1_3_begin_repeat"     "per_2_8_4_begin_group"          "per_3_3_1_begin_group"         
-[36]        "per_2_12_1_begin_group"         "per_2_3_1_begin_group"          "per_3_4_3_1_1_Corregido"        "per_3_4_3_4_2_begin_repeat"    
+[26] "per_3_4_2_2_2_begin_repeat"     "per_3_4_2_2_6_begin_repeat"     "per_3_4_2_3_2_begin_repeat"     "per_3_4_2_3_2_4_begin_repeat"          
+[31]                     "per_3_3_4_1_3_begin_repeat"             
+[36]               "per_2_3_1_begin_group"          "per_3_4_3_1_1_Corregido"        "per_3_4_3_4_2_begin_repeat"    
 [41] "per_3_4_3_3_1_1_Corregido"  
 
 
@@ -196,28 +237,43 @@ per_data<- per_maintable%>%
   left_join(per_4_1_3_begin_group, by=c("kobo_farmer_id","country"))%>%
   left_join(per_4_1_1_5_begin_group, by=c("kobo_farmer_id","country"))%>%
   left_join(per_4_1_1_7_begin_group, by=c("kobo_farmer_id","country"))%>%
-  left_join(per_3_3_3_2_begin_repeat, by=c("kobo_farmer_id"))
-  select(gender)
+  left_join(per_3_3_3_2_begin_repeat, by=c("kobo_farmer_id"))%>%
+  left_join(per_4_1_7_1_begin_group, by=c("kobo_farmer_id","country"))%>%
+  left_join(per_4_2_1_begin_group, by=c("kobo_farmer_id","country"))%>%
+  left_join(per_3_3_4_begin_group, by=c("kobo_farmer_id","country"))%>%
+  left_join(per_2_8_4_begin_group, by=c("kobo_farmer_id","country"))%>%
+  left_join(per_3_3_1_begin_group, by=c("kobo_farmer_id","country"))%>%
+  left_join(per_2_12_1_begin_group, by=c("kobo_farmer_id","country"))
+  
+names(per_data)
 
 # Process all select_multiple columns
 select_multiple<-global_survey%>%
-    filter(type_question=="select_multiple")
-  
+  filter(type_question=="select_multiple")
+
 per_select_multiple_cols <- intersect(colnames(per_data), unique(select_multiple$name_question))
 per_select_multiple_cols
+
+colnames(factors_list)
+
   
 per_select_multiple <- per_data %>%
     select(kobo_farmer_id,all_of(per_select_multiple_cols)) %>%
     pivot_longer(cols =-kobo_farmer_id, names_to = "question", values_to = "response")%>%   # Reshape to long format
     separate_rows(response, sep = ",") %>%  # Split multiple responses into separate rows
-    mutate(value = 1)%>%  # Assign 1 for presence
-  pivot_wider(names_from = c(question, response), values_from = value, 
+    mutate(value = 1)  %>%# Assign 1 for presence
+  left_join(factors_list%>% select(column_name_old, column_name_new),by=c("question"="column_name_old"))%>%
+  mutate(column_name_new= if_else(is.na(column_name_new),question,column_name_new))%>%
+  pivot_wider(names_from = c(column_name_new, response), values_from = value, 
               names_sep = "/", values_fill = 0) %>%
   select(-matches("/NA$"))
 
-
+names(per_select_multiple)
 
 # add select_multiple responses
+per_data<-per_data%>%
+  select(!all_of(per_select_multiple_cols)) 
+
 per_data<-per_data%>%
   left_join(per_select_multiple, by=c("kobo_farmer_id"))
 
@@ -274,7 +330,7 @@ factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
 categorical_choices_new<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
   left_join(global_survey,by=c("column_name_old"="name_question"))%>%
   filter(!is.na(column_name_new))%>%
-  left_join(global_choices,by="list_name")%>%
+  left_join(per_global_choices,by="list_name")%>%
   filter(!is.na(name_new))
 
 colnames(per_data_clean)
@@ -307,10 +363,9 @@ per_data_clean<- per_data_clean%>%
 
 str(per_data_clean$marital_status)
 str(per_data_clean$gender)
+names(per_data_clean)
 
 
-x<-per_data_clean%>%
-  select(ecol_practices)
 
 
 
