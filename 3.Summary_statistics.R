@@ -22,16 +22,12 @@ global_choices <- read_excel("factors_list.xlsx",sheet = "holpa_choices")%>%
   rename("label_choice" = "label::English ((en))")%>%
   rename("name_choice" = "name")
 
-categorical_choices<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
-  left_join(global_survey,by=c("column_name_old"="name_question"))%>%
-  filter(!is.na(column_name_new))%>%
-  left_join(global_choices,by="list_name")%>%
-  mutate(name_new=as.character(name_new),
-         name_choice= if_else(is.na(name_new),name_choice,name_new))%>%
-  select(column_name_new,name_choice,label_choice)%>%
-  filter(!is.na(name_choice))%>%
-  mutate(variable_category=paste0(column_name_new,"_",name_choice))%>%
-  select(-column_name_new)
+
+factors_list <- read_excel("factors_list.xlsx",sheet = "factors_list")
+
+
+
+
 
 #############################################################
 ########## FUNCTIONS TO CALCULATE SUMMARY STATISTICS #####-----
@@ -67,6 +63,7 @@ summary_stats_factor <- function(df,factor_valid_columns,categorical_choices) {
   df %>%
     select(-kobo_farmer_id) %>%  # Exclude 'id' column
     select(all_of(factor_valid_columns))%>%
+    mutate(across(all_of(factor_valid_columns),as.factor))%>%
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "Category") %>%
     group_by(Variable, Category) %>%
     summarise(Count = n(), .groups = "drop") %>%
@@ -77,12 +74,18 @@ summary_stats_factor <- function(df,factor_valid_columns,categorical_choices) {
     mutate(Percentage = (Count / Total) * 100)%>%
     mutate(variable_category=paste0(Variable,"_",Category))%>%
     left_join(categorical_choices,by= "variable_category")%>%
-    select(-variable_category)
+    mutate(column_name_new= if_else(is.na(column_name_new),Variable,column_name_new))%>%
+    select(-variable_category,-type_question,-column_name_new2,-name_choice)%>%
+    mutate(label_choice= case_when(
+      is.na(label_choice) & Category=="0" ~ "No",
+      is.na(label_choice) & Category=="1" ~ "Yes",
+      TRUE ~ label_choice))
 }
     
 #############################################################    
 ########## SUMMARY STATISTICS #####-----
 #############################################################
+
 
 ### For numeric variables
 columns_numeric <- intersect(factors_list$column_name_new[factors_list$metric_type == "continuous"], colnames(per_data_clean))
@@ -90,11 +93,37 @@ print(columns_numeric)  # Check if it holds expected values
 per_summary_numerical <- summary_stats_num(per_data_clean,columns_numeric)
 per_summary_numerical
 
+names(factors_list)
+
+names(per_categorical_choices)
+names(per_global_choices)
+
+
 ### For factor and binary variables
-columns_factor <- intersect(factors_list$column_name_new[factors_list$metric_type %in%c("categorical","binary")], colnames(per_data_clean))
+per_categorical_choices<-factors_list%>%
+  left_join(global_survey,by=c("column_name_old"="name_question"))%>%
+  filter(!is.na(column_name_new))%>%
+  left_join(per_global_choices  %>% select("list_name",    "name_choice",  "label_choice", "name_new"),by=c("list_name"))%>%
+  distinct(column_name_new,list_name,    name_choice,  label_choice,.keep_all = TRUE)%>%
+  mutate(name_new=as.character(name_new),
+         name_choice= if_else(is.na(name_new),name_choice,name_new))%>%
+  select(column_name_new,name_choice,label_choice,type_question)%>%
+  filter(!is.na(name_choice))%>%
+  mutate(variable_category=paste0(column_name_new,"_",name_choice))%>%
+  mutate(column_name_new2=if_else(type_question=="select_multiple",paste0(column_name_new,"/",name_choice),column_name_new))
+  select(-column_name_new)
+
+### For factor and binary variables
+#(select_one)
+columns_factor_so <- intersect(factors_list$column_name_new[factors_list$metric_type %in%c("categorical","binary")], colnames(per_data_clean))
+print(columns_factor_so)  # Check if it holds expected values
+#(select_multiple)
+columns_factor_sm <- intersect(per_categorical_choices$column_name_new2[per_categorical_choices$type_question %in%c("select_multiple")], colnames(per_data_clean))
+print(columns_factor_sm)  # Check if it holds expected values
+
+columns_factor<-c(columns_factor_so, columns_factor_sm)
 print(columns_factor)  # Check if it holds expected values
-per_summary_categorical <- summary_stats_factor(per_data_clean,columns_factor,categorical_choices)
+
+per_summary_categorical <- summary_stats_factor(per_data_clean,columns_factor,per_categorical_choices)
 per_summary_categorical
-
-
 

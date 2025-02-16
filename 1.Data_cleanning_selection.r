@@ -11,7 +11,7 @@ library(purrr)
 
 # Define the function to process each sheet
 process_survey_data <- function(sheet_name, country_name, column_id_rename) {
-  survey_data <- read_excel(per_data_path, sheet = sheet_name)
+  survey_data <- read_excel(per_survey_path, sheet = sheet_name)
   
   # Apply transformations
   survey_data <- survey_data %>%
@@ -119,10 +119,11 @@ global_choices <- read_excel("factors_list.xlsx",sheet = "holpa_choices")%>%
 
 ##### Peru ----
 # Define file path
-per_data_path <- "C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Peru/peru_data_clean/" #path andrea
+per_form_path <- "C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Peru/peru_data_clean/per_holpa_household_form_clean.xlsx" #path andrea
+per_survey_path <- "C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Peru/peru_data_clean/per_holpa_household_survey_clean.xlsx" #path andrea
 
 
-per_choices <- read_excel(paste0(per_data_path, "per_holpa_household_form_clean.xlsx"), sheet = "choices")%>%
+per_choices <- read_excel(per_form_path, sheet = "choices")%>%
   mutate(country= "peru",
          name_new=NA)%>%
   select("list_name","name","label::English (en)","country",name_new)%>%
@@ -158,15 +159,16 @@ per_global_choices<-global_choices%>%
     TRUE ~ label_choice))
 
 # Read all sheet names
-sheet_names <- excel_sheets(paste0(per_data_path, "per_holpa_household_survey_clean.xlsx"))
+sheet_names <- excel_sheets(per_survey_path)
 sheet_names
 
-print(paste0(per_data_path, "per_holpa_household_survey_clean.xlsx"))
-file.exists(paste0(per_data_path, "per_holpa_household_survey_clean.xlsx"))
 
 # Define country name and column to rename (adjust accordingly)
 country_name <- "peru"  # Replace with actual country name
 column_id_rename <- "hid"  # Adjust to your specific column
+
+exists("process_survey_data")
+
 
 # Process all sheets and create separate data frames in the environment
 walk(sheet_names, function(sheet) {
@@ -256,7 +258,6 @@ per_select_multiple_cols
 
 colnames(factors_list)
 
-  
 per_select_multiple <- per_data %>%
     select(kobo_farmer_id,all_of(per_select_multiple_cols)) %>%
     pivot_longer(cols =-kobo_farmer_id, names_to = "question", values_to = "response")%>%   # Reshape to long format
@@ -264,7 +265,7 @@ per_select_multiple <- per_data %>%
     mutate(value = 1)  %>%# Assign 1 for presence
   left_join(factors_list%>% select(column_name_old, column_name_new),by=c("question"="column_name_old"))%>%
   mutate(column_name_new= if_else(is.na(column_name_new),question,column_name_new))%>%
-  pivot_wider(names_from = c(column_name_new, response), values_from = value, 
+  pivot_wider(id_cols=kobo_farmer_id,names_from = c(column_name_new, response), values_from = value, 
               names_sep = "/", values_fill = 0) %>%
   select(-matches("/NA$"))
 
