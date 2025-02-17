@@ -3,11 +3,16 @@ library(reshape2)
 library(tidygraph)
 library(ggraph)
 library(ggplot2)
+library(dagitty)
+library(ggdag)
+
+
 factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")
 
 
 #########################################################################################################################################################################################
-############# DATA TYPE CONVERSION -----
+############# DATA TYPE CONVERSION
+# data standardization I need to implement this first-----
 #########################################################################################################################################################################################
 #### Convert categorical and binary variables to numeric to perform pc algorithm
 
@@ -51,13 +56,13 @@ variables<-unique(factors_list$column_name_new)
 bk <- matrix(TRUE, length(variables), length(variables), dimnames = list(variables, variables))
 bk
 
-##### RULE: Prohibition of paths ----
+##### RULE: Prohibition of paths
 bk["age", setdiff(variables, "year_birth")] <- FALSE  # Prohibition of paths leading to “year_birth”, unless "age"->"year_birth
 bk["year_birth", setdiff(variables, "age")] <- FALSE  # Prohibition of paths leading to “age”, unless "year_birth"->"age
 bk[setdiff(variables, c("age","year_birth")),"years_in_community"] <- FALSE  # Prohibition of paths leading to "years_in_community" unless "age"->"years_in_community" or "year_birth"->"years_in_community" 
 
-bk["n_adults_wa", c("n_adults_wa_male", "n_adults_wa_female")] <- FALSE # Prohibition of this path n_adults_wa -> "n_adults_wa_male", "n_adults_wa_female"
-bk["n_adults_old", c("n_adults_old_male", "n_adults_old_female")] <- FALSE # Prohibition of this path n_adults_old -> "n_adults_old_male", "n_adults_old_female"
+#bk["n_adults_wa", c("n_adults_wa_male", "n_adults_wa_female")] <- FALSE # Prohibition of this path n_adults_wa -> "n_adults_wa_male", "n_adults_wa_female"
+#bk["n_adults_old", c("n_adults_old_male", "n_adults_old_female")] <- FALSE # Prohibition of this path n_adults_old -> "n_adults_old_male", "n_adults_old_female"
 print(bk)
 t.bk <-t(bk)
 bk.list <- melt(t.bk)
@@ -74,6 +79,8 @@ bk.list
 #######################################################
 ############# PC ALGORITHM ############################
 #######################################################----
+#### STEP 1. 	Estimation of the skeleton of the DAG. ----
+
 #All information that is needed in the conditional independence test can be passed in the argument suffStat
 per.suffStat <- list(C = cor(per_data_analysis), n = nrow(per_data_analysis))
 per.suffStat
@@ -81,7 +88,6 @@ per.suffStat
 per.varNames <- colnames(per_data_analysis)
 per.varNames
 
-#### STEP 1. 	Estimation of the skeleton of the DAG. 
 #The skeleton of a DAG is the undirected graph that has the same edges as the DAG but no edge orientations.
 #The main task of function skeleton() in ﬁnding the skeleton is to compute and test several conditional independencies. 
 
@@ -90,18 +96,20 @@ per.varNames
 per.skeleton <- skeleton(per.suffStat, indepTest = gaussCItest,labels = per.varNames, alpha = 0.01,method = "stable")
 per.skeleton
 
-#### STEP 2. The PC-algorithm is implemented in function pc()
+#### STEP 2. The PC-algorithm is implemented in function pc() ----
 #The PC algorithm is known to be order-dependent, in the sense that the computed skeleton depends on the order in which the variables are given. 
 #skel.method ="stable" (default) provides an order-independent skeleton
-per.pc <- pc(per.suffStat, indepTest = gaussCItest,labels = per.varNames, alpha = 0.05,skel.method ="stable")
+per.pc <- pc(per.suffStat, indepTest = gaussCItest,labels = per.varNames, alpha = 0.01,skel.method ="stable")
 per.pc
 
 par(mfrow = c(1,2))
+
+#### STEP 3. Plot skeleton and PC results ----
+## Using plot()
 plot(per.skeleton, main = "Skeleton of DAG")
 plot(per.pc, main = "PC Algorithm DAG")
 
-#### Plot results using ggplot2
-
+## Using ggplot2()
 
 # Extract adjacency matrix
 per.pc.amat <- as(per.pc, "amat")
@@ -139,13 +147,29 @@ ggraph(per.pc.graph, layout = "fr") +
   theme_void() +  
   ggtitle("PC Algorithm")
 
+## Using daggity
+per.varNames # node  names
 
-#### Add background knowledge ###
+per.pc.matrix # adjacency matrix
+
+per.pc.dagitty <- pcalg2dagitty(per.pc.matrix,per.varNames,type="dag")
+per.pc.dagitty
+
+per.pc.dagitty_edges <- per.pc.dagitty[!sapply(per.pc.dagitty, is.null)]
+per.pc.dagitty_edges
+
+per.pc.dag <- dagitty(paste("dag {", paste(per.pc.dagitty_edges, collapse="; "), "}"))
+print(per.pc.dag)
+
+plot(ggdag(per.pc.dag))
+
+ggdag_status(per.pc.dag) + theme_dag()
+
+#### STEP 4. Add background knowledge ----
 per.pc.edge_list
 
 per.pc.edge_list.bk <- per.pc.edge_list %>%
   semi_join(bk.list, by = c("from", "to"))
-
 
 # Create a node data frame with proper variable names
 per.pc.node.names.bk <- unique(c(per.pc.edge_list.bk$from, per.pc.edge_list.bk$to))
@@ -171,139 +195,80 @@ ggraph(per.pc.graph.bk, layout = "fr") +
 
 
 
+#######################################################
+############# FCI ALGORITHM ############################----
+#######################################################
+#### STEP 1. Estimation of the skeleton of the DAG. ----
+#same as in PC algorithm
 
+#### STEP 2.The FCI-algorithm is implemented in function fci() ----
+## gaussCItest() function: using zStat() to test for (conditional) independence between gaussian random variables. Test Conditional Independence of Gaussians via Fisher's Z
+#
 
+per.fci <- fci(per.suffStat, indepTest=gaussCItest, labels =per.varNames ,alpha = 0.01) # TOO SLOW
+per.rfci <- rfci(per.suffStat, indepTest=gaussCItest, labels =per.varNames ,alpha = 0.01) #  FAST
 
+#### STEP 3. Plot FCI results ----
+## Using plot()
+plot(per.fci, main = "FCI Algorithm PAG")
 
+plot(per.rfci, main = "RFCI Algorithm PAG")
 
-
-
-
-
-
-
-
-
-
-#######################
-#If you want to forbid only one direction, use addBgKnowledge() (asymmetric).
+## Using ggplot2()
 # Extract adjacency matrix
-amat.per <- as(pc.per, "amat")
-amat.per <- as(amat.per, "matrix")  # Convert to standard matrix
-amat.per
-
-
-amat.per.bk <- addBgKnowledge(amat.per, x = "years_in_community", y = "n_visits_consumers")
-
-amat.per.bk<-t( amat.per.bk )
-amat.per.bk
-
-par(mfrow = c(1,2))
-plot(as(t(amat.per), "graphNEL")) #estimated CPDAG
-plot(as(t( amat.per.bk ), "graphNEL")); box(col="gray")
-
+per.rfci.amat <- as(per.rfci, "amat")
+per.rfci.matrix <- as(per.rfci.amat, "matrix")  # Convert to standard matrix
+per.rfci.matrix
+per.rfci.t.matrix<-t(per.rfci.matrix)
 
 # Convert adjacency matrix to data frame for visualization
-edge_list.bk <- melt(amat.per.bk)
-edge_list.bk
-edge_list.bk <- edge_list.bk[edge_list.bk$value == 1, ]  # Keep only edges that exist
-edge_list.bk
-colnames(edge_list.bk) <- c("from", "to", "weight")  # Rename columns
-edge_list.bk
+per.rfci.edge_list <- melt(per.rfci.t.matrix)
+per.rfci.edge_list
+colnames(per.rfci.edge_list) <- c("from", "to", "weight")  # Rename columns
+per.rfci.edge_list
+per.rfci.edge_list <- per.rfci.edge_list[per.rfci.edge_list$weight == 1, ]  # Keep only edges that exist
+per.rfci.edge_list
 
 # Create a node data frame with proper variable names
-nodes.bk <- data.frame(name = node_names, stringsAsFactors = FALSE)
-
-# Ensure `edge_list.bk` uses factor levels matching `nodes.bk`
-edge_list.bk$from <- factor(edge_list.bk$from, levels = nodes.bk$name)
-edge_list.bk$to <- factor(edge_list.bk$to, levels = nodes.bk$name)
-
-
+per.rfci.node.names <- unique(c(per.rfci.edge_list$from, per.rfci.edge_list$to))
+per.rfci.nodes <- data.frame(name = per.rfci.node.names, stringsAsFactors = FALSE)
 
 # Convert edge list to a graph object
-graph.bk <- tbl_graph(nodes = nodes.bk, edges = edge_list, directed = TRUE)
-graph.bk
+per.rfci.graph <- tbl_graph(nodes = per.rfci.nodes, edges = per.rfci.edge_list, directed = TRUE)
+per.rfci.graph
 
-graph.bk <- graph.bk %>% 
+per.rfci.graph <- per.rfci.graph %>% 
   activate(nodes) %>% 
   mutate(name = as.character(name))  # Ensure names remain characters
-graph.bk
+per.rfci.graph
 
-ggraph(graph.bk, layout = "fr") +  
+ggraph(per.rfci.graph, layout = "fr") +  
   geom_edge_link(arrow = arrow(length = unit(4, "mm")), 
                  end_cap = circle(4, "mm"),  
                  edge_width = 1) +  
   geom_node_point(size = 6, color = "darkblue") +  
   geom_node_text(aes(label = name), repel = TRUE, size = 5) +  
   theme_void() +  
-  ggtitle("PC Algorithm Causal Graph with Variable Names")
+  ggtitle("RFCI Algorithm")
 
+## Using daggity
+# Extract adjacency matrix
+per.varNames # node  names
 
+per.rfci.matrix # adjacency matrix
 
+per.rfci.dagitty <- pcalg2dagitty(per.rfci.matrix,per.varNames,type="pag")
+per.rfci.dagitty
 
+per.rfci.dagitty_edges <- per.rfci.dagitty[!sapply(per.rfci.dagitty, is.null)]
+per.rfci.dagitty_edges
 
+per.rfci.dag <- dagitty(paste("dag {", paste(per.pc.dagitty_edges, collapse="; "), "}"))
+print(per.rfci.dag)
 
+plot(ggdag(per.rfci.dag))
 
-
-
-
-
-############## If you want to remove an edge entirely, use fixedGaps (symmetric).
-fixedGaps <- matrix(0, nrow = length(varNames.per), ncol = length(varNames.per))
-rownames(fixedGaps) <- colnames(fixedGaps) <- varNames.per  # Ensure names match
-fixedGaps
-# Set all edges pointing *to* "age" as forbidden
-for (var in varNames.per) {
-  if (var != "age") {
-    fixedGaps[var, "age"] <- 1  # Forbid causal effects to age
-    fixedGaps["age", var] <- 0  # Allow causal effects *from* age
-  }
-}
-
-# Ensure symmetry
-fixedGaps <- fixedGaps | t(fixedGaps)
-fixedGaps
-# Run PC algorithm with constraints
-pc.gmG8.constrained <- pc(suffStat.per, indepTest = gaussCItest, labels = varNames.per, 
-                          alpha = 0.01, skel.method = "stable", fixedGaps = fixedGaps)
-
-# Plot the constrained CPDAG
-plot(pc.gmG8.constrained, main = "PC Algorithm with No Causal Pathways to 'Gender'")
-
-
-
-library(igraph)
-## Edge list
-showEdgeList(pc.per)
-
-## Adjacency matrix
-showAmat(pc.per)
-
-## Plot using package igraph; show estimated CPDAG:
-iplotPC(pc.per)
-
-##################
-
-
-
-
-
-##### CHECK WHY THERE ARE NO ARROWS IN THE PLOT ############
-###If your PC model (CPDAG) has no arrows (only an undirected graph or even a disconnected graph),
-###it is likely due to one of the following reasons:
-## 1. If α (alpha) is too small, fewer edges remain in the skeleton, and the graph may be disconnected or have only undirected edges.
-
-## 2. Too Few Samples (n Too Small)
-suffStat.per$n
-
-## 3.Variables Are Highly Correlated (C is Too Dense or Sparse)
-#Many zeros or near-zero values → Too little correlation → Increase alpha.
-#Very high correlations (~1.0 everywhere) → PC may struggle to orient the graph.
-cor_mat <- suffStat.per$C
-print(round(cor_mat, 2))
-
-amat.per <- as(pc.per, "amat")
-print(amat.per)
+ggdag_status(per.rfci.dag) + theme_dag()
 
 
 

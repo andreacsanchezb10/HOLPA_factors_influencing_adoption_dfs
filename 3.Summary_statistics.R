@@ -17,12 +17,6 @@ global_survey <- read_excel("factors_list.xlsx",sheet = "holpa_survey")%>%
                              str_replace(.$type, paste0(".*", .$type_question), ""),NA))%>%
   mutate(list_name = str_replace_all(list_name, " ", ""))  #%>% mutate(global_r_list_name =  sub('*_', "", name_question)) %>%mutate(global_r_list_name = ifelse(grepl("_", global_r_list_name, fixed = TRUE)==TRUE,global_r_list_name,""))
 
-global_choices <- read_excel("factors_list.xlsx",sheet = "holpa_choices")%>%
-  select("list_name","name","label::English ((en))","name_new")%>%
-  rename("label_choice" = "label::English ((en))")%>%
-  rename("name_choice" = "name")
-
-
 factors_list <- read_excel("factors_list.xlsx",sheet = "factors_list")
 
 
