@@ -78,7 +78,7 @@ practices_begin_group <- function(data, cropland_practices,cropland_practices_ar
       cropland_practices %in%c("Hedgerows/Live fences")~ "dfs_hedgerows_area",
       
       #good agricultural practices
-      cropland_practices %in%c("Mulching")~ "gfs_mulching_area",
+      cropland_practices %in%c("Mulching")~ "ecol_practices_mulching_area",
       
       TRUE ~ cropland_practices))%>%
     select(kobo_farmer_id,cropland_practices,cropland_practices_area)%>%
@@ -108,13 +108,18 @@ global_survey <- read_excel("factors_list.xlsx",sheet = "holpa_survey")%>%
   #create column with list_name codes matching the choices worksheet
   mutate(list_name = if_else(type_question== "select_one"|type_question== "select_multiple", 
                              str_replace(.$type, paste0(".*", .$type_question), ""),NA))%>%
-  mutate(list_name = str_replace_all(list_name, " ", ""))  #%>% mutate(global_r_list_name =  sub('*_', "", name_question)) %>%mutate(global_r_list_name = ifelse(grepl("_", global_r_list_name, fixed = TRUE)==TRUE,global_r_list_name,""))
+  mutate(list_name = str_replace_all(list_name, " ", ""))
 
 global_choices <- read_excel("factors_list.xlsx",sheet = "holpa_choices")%>%
   select("list_name","name","label::English ((en))","name_new")%>%
   rename("label_choice" = "label::English ((en))")%>%
   rename("name_choice" = "name")%>%
-  mutate(country="global")
+  mutate(country="global",
+         name_new=as.character(name_new))%>%
+  mutate(name_new= case_when(
+    name_choice %in% c("notsure","9999")~"unknown",
+    list_name =="3_4_4_1"& name_choice=="7"~"unknown",
+    TRUE~name_new ) )
 
 
 ##### Peru ----
@@ -203,7 +208,7 @@ per_3_3_3_2_begin_repeat<-per_3_3_3_2_begin_repeat%>%
   practices_begin_group(.,.$cropland_practices,.$cropland_practices_area)
 
 
-
+colnames(per_3_3_3_2_begin_repeat)
 
 sheet_names
      
@@ -256,7 +261,6 @@ select_multiple<-global_survey%>%
 per_select_multiple_cols <- intersect(colnames(per_data), unique(select_multiple$name_question))
 per_select_multiple_cols
 
-colnames(factors_list)
 
 per_select_multiple <- per_data %>%
     select(kobo_farmer_id,all_of(per_select_multiple_cols)) %>%
@@ -302,9 +306,31 @@ print(colnames(per_data))
 ########## DATA SELECTION ----
 #####################################
 
-per_data<-per_data %>% select(-matches("-desc$"))
+per_data<-per_data %>% 
+  select(-matches("-desc$"),
+         #None responses
+         -"livestock_health_practice/none",
+         -"livestock_practices/none")
 print(colnames(per_data))
 
+#####################################
+########## DATA CLEANNING -----
+#####################################
+### The 9999 in ethnicity refers to mestizo ethnicity for Peru
+sort(unique(per_data$ethnicity))
+per_data$ethnicity <- ifelse(per_data$ethnicity == "9999", "mestizo", per_data$ethnicity) # convert the 9999 to mestizo
+sort(unique(per_data$ethnicity))
+
+### TO CHECK: I need to standardixe education level with the other countries options
+sort(unique(per_data$education_level))
+
+
+### To check for inconsistencies between "ecol_practices/5" (which indicates whether mulching was implemented) and 
+#"ecol_practices_mulching_area" (which records the area where mulching was applied)
+per_data$"ecol_practices/5" <-as.character(per_data$"ecol_practices/5" )
+                                      
+per_data$"ecol_practices/5" <- ifelse(per_data$ecol_practices_mulching_area == "0", "0",
+                               ifelse(per_data$ecol_practices_mulching_area != "0", "1", per_data$"ecol_practices/5"))
 
 
 #####################################

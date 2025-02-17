@@ -5,33 +5,76 @@
 ##### FACTORS ----
 ### HUMAN CAPITAL ----
 
-# household head age
+#Household head age
 per_data_clean$age <- 2025-per_data_clean$year_birth 
 
-#total adults (18-65 years old) in household
+#Total adults (18-65 years old) in household
 per_data_clean$n_adults_wa <- per_data_clean$n_adults_wa_male+per_data_clean$n_adults_wa_female 
 
-#total adults (>65 years old) in household
+#Total adults (>65 years old) in household
 per_data_clean$n_adults_old <- per_data_clean$n_adults_old_male+per_data_clean$n_adults_old_female 
 
-# total children in household
+#Total children in household
 per_data_clean$n_children <- per_data_clean$n_children_male+per_data_clean$n_children_female 
 
-#total adults in household (18->65 years old) 
+#Total adults in household (18->65 years old) 
 per_data_clean$n_adults_total <- per_data_clean$n_adults_wa+per_data_clean$n_adults_old 
 
-# total number of people in household
+#Total number of people in household
 per_data_clean$n_people <- per_data_clean$n_adults_total+per_data_clean$n_children 
 
+per_data_clean<-per_data_clean%>%
+  mutate(
+    #Total number of permanent hired labour
+    n_hlabour_permanent_total= rowSums(across(starts_with("n_hlabour_permanent/")), na.rm = TRUE),
+    #Total number of seasonal hired labour
+    n_hlabour_seasonal_total= rowSums(across(starts_with("n_hlabour_seasonal/")), na.rm = TRUE),
+    #Total number of permanent household labour
+    n_nhlabour_permanent_total=rowSums(across(starts_with("n_nhlabour_permanent/")), na.rm = TRUE),
+    #Total number of seasonal household labour
+    n_nhlabour_seasonal_total=rowSums(across(starts_with("n_nhlabour_seasonal/")), na.rm = TRUE))
 
 ### FARM MANAGEMENT CHARACTERISTICS ----
 
-# total ecological practices used on cropland to improve soil quality and health
 per_data_clean <- per_data_clean %>%
-  mutate(across(starts_with("ecol_practices/"), ~ as.numeric(as.character(.))))%>%
-  mutate(n_ecol_practices = rowSums(across(starts_with("ecol_practices/")), na.rm = TRUE)) %>% # Sum the columns
-  mutate(across(starts_with("ecol_practices/"), as.factor))
+  mutate(
+    #Number of ecological practices use on cropland to improve soil quality and health
+    across(starts_with("ecol_practices/"), ~ as.numeric(as.character(.))),
+    n_ecol_practices = rowSums(across(starts_with("ecol_practices/")), na.rm = TRUE),
+    #Number of farm products type in the last 12 months
+    across(starts_with("farm_products/"), ~ as.numeric(as.character(.))),
+    n_farm_products = rowSums(across(starts_with("farm_products/")), na.rm = TRUE),
+    #Number of practices implemented to keep animals on the farm healthy and happy?
+    across(starts_with("livestock_health_practice/"), ~ as.numeric(as.character(.))),
+    n_livestock_health_practice = rowSums(across(starts_with("livestock_health_practice/")), na.rm = TRUE),
+    #Number of management practices used to manage livestock diseases in the last 12 months
+    across(starts_with("livestock_diseases_management/"), ~ as.numeric(as.character(.))),
+    n_livestock_diseases_management= rowSums(across(starts_with("livestock_diseases_management/")), na.rm = TRUE),
+    #Number of ORGANIC management practices used to manage livestock diseases in the last 12 months
 
+    n_livestock_diseases_management_organic = rowSums(select(., c("livestock_diseases_management/3",
+                                                                  "livestock_diseases_management/4",
+                                                                  "livestock_diseases_management/5",
+                                                                  "livestock_diseases_management/6")),na.rm = TRUE),
+    #Number of CHEMICAL management practices used to manage livestock diseases in the last 12 months
+    n_livestock_diseases_management_organic = rowSums(select(., c("livestock_diseases_management/1",
+                                                                  "livestock_diseases_management/2")),na.rm = TRUE))
+  
+    
+### NATURAL CAPITAL ----
+
+# Farm size
+per_data_clean$farm_size <- per_data_clean$land_tenure_own_area+per_data_clean$land_tenure_lease_area+per_data_clean$land_tenure_hold_area
+
+sort(unique(per_data_clean$farm_size ))
+
+### POLITICAL AND INSTITUTIONAL CONTEXT: Land tenure ----
+#Land tenure status of hosehold: Own
+per_data_clean$land_status_own <- ifelse(per_data_clean$land_tenure_own_area>0, "1","0")
+#Land tenure status of hosehold: Lease
+per_data_clean$land_status_lease <- ifelse(per_data_clean$land_tenure_lease_area>0, "1","0")
+#Land tenure status of hosehold:  HOLDS USE RIGHTS, either alone or jointly with someone else
+per_data_clean$land_status_hold <- ifelse(per_data_clean$land_tenure_hold_area>0, "1","0")
 
 
 

@@ -15,7 +15,7 @@ global_survey <- read_excel("factors_list.xlsx",sheet = "holpa_survey")%>%
   #create column with list_name codes matching the choices worksheet
   mutate(list_name = if_else(type_question== "select_one"|type_question== "select_multiple", 
                              str_replace(.$type, paste0(".*", .$type_question), ""),NA))%>%
-  mutate(list_name = str_replace_all(list_name, " ", ""))  #%>% mutate(global_r_list_name =  sub('*_', "", name_question)) %>%mutate(global_r_list_name = ifelse(grepl("_", global_r_list_name, fixed = TRUE)==TRUE,global_r_list_name,""))
+  mutate(list_name = str_replace_all(list_name, " ", ""))  
 
 factors_list <- read_excel("factors_list.xlsx",sheet = "factors_list")
 
@@ -73,7 +73,13 @@ summary_stats_factor <- function(df,factor_valid_columns,categorical_choices) {
     mutate(label_choice= case_when(
       is.na(label_choice) & Category=="0" ~ "No",
       is.na(label_choice) & Category=="1" ~ "Yes",
-      TRUE ~ label_choice))
+      Variable %in%c("livestock_health","livestock_source","livestock_exotic_local","livestock_antibiotics",
+                     "livestock_feed","livestock_injury","livestock_vaccinations","fair_price_livestock") &is.na(Category)~ "Farmers without livestock production",
+      Variable %in%c("fair_price_crops") &is.na(Category)~ "Farmers without crop production",
+      TRUE ~ label_choice))%>%
+    left_join(categorical_choices%>%
+                filter(type_question=="select_multiple")%>%
+                select(column_name_new2, label_choice), by=c("Variable"="column_name_new2") )
 }
     
 #############################################################    
@@ -105,7 +111,6 @@ per_categorical_choices<-factors_list%>%
   filter(!is.na(name_choice))%>%
   mutate(variable_category=paste0(column_name_new,"_",name_choice))%>%
   mutate(column_name_new2=if_else(type_question=="select_multiple",paste0(column_name_new,"/",name_choice),column_name_new))
-  select(-column_name_new)
 
 ### For factor and binary variables
 #(select_one)

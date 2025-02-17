@@ -97,9 +97,14 @@ per.skeleton <- skeleton(per.suffStat, indepTest = gaussCItest,labels = per.varN
 per.skeleton
 
 #### STEP 2. The PC-algorithm is implemented in function pc() ----
-#The PC algorithm is known to be order-dependent, in the sense that the computed skeleton depends on the order in which the variables are given. 
-#skel.method ="stable" (default) provides an order-independent skeleton
-per.pc <- pc(per.suffStat, indepTest = gaussCItest,labels = per.varNames, alpha = 0.01,skel.method ="stable")
+##The PC algorithm is known to be order-dependent, in the sense that the computed skeleton depends on the order in which the variables are given. 
+#skel.method ="stable" (default) provides an order-independent model results
+
+per.pc <- pc(per.suffStat, 
+             indepTest = gaussCItest,
+             labels = per.varNames, 
+             alpha = 0.01,
+             skel.method ="stable")  
 per.pc
 
 par(mfrow = c(1,2))
@@ -205,8 +210,8 @@ ggraph(per.pc.graph.bk, layout = "fr") +
 ## gaussCItest() function: using zStat() to test for (conditional) independence between gaussian random variables. Test Conditional Independence of Gaussians via Fisher's Z
 #
 
-per.fci <- fci(per.suffStat, indepTest=gaussCItest, labels =per.varNames ,alpha = 0.01) # TOO SLOW
-per.rfci <- rfci(per.suffStat, indepTest=gaussCItest, labels =per.varNames ,alpha = 0.01) #  FAST
+per.fci <- fci(per.suffStat, indepTest=gaussCItest, labels =per.varNames ,alpha = 0.01,method = "stable") # TOO SLOW
+per.rfci <- rfci(per.suffStat, indepTest=gaussCItest, labels =per.varNames ,alpha = 0.01,skel.method = "stable") #  FAST
 
 #### STEP 3. Plot FCI results ----
 ## Using plot()
