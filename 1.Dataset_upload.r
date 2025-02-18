@@ -272,7 +272,7 @@ per_select_multiple <- per_data %>%
   pivot_wider(id_cols=kobo_farmer_id,names_from = c(column_name_new, name_choice), values_from = value,
               names_sep = "/", values_fill = 0) %>%
   dplyr::select(-matches("/NA$"))
-
+names(per_select_multiple)
 # add select_multiple responses
 per_data<-per_data%>%
   select(!all_of(per_select_multiple_cols)) 
@@ -322,12 +322,12 @@ sort(unique(per_data$ethnicity))
 sort(unique(per_data$education_level))
 
 
-### To check for inconsistencies between "ecol_practices/5" (which indicates whether mulching was implemented) and 
+### To check for inconsistencies between "soil_fertility_ecol_practices/5" (which indicates whether mulching was implemented) and 
 #"ecol_practices_mulching_area" (which records the area where mulching was applied)
-per_data$"ecol_practices/5" <-as.character(per_data$"ecol_practices/5" )
+per_data$"soil_fertility_ecol_practices/5" <-as.character(per_data$"soil_fertility_ecol_practices/5" )
 
-per_data$"ecol_practices/5" <- ifelse(per_data$ecol_practices_mulching_area == "0", "0",
-                                      ifelse(per_data$ecol_practices_mulching_area != "0", "1", per_data$"ecol_practices/5"))
+per_data$"soil_fertility_ecol_practices/5" <- ifelse(per_data$ecol_practices_mulching_area == "0", "0",
+                                      ifelse(per_data$ecol_practices_mulching_area != "0", "1", per_data$"soil_fertility_ecol_practices/5"))
 
 
 #####################################
@@ -335,37 +335,28 @@ per_data$"ecol_practices/5" <- ifelse(per_data$ecol_practices_mulching_area == "
 #####################################
 
 ### Continuous data as numeric ----
-columns_numeric <- intersect(factors_list$column_name_new[factors_list$metric_type %in% c("continuous")], colnames(per_data))
-print(columns_numeric)  # Check if it holds expected values
+names(global_survey)
+sort(unique(global_survey$type_question))
+per_columns_numeric <- intersect(global_survey$column_name_new[global_survey$type_question %in% c( "decimal", "integer")], colnames(per_data))
+print(per_columns_numeric)  # Check if it holds expected values
 
 per_data_clean<- per_data%>%
-  mutate(across(all_of(columns_numeric), as.numeric))%>%
+  mutate(across(all_of(per_columns_numeric), as.numeric))%>%
   mutate(across(starts_with("nonhired_labour_"), ~ replace_na(.x, 0)))%>%
   mutate(across(starts_with("hired_labour_"), ~ replace_na(.x, 0)))
 
 
 ### Change name_choice code to numeric codes for: ----
 #gender; marital_status
-factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
-  left_join(global_survey,by=c("column_name_old"="name_question"))%>%
-  filter(!is.na(column_name_new))%>%
-  mutate(type_question=if_else(is.na(type_question),metric_type,type_question))
-
-categorical_choices_new<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
-  left_join(global_survey,by=c("column_name_old"="name_question"))%>%
-  filter(!is.na(column_name_new))%>%
-  left_join(per_global_choices,by="list_name")%>%
-  filter(!is.na(name_new))
-
-colnames(per_data_clean)
-
-common_cols <- intersect(colnames(per_data_clean), unique(categorical_choices_new$column_name_new))
-print(common_cols)
+categorical_choices_new_cols <- intersect(colnames(per_data_clean), unique(per_global_choices$column_name_new[!is.na(per_global_choices$name_new)]))
+print(categorical_choices_new_cols)
 
 per_data_clean<-per_data_clean
 # Replace values dynamically for all common columns
-for (col in common_cols) {
-  mapping <- categorical_choices_new %>%
+for (col in categorical_choices_new_cols) {
+  mapping <- per_global_choices %>%
+    filter(!is.na(name_new))%>%
+  
     filter(column_name_new == col) %>%
     select(name_choice, name_new) %>%
     { setNames(.$name_new, .$name_choice) }  # Alternative to deframe()
@@ -379,19 +370,24 @@ str(per_data_clean$marital_status)
 str(per_data_clean$gender)
 
 #### categorical and binary data as factor 
-columns_factor <- intersect(factors_list$column_name_new[factors_list$metric_type %in%c("categorical","binary")], colnames(per_data_clean))
-print(columns_factor)  # Check if it holds expected values
+sort(unique(global_survey$type_question))
+per_columns_numeric <- intersect(global_survey$column_name_new[global_survey$type_question %in% c( "decimal", "integer")], colnames(per_data))
+
+per_columns_factor <- intersect(global_survey$column_name_new[global_survey$type_question %in%c("calculate","select_multiple", "select_one","text" )], colnames(per_data_clean))
+print(per_columns_factor)  # Check if it holds expected values
 
 per_data_clean<- per_data_clean%>%
-  mutate(across(all_of(columns_factor), as.factor))
+  mutate(across(all_of(per_columns_factor), as.factor))
 
 str(per_data_clean$marital_status)
 str(per_data_clean$gender)
 names(per_data_clean)
 
 
+x<- per_data_clean%>%
+  select("occupation_secondary_list")
 
-
+sort(unique())
 
 #############################################################
 
