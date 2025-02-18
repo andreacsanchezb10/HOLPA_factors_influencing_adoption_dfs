@@ -1,3 +1,7 @@
+library(matrixStats)
+library(dplyr)
+
+
 #############################################################
 ########## VARIABLES CALCULATION #####-----
 #############################################################
@@ -34,8 +38,25 @@ per_data_clean<-per_data_clean%>%
     #Total number of seasonal household labour
     n_nhlabour_seasonal_total=rowSums(across(starts_with("n_nhlabour_seasonal/")), na.rm = TRUE))
 
-### FARM MANAGEMENT CHARACTERISTICS ----
+### FARMER BEHAVIOUR ----
 
+library(dplyr)
+library(matrixStats)
+
+per_data_clean <- per_data_clean %>%
+  mutate(
+    #Human well being score
+    across(starts_with("human_wellbeing_"), ~ as.numeric(as.character(.))),  
+    human_wellbeing_median = rowMedians(as.matrix(select(., starts_with("human_wellbeing_"))), na.rm = TRUE),
+    #Perspective on agroecology score
+    across(starts_with("agroecol_perspective_"), ~ as.numeric(as.character(.))),  
+    agroecol_perspective_median = rowMedians(as.matrix(select(., starts_with("agroecol_perspective_"))), na.rm = TRUE))
+
+
+    x<-per_data_clean%>%
+      select(kobo_farmer_id,starts_with("human_wellbeing_"))
+    
+### FARM MANAGEMENT CHARACTERISTICS ----
 per_data_clean <- per_data_clean %>%
   mutate(
     #Number of ecological practices use on cropland to improve soil quality and health

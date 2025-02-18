@@ -36,7 +36,7 @@ nhlabour_begin_group <- function(data,workers,permanent_seasonal) {
       group_workers=="mujeres adultas mayores (>65 años)"~paste0("nhlabour_",permanent_seasonal,"_adults_old_female"),
       group_workers=="niñas (<18 años)"~ paste0("nhlabour_",permanent_seasonal,"_children_female"),
       group_workers=="niños varones (<18 años)"~paste0("nhlabour_",permanent_seasonal,"_children_male"),
-
+      
       TRUE ~ group_workers))%>%
     select(kobo_farmer_id,n_workers,group_workers)%>%
     pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = n_workers,values_fill = 0)
@@ -47,21 +47,21 @@ hlabour_begin_group <- function(data,group_workers,n_workers,permanent_seasonal)
   data%>%
     mutate(group_workers= as.character(group_workers),
            n_workers= as.numeric(n_workers))%>%
-  mutate(group_workers= case_when(
-    group_workers %in% c("adultos varones mayores (>65 años)","adultos mayores varones (>65 años)")~ paste0("hlabour_",permanent_seasonal,"_adults_old_male"),
-    group_workers%in%c("Adultos varones (≥18 y ≤65 años)","adultos varones (≥18 y ≤65)")~paste0("hlabour_",permanent_seasonal,"_adults_wa_male"),
-    group_workers%in%c("Mujeres adultas (≥18 y ≤65 años)","mujeres adultas (≥18 y ≤65)")~paste0("hlabour_",permanent_seasonal,"_adults_wa_female"),
-    group_workers=="mujeres adultas mayores (>65 años)"~paste0("hlabour_",permanent_seasonal,"_adults_old_female"),
-    group_workers=="niñas (<18 años)"~ paste0("hlabour_",permanent_seasonal,"_children_female"),
-    group_workers=="niños varones (<18 años)"~paste0("hlabour_",permanent_seasonal,"_children_male"),
-    
-    TRUE ~ group_workers))%>%
-  select(kobo_farmer_id,n_workers,group_workers)%>%
-  pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = n_workers,values_fill = 0)
+    mutate(group_workers= case_when(
+      group_workers %in% c("adultos varones mayores (>65 años)","adultos mayores varones (>65 años)")~ paste0("hlabour_",permanent_seasonal,"_adults_old_male"),
+      group_workers%in%c("Adultos varones (≥18 y ≤65 años)","adultos varones (≥18 y ≤65)")~paste0("hlabour_",permanent_seasonal,"_adults_wa_male"),
+      group_workers%in%c("Mujeres adultas (≥18 y ≤65 años)","mujeres adultas (≥18 y ≤65)")~paste0("hlabour_",permanent_seasonal,"_adults_wa_female"),
+      group_workers=="mujeres adultas mayores (>65 años)"~paste0("hlabour_",permanent_seasonal,"_adults_old_female"),
+      group_workers=="niñas (<18 años)"~ paste0("hlabour_",permanent_seasonal,"_children_female"),
+      group_workers=="niños varones (<18 años)"~paste0("hlabour_",permanent_seasonal,"_children_male"),
+      
+      TRUE ~ group_workers))%>%
+    select(kobo_farmer_id,n_workers,group_workers)%>%
+    pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = n_workers,values_fill = 0)
 }
 
 practices_begin_group <- function(data, cropland_practices,cropland_practices_area) {
- data%>%
+  data%>%
     mutate(cropland_practices= case_when(
       #simplified farming practices
       cropland_practices %in%c("Monoculture with perennial crops")~ "sfs_monoculture_perennial_area",
@@ -84,7 +84,7 @@ practices_begin_group <- function(data, cropland_practices,cropland_practices_ar
     select(kobo_farmer_id,cropland_practices,cropland_practices_area)%>%
     pivot_wider(id_cols=kobo_farmer_id, names_from = cropland_practices, values_from = cropland_practices_area,values_fill = "0")
 }
-        
+
 
 #######################################################################################################################################################################################    
 ########## DATA LOADING #####----
@@ -95,8 +95,7 @@ practices_begin_group <- function(data, cropland_practices,cropland_practices_ar
 factors_list <- read_excel("factors_list.xlsx")
 
 global_survey <- read_excel("factors_list.xlsx",sheet = "holpa_survey")%>%
-  #select only the necessary columns
-  select("type", "name","label::English ((en))")%>%
+  select("type", "name","label::English ((en))","column_name_new")%>% #select only the necessary columns
   #rename columns names
   rename("label_question" = "label::English ((en))")%>%
   rename("name_question" = "name")%>%
@@ -108,18 +107,19 @@ global_survey <- read_excel("factors_list.xlsx",sheet = "holpa_survey")%>%
   #create column with list_name codes matching the choices worksheet
   mutate(list_name = if_else(type_question== "select_one"|type_question== "select_multiple", 
                              str_replace(.$type, paste0(".*", .$type_question), ""),NA))%>%
-  mutate(list_name = str_replace_all(list_name, " ", ""))
+  mutate(list_name = str_replace_all(list_name, " ", ""))%>%
+  filter(!is.na(column_name_new))
 
 global_choices <- read_excel("factors_list.xlsx",sheet = "holpa_choices")%>%
   select("list_name","name","label::English ((en))","name_new")%>%
   rename("label_choice" = "label::English ((en))")%>%
   rename("name_choice" = "name")%>%
   mutate(country="global",
-         name_new=as.character(name_new))%>%
-  mutate(name_new= case_when(
-    name_choice %in% c("notsure","9999")~"unknown",
-    list_name =="3_4_4_1"& name_choice=="7"~"unknown",
-    TRUE~name_new ) )
+         name_new=as.character(name_new))
+mutate(name_new= case_when(
+  name_choice %in% c("notsure","9999")~"unknown",
+  list_name =="3_4_4_1"& name_choice=="7"~"unknown",
+  TRUE~name_new ) )
 
 
 ##### Peru ----
@@ -186,7 +186,7 @@ per_maintable <- permaintable
 per_3_4_1_1_7_1_begin_repeat<-per_3_4_1_1_7_1_begin_repeat%>%
   rename("nonhired_permanent_workers"="_3_4_1_1_7_1_calculate")%>%
   nhlabour_begin_group(.,.$nonhired_permanent_workers,"permanent")
-  
+
 per_3_4_1_1_7_2_begin_repeat<-per_3_4_1_1_7_2_begin_repeat%>%
   rename("nonhired_seasonal_workers"="_3_4_1_1_7_2_calculate")%>%
   nhlabour_begin_group(.,.$nonhired_seasonal_workers,"seasonal")
@@ -211,8 +211,8 @@ per_3_3_3_2_begin_repeat<-per_3_3_3_2_begin_repeat%>%
 colnames(per_3_3_3_2_begin_repeat)
 
 sheet_names
-     
-        
+
+
 [11]  "per_3_4_1_2_7_2_1_begin_repeat"
 [16] "per_3_4_1_2_1_2_1_begin_repeat" "per_2_4_1_begin_group"          "per_3_2_1_3_1_begin_group"     
 [21]       "per_3_4_3_1_2_begin_repeat"    
@@ -251,7 +251,7 @@ per_data<- per_maintable%>%
   left_join(per_2_8_4_begin_group, by=c("kobo_farmer_id","country"))%>%
   left_join(per_3_3_1_begin_group, by=c("kobo_farmer_id","country"))%>%
   left_join(per_2_12_1_begin_group, by=c("kobo_farmer_id","country"))
-  
+
 names(per_data)
 
 # Process all select_multiple columns
@@ -263,17 +263,15 @@ per_select_multiple_cols
 
 
 per_select_multiple <- per_data %>%
-    select(kobo_farmer_id,all_of(per_select_multiple_cols)) %>%
-    pivot_longer(cols =-kobo_farmer_id, names_to = "question", values_to = "response")%>%   # Reshape to long format
-    separate_rows(response, sep = ",") %>%  # Split multiple responses into separate rows
-    mutate(value = 1)  %>%# Assign 1 for presence
-  left_join(factors_list%>% select(column_name_old, column_name_new),by=c("question"="column_name_old"))%>%
-  mutate(column_name_new= if_else(is.na(column_name_new),question,column_name_new))%>%
-  pivot_wider(id_cols=kobo_farmer_id,names_from = c(column_name_new, response), values_from = value, 
+  select(kobo_farmer_id,all_of(per_select_multiple_cols)) %>%
+  pivot_longer(cols =-kobo_farmer_id, names_to = "name_question", values_to = "name_choice")%>%   # Reshape to long format
+  separate_rows(name_choice, sep = ",") %>%  # Split multiple responses into separate rows
+  left_join(global_survey%>%select(name_question, column_name_new),by="name_question")%>%
+  mutate(value = 1) %>% # Assign 1 for presence
+  mutate(column_name_new= if_else(is.na(column_name_new),name_question,column_name_new))%>%
+  pivot_wider(id_cols=kobo_farmer_id,names_from = c(column_name_new, name_choice), values_from = value,
               names_sep = "/", values_fill = 0) %>%
-  select(-matches("/NA$"))
-
-names(per_select_multiple)
+  dplyr::select(-matches("/NA$"))
 
 # add select_multiple responses
 per_data<-per_data%>%
@@ -282,19 +280,18 @@ per_data<-per_data%>%
 per_data<-per_data%>%
   left_join(per_select_multiple, by=c("kobo_farmer_id"))
 
-
-
-
-### RENAME COLUMN NAMES ----
+#####################################
+########## RENAME COLUMN NAMES ----
+#####################################
 # Ensure old column names exist in per_data
-column_mapping <- factors_list %>%
-    select(column_name_old, column_name_new)  # Select only the relevant columns
+column_mapping <- global_survey %>%
+  select(name_question,column_name_new )  # Select only the relevant columns
 print(column_mapping)
-  
+
 existing_cols <- colnames(per_data)
 
 # Create a named vector for renaming
-rename_vector <- setNames(column_mapping$column_name_new, column_mapping$column_name_old)
+rename_vector <- setNames(column_mapping$column_name_new, column_mapping$name_question)
 
 # Rename only matching columns
 colnames(per_data) <- ifelse(existing_cols %in% names(rename_vector), rename_vector[existing_cols], existing_cols)
@@ -304,10 +301,10 @@ print(colnames(per_data))
 
 #####################################
 ########## DATA SELECTION ----
-#####################################
-
 per_data<-per_data %>% 
   select(-matches("-desc$"),
+         -matches("^_"),
+         -matches("^sheet_id"))
          #None responses
          -"livestock_health_practice/none",
          -"livestock_practices/none")
@@ -328,9 +325,9 @@ sort(unique(per_data$education_level))
 ### To check for inconsistencies between "ecol_practices/5" (which indicates whether mulching was implemented) and 
 #"ecol_practices_mulching_area" (which records the area where mulching was applied)
 per_data$"ecol_practices/5" <-as.character(per_data$"ecol_practices/5" )
-                                      
+
 per_data$"ecol_practices/5" <- ifelse(per_data$ecol_practices_mulching_area == "0", "0",
-                               ifelse(per_data$ecol_practices_mulching_area != "0", "1", per_data$"ecol_practices/5"))
+                                      ifelse(per_data$ecol_practices_mulching_area != "0", "1", per_data$"ecol_practices/5"))
 
 
 #####################################
@@ -401,16 +398,16 @@ names(per_data_clean)
 names(per_data)
 
 
-         "_2_7_1_1", #When you sell the produced CROPs, who do you sell to?
-         "_2_7_1_1_1", #Specify other places where you sell the produced CROPS:
-         "_2_7_1_2", #When you sell the produced LIVESTOCK, who do you sell to?
-         "_2_7_1_2_1", #Specify other places where you sell the produced LIVESTOCK:
-         "_2_7_1_3", #When you sell the produced FISH, who do you sell to?
-         "_2_7_1_3_1", #Specify other places where you sell the produced FISH:
-         "_2_7_1_4", # When you sell the produced wood, bark, rubber, etc. (from TREES), who do you sell to?
-         "_2_7_1_4_1", # Specify other places where you sell the produced  WOOD/BARK/RUBBER/ETC (FROM TREES):
-         "_2_7_1_5", # When you sell the produced HONEY, who do you sell to?
-         "_2_7_1_5_1", #Specify other places where you sell the produced HONEY:
+"_2_7_1_1", #When you sell the produced CROPs, who do you sell to?
+"_2_7_1_1_1", #Specify other places where you sell the produced CROPS:
+"_2_7_1_2", #When you sell the produced LIVESTOCK, who do you sell to?
+"_2_7_1_2_1", #Specify other places where you sell the produced LIVESTOCK:
+"_2_7_1_3", #When you sell the produced FISH, who do you sell to?
+"_2_7_1_3_1", #Specify other places where you sell the produced FISH:
+"_2_7_1_4", # When you sell the produced wood, bark, rubber, etc. (from TREES), who do you sell to?
+"_2_7_1_4_1", # Specify other places where you sell the produced  WOOD/BARK/RUBBER/ETC (FROM TREES):
+"_2_7_1_5", # When you sell the produced HONEY, who do you sell to?
+"_2_7_1_5_1", #Specify other places where you sell the produced HONEY:
 
 
 
