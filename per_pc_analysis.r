@@ -99,12 +99,15 @@ per.skeleton
 #### STEP 2. The PC-algorithm is implemented in function pc() ----
 ##The PC algorithm is known to be order-dependent, in the sense that the computed skeleton depends on the order in which the variables are given. 
 #skel.method ="stable" (default) provides an order-independent model results
+install.packages("CondIndTests")
+library(CondIndTests)
 
 per.pc <- pc(per.suffStat, 
-             indepTest = gaussCItest,
+             indepTest = RCIT,
              labels = per.varNames, 
-             alpha = 0.01,
-             skel.method ="stable")  
+             alpha = 0.05, # decision threshold for the conditional independence tests
+             skel.method ="stable" # provides an order-independent model results
+             )  
 per.pc
 
 par(mfrow = c(1,2))
