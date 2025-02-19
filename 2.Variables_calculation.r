@@ -1,6 +1,61 @@
 library(matrixStats)
 library(dplyr)
+library(readr)  # for parse_number()
 
+per_data_clean<- read.csv("per_data.csv")
+
+
+#####################################
+########## DATA TYPE CONVERSION -----
+#####################################
+### Continuous data as numeric ----
+names(global_survey)
+sort(unique(global_survey$type_question))
+per_columns_numeric <- intersect(global_survey$column_name_new[global_survey$type_question %in% c( "decimal", "integer")], colnames(per_data_clean))
+print(per_columns_numeric)  # Check if it holds expected values
+
+per_data_clean<- per_data_clean%>%
+  mutate(across(all_of(per_columns_numeric), as.numeric))%>%
+  mutate(across(starts_with("nonhired_labour_"), ~ replace_na(.x, 0)))%>%
+  mutate(across(starts_with("hired_labour_"), ~ replace_na(.x, 0)))
+
+
+### Change name_choice code to numeric codes for: ----
+#gender; marital_status
+categorical_choices_new_cols <- intersect(colnames(per_data_clean), unique(per_global_choices$column_name_new[!is.na(per_global_choices$name_new)]))
+print(categorical_choices_new_cols)
+
+per_data_clean<-per_data_clean
+# Replace values dynamically for all common columns
+for (col in categorical_choices_new_cols) {
+  mapping <- per_global_choices %>%
+    filter(!is.na(name_new))%>%
+    
+    filter(column_name_new == col) %>%
+    select(name_choice, name_new) %>%
+    { setNames(.$name_new, .$name_choice) }  # Alternative to deframe()
+  
+  per_data_clean[[col]] <- recode(per_data_clean[[col]], !!!mapping)
+}
+
+sort(unique(per_data_clean$marital_status))
+sort(unique(per_data_clean$gender))
+str(per_data_clean$marital_status)
+str(per_data_clean$gender)
+
+#### categorical and binary data as factor 
+sort(unique(global_survey$type_question))
+per_columns_numeric <- intersect(global_survey$column_name_new[global_survey$type_question %in% c( "decimal", "integer")], colnames(per_data_clean))
+
+per_columns_factor <- intersect(global_survey$column_name_new[global_survey$type_question %in%c("calculate","select_multiple", "select_one","text" )], colnames(per_data_clean))
+print(per_columns_factor)  # Check if it holds expected values
+
+per_data_clean<- per_data_clean%>%
+  mutate(across(all_of(per_columns_factor), as.factor))
+
+str(per_data_clean$marital_status)
+str(per_data_clean$gender)
+names(per_data_clean)
 
 #############################################################
 ########## VARIABLES CALCULATION #####-----
@@ -36,16 +91,19 @@ per_data_clean<-per_data_clean%>%
     #Farmer as a primary occupation
     "occupation_primary_farmer" = ifelse(occupation_primary=="1", "1","0"))
 
-### FARMER BEHAVIOUR ----
-per_data_clean <- per_data_clean %>%
-  mutate(
-    #Human well being score
-    across(starts_with("human_wellbeing_"), ~ as.numeric(as.character(.))),  
-    human_wellbeing_median = rowMedians(as.matrix(select(., starts_with("human_wellbeing_"))), na.rm = TRUE),
-    #Perspective on agroecology score
-    across(starts_with("agroecol_perspective_"), ~ as.numeric(as.character(.))),  
-    agroecol_perspective_median = rowMedians(as.matrix(select(., starts_with("agroecol_perspective_"))), na.rm = TRUE))
+x<-per_data_clean %>%
+  select(starts_with("human_wellbeing_"),starts_with("agroecol_perspective_"))
 
+
+### FARMER BEHAVIOUR ----
+per_data_clean<- per_data_clean %>%
+  #Human well being score
+  mutate(across(starts_with("human_wellbeing_"), ~ as.numeric(as.factor(.))))%>%
+  mutate(human_wellbeing_median = rowMedians(as.matrix(select(., starts_with("human_wellbeing_"))), na.rm = TRUE))%>%
+  #Perspective on agroecology score
+  mutate(across(starts_with("agroecol_perspective_"), ~ as.numeric(as.factor(.))))%>%
+  mutate(agroecol_perspective_median = rowMedians(as.matrix(select(., starts_with("agroecol_perspective_"))), na.rm = TRUE))
+str(z)
 
 ### FARM MANAGEMENT CHARACTERISTICS ----
 per_data_clean <- per_data_clean %>%
@@ -61,12 +119,9 @@ per_data_clean <- per_data_clean %>%
     n_livestock_health_practice = rowSums(across(starts_with("livestock_health_practice/")), na.rm = TRUE),
     #Number of management practices used to manage livestock diseases in the last 12 months
     across(starts_with("livestock_diseases_management/"), ~ as.numeric(as.character(.))),
-    n_livestock_diseases_management= rowSums(across(starts_with("livestock_diseases_management/")), na.rm = TRUE),
+    n_livestock_diseases_management= rowSums(across(starts_with("livestock_diseases_management/")), na.rm = TRUE))
     #Number of ORGANIC management practices used to manage livestock diseases in the last 12 months
-    n_livestock_diseases_management_organic = rowSums(select(., c("livestock_diseases_management/3",
-                                                                  "livestock_diseases_management/4",
-                                                                  "livestock_diseases_management/5",
-                                                                  "livestock_diseases_management/6")),na.rm = TRUE),
+    n_livestock_diseases_management_organic = "livestock_diseases_management/3"+"livestock_diseases_management/4"+"livestock_diseases_management/5"+"livestock_diseases_management/6",
     #Number of CHEMICAL management practices used to manage livestock diseases in the last 12 months
     n_livestock_diseases_management_organic = rowSums(select(., c("livestock_diseases_management/1",
                                                                   "livestock_diseases_management/2")),na.rm = TRUE))
