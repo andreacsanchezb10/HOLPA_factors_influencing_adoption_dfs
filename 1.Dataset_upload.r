@@ -280,6 +280,7 @@ per_data<-per_data%>%
 per_data<-per_data%>%
   left_join(per_select_multiple, by=c("kobo_farmer_id"))
 
+names(per_data)
 #####################################
 ########## RENAME COLUMN NAMES ----
 #####################################
@@ -330,6 +331,6 @@ per_data$"soil_fertility_ecol_practices/5" <- ifelse(per_data$ecol_practices_mul
                                       ifelse(per_data$ecol_practices_mulching_area != "0", "1", per_data$"soil_fertility_ecol_practices/5"))
 
 
-
+names(per_data)
 write.csv(per_data,"per_data.csv",row.names=FALSE)
 

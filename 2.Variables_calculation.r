@@ -2,9 +2,9 @@ library(matrixStats)
 library(dplyr)
 library(readr)  # for parse_number()
 
-per_data_clean<- read.csv("per_data.csv")
+per_data_clean<- read.csv("per_data.csv",sep=",")
 
-
+names(per_data_clean)
 #####################################
 ########## DATA TYPE CONVERSION -----
 #####################################
@@ -78,13 +78,13 @@ per_data_clean<-per_data_clean%>%
     #Total number of people in household
     n_people = n_adults_total+n_children,
     #Total number of permanent hired labour
-    n_hlabour_permanent_total= rowSums(across(starts_with("n_hlabour_permanent/")), na.rm = TRUE),
+    n_hlabour_permanent_total= rowSums(across(starts_with("n_hlabour_permanent.")), na.rm = TRUE),
     #Total number of seasonal hired labour
-    n_hlabour_seasonal_total= rowSums(across(starts_with("n_hlabour_seasonal/")), na.rm = TRUE),
+    n_hlabour_seasonal_total= rowSums(across(starts_with("n_hlabour_seasonal.")), na.rm = TRUE),
     #Total number of permanent household labour
-    n_nhlabour_permanent_total=rowSums(across(starts_with("n_nhlabour_permanent/")), na.rm = TRUE),
+    n_nhlabour_permanent_total=rowSums(across(starts_with("n_nhlabour_permanent.")), na.rm = TRUE),
     #Total number of seasonal household labour
-    n_nhlabour_seasonal_total=rowSums(across(starts_with("n_nhlabour_seasonal/")), na.rm = TRUE),
+    n_nhlabour_seasonal_total=rowSums(across(starts_with("n_nhlabour_seasonal.")), na.rm = TRUE),
     #Number of secondary occupations
     across(starts_with("occupation_secondary_list"), ~ as.numeric(as.character(.))),  
     n_occupation_secondary_list = rowSums(as.matrix(select(., starts_with("occupation_secondary_list"))), na.rm = TRUE),
@@ -103,28 +103,31 @@ per_data_clean<- per_data_clean %>%
   #Perspective on agroecology score
   mutate(across(starts_with("agroecol_perspective_"), ~ as.numeric(as.factor(.))))%>%
   mutate(agroecol_perspective_median = rowMedians(as.matrix(select(., starts_with("agroecol_perspective_"))), na.rm = TRUE))
-str(z)
 
+str(per_data_clean$livestock_diseases_management.1)
 ### FARM MANAGEMENT CHARACTERISTICS ----
 per_data_clean <- per_data_clean %>%
   mutate(
     #Number of ecological practices use on cropland to improve soil quality and health
-    across(starts_with("soil_fertility_ecol_practices/"), ~ as.numeric(as.character(.))),
-    n_soil_fertility_ecol_practices = rowSums(across(starts_with("soil_fertility_ecol_practices/")), na.rm = TRUE),
+    across(starts_with("soil_fertility_ecol_practices."), ~ as.numeric(as.character(.))),
+    n_soil_fertility_ecol_practices = rowSums(across(starts_with("soil_fertility_ecol_practices.")), na.rm = TRUE),
     #Number of farm products type in the last 12 months
-    across(starts_with("farm_products/"), ~ as.numeric(as.character(.))),
-    n_farm_products = rowSums(across(starts_with("farm_products/")), na.rm = TRUE),
+    across(starts_with("farm_products."), ~ as.numeric(as.character(.))),
+    n_farm_products = rowSums(across(starts_with("farm_products.")), na.rm = TRUE),
     #Number of practices implemented to keep animals on the farm healthy and happy?
-    across(starts_with("livestock_health_practice/"), ~ as.numeric(as.character(.))),
-    n_livestock_health_practice = rowSums(across(starts_with("livestock_health_practice/")), na.rm = TRUE),
+    across(starts_with("livestock_health_practice."), ~ as.numeric(as.character(.))),
+    n_livestock_health_practice = rowSums(across(starts_with("livestock_health_practice.")), na.rm = TRUE),
     #Number of management practices used to manage livestock diseases in the last 12 months
-    across(starts_with("livestock_diseases_management/"), ~ as.numeric(as.character(.))),
-    n_livestock_diseases_management= rowSums(across(starts_with("livestock_diseases_management/")), na.rm = TRUE))
+    across(starts_with("livestock_diseases_management."), ~ as.numeric(as.character(.))),
+    n_livestock_diseases_management= rowSums(across(starts_with("livestock_diseases_management.")), na.rm = TRUE),
     #Number of ORGANIC management practices used to manage livestock diseases in the last 12 months
-    n_livestock_diseases_management_organic = "livestock_diseases_management/3"+"livestock_diseases_management/4"+"livestock_diseases_management/5"+"livestock_diseases_management/6",
+    n_livestock_diseases_management_organic = rowSums(select(., c("livestock_diseases_management.3",
+                                                                  "livestock_diseases_management.4",
+                                                                  "livestock_diseases_management.5",
+                                                                  "livestock_diseases_management.6")),na.rm = TRUE),
     #Number of CHEMICAL management practices used to manage livestock diseases in the last 12 months
-    n_livestock_diseases_management_organic = rowSums(select(., c("livestock_diseases_management/1",
-                                                                  "livestock_diseases_management/2")),na.rm = TRUE))
+    n_livestock_diseases_management_organic = rowSums(select(., c("livestock_diseases_management.1",
+                                                                  "livestock_diseases_management.2")),na.rm = TRUE))
 
 ### NATURAL CAPITAL ----
 
@@ -147,10 +150,31 @@ per_data_clean<-per_data_clean%>%
 
 per_data_clean<-per_data_clean%>%
   mutate(
+    #Number of training topics
+    across(starts_with("training_"), ~ as.numeric(as.character(.))),
+    across(starts_with("training_"), ~ ifelse(. == 2, NA, .)), # REMOVE ANSWER I don't know
+    num_training_topics= rowSums(across(starts_with("training_")), na.rm = TRUE),
     #Participation in training (training in innovative or best management agricultural practices, training in agribusiness management and value addition, or other)
-    training_participation<- if_else(training_best_practices=="1", "1",
-                                     if_else(training_agribusiness=="1", "1",
-                                             if_else(training_other=="1", "1","0"))))
+    training_participation= as.factor(ifelse(num_training_topics>0, "1","0")))%>%
+  mutate(
+    #Exchange information with: Extensionists
+    access_info_exchange_extension= ifelse(num_info_exchange_extension>0, "1","0"),
+    #Exchange information with: Researchers
+    access_info_exchange_researchers= ifelse(num_info_exchange_researchers>0, "1","0"),
+    #Exchange information with: Farmers
+    access_info_exchange_farmers= ifelse(num_info_exchange_farmers>0, "1","0"),
+    #Exchange information with: Government
+    access_info_exchange_government= ifelse(num_info_exchange_government>0, "1","0"),
+    #Exchange information with: NGOs
+    access_info_exchange_ngo= ifelse(num_info_exchange_ngo>0, "1","0"),
+    #Exchange information with: consumers
+    access_info_exchange_consumers= ifelse(num_info_exchange_consumers>0, "1","0"),
+    #Exchange information with: Food traders
+    access_info_exchange_traders= ifelse(num_info_exchange_traders>0, "1","0"),
+    #Number of information sources
+    across(starts_with("access_info_exchange_"), ~ as.numeric(as.character(.))),
+    num_info_exchange_sources= rowSums(across(starts_with("access_info_exchange_")), na.rm = TRUE))
+    
 
 ### OUTCOMES ----
 ### Potential outcomes ----
@@ -160,7 +184,27 @@ per_data_clean <- per_data_clean %>%
     across(starts_with("dfs_") & ends_with("_area"), ~ as.numeric(as.character(.))),
     dfs_total_area = rowSums(select(., starts_with("dfs_") & ends_with("_area")) %>% mutate(across(everything(), as.numeric)), na.rm = TRUE),
     # adoption of diversified farming systems binary (1=yes,0=no)
-    dfs_adoption_binary = as.factor(ifelse(dfs_total_area > 0, "1","0")))
+    dfs_adoption_binary = as.factor(ifelse(dfs_total_area > 0, "1","0")),
+    dfs_crop_rotation_adoption= as.factor(ifelse(dfs_crop_rotation_area > 0, "1","0")),
+    
+    dfs_agroforestry_adoption= as.factor(ifelse(dfs_agroforestry_area > 0, "1","0")),
+    dfs_cover_crops_adoption= as.factor(ifelse(dfs_cover_crops_area > 0, "1","0")),
+    dfs_homegarden_adoption= as.factor(ifelse(dfs_homegarden_area > 0, "1","0")),
+    dfs_intercropping_adoption= as.factor(ifelse(dfs_intercropping_area > 0, "1","0")),
+    dfs_fallow_adoption= as.factor(ifelse(dfs_fallow_area > 0, "1","0")),
+    dfs_strip_vegetation_adoption= as.factor(ifelse(dfs_strip_vegetation_area > 0, "1","0")),
+    dfs_hedgerows_adoption= as.factor(ifelse(dfs_hedgerows_area > 0, "1","0")))
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
 ## to check: controlar si hay otras preguntas donde se citen dfs, ver las practicas de livestock
 
