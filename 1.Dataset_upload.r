@@ -25,10 +25,10 @@ process_survey_data <- function(sheet_name, country_name, column_id_rename) {
 
 nhlabour_begin_group <- function(data,workers,permanent_seasonal) {
   data%>%
-    mutate(n_workers = str_extract(workers, "^\\d+"),
+    mutate(num_workers = str_extract(workers, "^\\d+"),
            group_workers= str_replace(workers, "^\\d+\\s+", ""),
            group_workers= as.character(group_workers),
-           n_workers= as.numeric(n_workers))%>%
+           num_workers= as.numeric(num_workers))%>%
     mutate(group_workers= case_when(
       group_workers %in% c("adultos varones mayores (>65 años)","adultos mayores varones (>65 años)")~ paste0("nhlabour_",permanent_seasonal,"_adults_old_male"),
       group_workers%in%c("Adultos varones (≥18 y ≤65 años)","adultos varones (≥18 y ≤65)")~paste0("nhlabour_",permanent_seasonal,"_adults_wa_male"),
@@ -38,15 +38,15 @@ nhlabour_begin_group <- function(data,workers,permanent_seasonal) {
       group_workers=="niños varones (<18 años)"~paste0("nhlabour_",permanent_seasonal,"_children_male"),
       
       TRUE ~ group_workers))%>%
-    select(kobo_farmer_id,n_workers,group_workers)%>%
-    pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = n_workers,values_fill = 0)
+    select(kobo_farmer_id,num_workers,group_workers)%>%
+    pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = num_workers,values_fill = 0)
   
 }
 
-hlabour_begin_group <- function(data,group_workers,n_workers,permanent_seasonal) {
+hlabour_begin_group <- function(data,group_workers,num_workers,permanent_seasonal) {
   data%>%
     mutate(group_workers= as.character(group_workers),
-           n_workers= as.numeric(n_workers))%>%
+           num_workers= as.numeric(num_workers))%>%
     mutate(group_workers= case_when(
       group_workers %in% c("adultos varones mayores (>65 años)","adultos mayores varones (>65 años)")~ paste0("hlabour_",permanent_seasonal,"_adults_old_male"),
       group_workers%in%c("Adultos varones (≥18 y ≤65 años)","adultos varones (≥18 y ≤65)")~paste0("hlabour_",permanent_seasonal,"_adults_wa_male"),
@@ -56,8 +56,8 @@ hlabour_begin_group <- function(data,group_workers,n_workers,permanent_seasonal)
       group_workers=="niños varones (<18 años)"~paste0("hlabour_",permanent_seasonal,"_children_male"),
       
       TRUE ~ group_workers))%>%
-    select(kobo_farmer_id,n_workers,group_workers)%>%
-    pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = n_workers,values_fill = 0)
+    select(kobo_farmer_id,num_workers,group_workers)%>%
+    pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = num_workers,values_fill = 0)
 }
 
 practices_begin_group <- function(data, cropland_practices,cropland_practices_area) {
@@ -110,16 +110,20 @@ global_survey <- read_excel("factors_list.xlsx",sheet = "holpa_survey")%>%
   mutate(list_name = str_replace_all(list_name, " ", ""))%>%
   filter(!is.na(column_name_new))
 
+write.csv(global_survey,"global_survey.csv",row.names=FALSE)
+
 global_choices <- read_excel("factors_list.xlsx",sheet = "holpa_choices")%>%
   select("list_name","name","label::English ((en))","name_new")%>%
   rename("label_choice" = "label::English ((en))")%>%
   rename("name_choice" = "name")%>%
   mutate(country="global",
          name_new=as.character(name_new))
+         #name_choice= if_else(is.na(name_new),name_choice,name_new))
 mutate(name_new= case_when(
   name_choice %in% c("notsure","9999")~"unknown",
   list_name =="3_4_4_1"& name_choice=="7"~"unknown",
   TRUE~name_new ) )
+write.csv(global_choices,"global_choices.csv",row.names=FALSE)
 
 
 ##### Peru ----
@@ -163,6 +167,8 @@ per_global_choices<-global_choices%>%
     type =="select_one 1_2_1_12_1"& name_choice==11~"None",
     TRUE ~ label_choice))
 
+write.csv(per_global_choices,"per_global_choices.csv",row.names=FALSE)
+
 # Read all sheet names
 sheet_names <- excel_sheets(per_survey_path)
 sheet_names
@@ -193,13 +199,13 @@ per_3_4_1_1_7_2_begin_repeat<-per_3_4_1_1_7_2_begin_repeat%>%
 
 per_3_4_1_2_1_1_begin_repeat<-per_3_4_1_2_1_1_begin_repeat%>%
   rename("group_workers"="_3_4_1_2_1_1_calculate",
-         "n_workers"= "_3_4_1_2_1_1_1")%>%
-  hlabour_begin_group(.,.$group_workers,.$n_workers,"permanent")
+         "num_workers"= "_3_4_1_2_1_1_1")%>%
+  hlabour_begin_group(.,.$group_workers,.$num_workers,"permanent")
 
 per_3_4_1_2_1_2_begin_repeat<-per_3_4_1_2_1_2_begin_repeat%>%
   rename("group_workers"="_3_4_1_2_1_2_calculate",
-         "n_workers"= "_3_4_1_2_1_2_1")%>%
-  hlabour_begin_group(.,.$group_workers,.$n_workers,"seasonal")
+         "num_workers"= "_3_4_1_2_1_2_1")%>%
+  hlabour_begin_group(.,.$group_workers,.$num_workers,"seasonal")
 
 per_3_3_3_2_begin_repeat<-per_3_3_3_2_begin_repeat%>%
   rename("cropland_practices"="_3_3_3_1_calculate_2",
@@ -316,10 +322,10 @@ print(colnames(per_data))
 #####################################
 ### The 9999 in ethnicity refers to mestizo ethnicity for Peru
 sort(unique(per_data$ethnicity))
-per_data$ethnicity <- ifelse(per_data$ethnicity == "9999", "mestizo", per_data$ethnicity) # convert the 9999 to mestizo
+per_data$ethnicity <- ifelse(per_data$ethnicity == "9999", "Mestizo", per_data$ethnicity) # convert the 9999 to mestizo
 sort(unique(per_data$ethnicity))
 
-### TO CHECK: I need to standardixe education level with the other countries options
+### TO CHECK: I need to standardize education level with the other countries options
 sort(unique(per_data$education_level))
 
 
@@ -329,6 +335,31 @@ per_data$"soil_fertility_ecol_practices/5" <-as.character(per_data$"soil_fertili
 
 per_data$"soil_fertility_ecol_practices/5" <- ifelse(per_data$ecol_practices_mulching_area == "0", "0",
                                       ifelse(per_data$ecol_practices_mulching_area != "0", "1", per_data$"soil_fertility_ecol_practices/5"))
+
+
+
+### Change name_choice code to numeric codes for: ----
+#gender; marital_status
+categorical_choices_new_cols <- intersect(colnames(per_data), unique(per_global_choices$column_name_new[!is.na(per_global_choices$name_new)]))
+print(categorical_choices_new_cols)
+
+per_data<-per_data
+# Replace values dynamically for all common columns
+for (col in categorical_choices_new_cols) {
+  mapping <- per_global_choices %>%
+    filter(!is.na(name_new))%>%
+    
+    filter(column_name_new == col) %>%
+    select(name_choice, name_new) %>%
+    { setNames(.$name_new, .$name_choice) }  # Alternative to deframe()
+  
+  per_data[[col]] <- recode(per_data[[col]], !!!mapping)
+}
+
+sort(unique(per_data$marital_status))
+sort(unique(per_data$gender))
+str(per_data$marital_status)
+str(per_data$gender)
 
 
 names(per_data)

@@ -1,0 +1,321 @@
+"type","name_question","label_question","column_name_new","type_question","list_name"
+"decimal","_1_2_1_7","For how many years have you lived in this community?","years_in_community","decimal",NA
+"integer","_1_2_1_8","Year of birth","year_birth","integer",NA
+"select_one 1_2_1_9","_1_2_1_9","Gender","gender","select_one","1_2_1_9"
+"select_one 1_2_1_10","_1_2_1_10","Marital status","marital_status","select_one","1_2_1_10"
+"text","_1_2_1_11","Ethnicity","ethnicity","text",NA
+"select_one 4_1_1_1","_4_1_1_1","Can you read and write in any language?","read_write","select_one","4_1_1_1"
+"select_one 1_2_1_12_1","_1_2_1_12_1","What is the highest level of school you attended?","education_level","select_one","1_2_1_12_1"
+"select_one 1_2_1_13_1","_1_2_1_13_1","What was your main occupation in the last 12 months?","occupation_primary","select_one","1_2_1_13_1"
+"select_one 1_2_1_13_2_1","_1_2_1_13_2_1","Do you have any additional occupation(s)?","occupation_secondary","select_one","1_2_1_13_2_1"
+"select_multiple 1_2_1_13_2_2","_1_2_1_13_2_2","What was your other occupation(s) in the last 12 months?","occupation_secondary_list","select_multiple","1_2_1_13_2_2"
+"integer","_1_2_1_14_1","How many Male adults of working age (≥18 and ≤65 years old) live in the household?","num_adults_wa_male","integer",NA
+"integer","_1_2_1_14_2","How many Female adults of working age (≥18 and ≤65 years old) live in the household?","num_adults_wa_female","integer",NA
+"integer","_1_2_1_14_3","How many Male adults not of working age (>65 years old) live in the household?","num_adults_old_male","integer",NA
+"integer","_1_2_1_14_4","How many Female adults not of working age (>65 years old) live in the household?","num_adults_old_female","integer",NA
+"integer","_1_2_1_14_5","How many Male children (<18 years old) live in the household?","num_children_male","integer",NA
+"integer","_1_2_1_14_6","How many Female children (<18 years old) live in the household?","num_children_female","integer",NA
+"select_one 1_2_1_12_1","_4_1_1_2","Please indicate the highest level of school attended by most MALE household members of working age (≥18 and ≤65 years old)","education_level_male","select_one","1_2_1_12_1"
+"select_one 1_2_1_12_1","_4_1_1_3","Please indicate the highest level of school attended by most FEMALE household members of working age (≥18 and ≤65 years old)","education_level_female","select_one","1_2_1_12_1"
+"select_one 4_1_1_4","_4_1_1_4_1","Training in innovative or best management agricultural practices","training_best_practices","select_one","4_1_1_4"
+"select_one 4_1_1_4","_4_1_1_4_3","Training in agribusiness management and value addition","training_agribusiness","select_one","4_1_1_4"
+"select_one 4_1_1_4","_4_1_1_4_4","Other training (please specify)","training_other","select_one","4_1_1_4"
+"select_one 1_2_1_15","_1_2_1_15","Are you or anyone in your household currently involved in any agricultural research or development project?","project_participation","select_one","1_2_1_15"
+"select_one 1_2_1_16","_1_2_1_16_001","Do you know what Agroecology means?","agroecology_knowledge","select_one","1_2_1_16"
+"select_one 1_3_1_1","_1_3_1_1_1","I care a lot about nature.","agroecol_perspective_1","select_one","1_3_1_1"
+"select_one 1_3_1_1","_1_3_1_1_2","Being in nature benefits me.","agroecol_perspective_2","select_one","1_3_1_1"
+"select_one 1_3_1_1","_1_3_1_1_3","I live in a place where most people take good care of the land and nature.","agroecol_perspective_3","select_one","1_3_1_1"
+"select_one 1_3_1_1","_1_3_1_1_4","I take care of the land and nature on my farm.","agroecol_perspective_4","select_one","1_3_1_1"
+"select_one 1_3_1_1","_1_3_1_1_5","I identify myself as an agroecological farmer.","agroecol_perspective_5","select_one","1_3_1_1"
+"select_one 1_3_1_1","_1_3_1_1_6","I have power and freedom to change farm production practices if I want to.","agroecol_perspective_6","select_one","1_3_1_1"
+"select_one 1_3_1_1","_1_3_1_1_7","If I work together with others in my community, we have power and freedom to solve problems facing farmers.","agroecol_perspective_7","select_one","1_3_1_1"
+"select_one 1_3_1_1","_1_3_2_1_5","I make decisions about what food to buy based primarily on price.","agroecol_perspective_8","select_one","1_3_1_1"
+"select_one 1_3_1_1","_1_3_2_1_6","I would prefer to eat food that is produced without chemical inputs.","agroecol_perspective_9","select_one","1_3_1_1"
+"select_one 1_3_1_1","_1_3_2_1_7","I would prefer to eat food that is grown locally.","agroecol_perspective_10","select_one","1_3_1_1"
+"select_one 1_3_1_1","_1_3_1_1_10","I would prefer that the food I buy is produced and processed in ways that provide a fair wage and good conditions for workers.","agroecol_perspective_11","select_one","1_3_1_1"
+"select_one 1_3_1_1","_1_3_2_1_3","I think shifting to agroecological farming is a sensible business decision.","agroecol_perspective_12","select_one","1_3_1_1"
+"select_one 1_3_1_1","_1_3_2_1_4","I think current farming systems are working well and do not need changing.","agroecol_perspective_13","select_one","1_3_1_1"
+"select_one 3_1_1","_3_1_1_1","Thinking about your own life and personal circumstances, how satisfied are you with your life as a whole?","human_wellbeing_1","select_one","3_1_1"
+"select_one 3_1_1","_3_1_1_2","How satisfied are you with your standard of living?","human_wellbeing_2","select_one","3_1_1"
+"select_one 3_1_1","_3_1_1_3","How satisfied are you with your health?","human_wellbeing_3","select_one","3_1_1"
+"select_one 3_1_1","_3_1_1_4","How satisfied are you with what you are achieving in life?","human_wellbeing_4","select_one","3_1_1"
+"select_one 3_1_1","_3_1_1_5","How satisfied are you with your personal relationships?","human_wellbeing_5","select_one","3_1_1"
+"select_one 3_1_1","_3_1_1_6","How satisfied are you with how safe you feel?","human_wellbeing_6","select_one","3_1_1"
+"select_one 3_1_1","_3_1_1_7","How satisfied are you with feeling part of your community?","human_wellbeing_7","select_one","3_1_1"
+"select_one 3_1_1","_3_1_1_8","How satisfied are you with your economic security?","human_wellbeing_8","select_one","3_1_1"
+"select_one 3_1_1","_3_1_1_9","How satisfied are you with your nutritional security?","human_wellbeing_9","select_one","3_1_1"
+"select_one 3_1_1","_3_1_1_10","How satisfied are you with the amount of time you have to do the things that you like doing?","human_wellbeing_10","select_one","3_1_1"
+"select_one 3_1_1","_3_1_1_11","How satisfied are you with the quality of your local environment?","human_wellbeing_11","select_one","3_1_1"
+"select_one 3_1_1","_3_1_1_12","How satisfied are you with your occupation?","human_wellbeing_12","select_one","3_1_1"
+"select_one 3_1_2_1","_3_1_2_2","On which step of the ladder would you position the majority of women in your household today?","farmer_agency_1","select_one","3_1_2_1"
+"select_one 3_1_2_2","_3_1_2_3","On which step of the ladder would you position the majority of women in your household 10 years ago?","farmer_agency_2","select_one","3_1_2_2"
+"select_one 3_1_2_1","_3_1_2_4","On which step of the ladder would you position the majority of men in your household today?","farmer_agency_3","select_one","3_1_2_1"
+"select_one 3_1_2_2","_3_1_2_5","On which step of the ladder would you position the majority of men in your household 10 years ago?","farmer_agency_4","select_one","3_1_2_2"
+"select_one 3_1_2_1","_3_1_2_6","On which step of the ladder would you position the majority of women in your community today?","farmer_agency_5","select_one","3_1_2_1"
+"select_one 3_1_2_3","_3_1_2_6_001","Would you position different types of women in different places on this ladder? Older people, younger people, poorer people, single people, etc.?","farmer_agency_6","select_one","3_1_2_3"
+"select_one 3_1_2_1","_3_1_2_7","On which step of the ladder would you position the majority of men in your community today?","farmer_agency_7","select_one","3_1_2_1"
+"select_one 3_1_2_3","_3_1_2_7_001","Would you position different types of men in different places on this ladder? Older people, younger people, poorer people, single people, etc.?","farmer_agency_8","select_one","3_1_2_3"
+"integer","_2_1_1_1","Agricultural extension workers","num_info_exchange_extension","integer",NA
+"integer","_2_1_1_2","Consumers","num_info_exchange_consumers","integer",NA
+"integer","_2_1_1_3","Food traders","num_info_exchange_traders","integer",NA
+"integer","_2_1_1_4","Government","num_info_exchange_government","integer",NA
+"integer","_2_1_1_5","NGOs","num_info_exchange_ngo","integer",NA
+"integer","_2_1_1_6","Other farmers","num_info_exchange_farmers","integer",NA
+"integer","_2_1_1_7","Researchers","num_info_exchange_researchers","integer",NA
+"select_one 2_2_1_1","_2_2_1_1","How often does your household participate in activities and meetings related to the management of your community's land and natural resources?","participation_nr_frequency","select_one","2_2_1_1"
+"select_one 2_2_1_2","_2_2_1_2","How often does your household influence the decision-making that goes into the management of your community's land and natural resources?","influence_nr_frequency","select_one","2_2_1_2"
+"select_one 2_2_1_3","_2_2_1_3","In your opinion, are your community's land and natural resources well-managed?","nr_management_opinion","select_one","2_2_1_3"
+"select_multiple 2_3_1_1","_2_3_1_1","Select all the associations/organizations of which you or other HH members are part of","membership","select_multiple","2_3_1_1"
+"select_one 2_3_1_4","_2_3_1_4","In your opinion, how effective are farmer associations/organizations at supporting farmers in business?","trust_famers_associations","select_one","2_3_1_4"
+"decimal","_1_4_1_1_1","What is the total area in hectares (or acres) of land (agricultural or not) that your household: Currently OWNS:","land_tenure_own_area","decimal",NA
+"decimal","_1_4_1_1_2","What is the total area in hectares (or acres) of land (agricultural or not) that your household: Currently LEASES from another person:","land_tenure_lease_area","decimal",NA
+"decimal","_1_4_1_1_3","What is the total area in hectares (or acres) of land (agricultural or not) that your household: Currently HOLDS USE RIGHTS, either alone or jointly with someone else:","land_tenure_hold_area","decimal",NA
+"select_one 1_4_4_4","_1_4_4_4","Do you perceive that you could involuntarily lose ownership or use rights to any of the land (agricultural or not) you currently own or hold use rights to in the next 5 years?","land_tenure_security","select_one","1_4_4_4"
+"select_multiple 4_1_2_1","_4_1_3_1","In the last 12 months, what were the most severe shocks faced by the household","household_shock","select_multiple","4_1_2_1"
+"select_multiple 4_1_2_1_2","_4_1_3_1_2","What did the household members do to cope with the shocks","household_shock_recover_activities","select_multiple","4_1_2_1_2"
+"select_one 2_6_1_3","_2_6_1_3","How would you rate the capacity of the household's income and agricultural production to recover from shocks/perturbations?","household_shock_recover_capacity","select_one","2_6_1_3"
+"select_one 4_1_1_6","_4_1_1_6","Do you have insurance against agricultural losses?","insurance_agric_losses","select_one","4_1_1_6"
+"select_one 4_1_3_2","_4_1_3_2_1","Would any of the following individuals or organisations provide your household support in case of need: Banks","support_provider/bank","select_one","4_1_3_2"
+"select_one 4_1_3_2","_4_1_3_2_2","Would any of the following individuals or organisations provide your household support in case of need: Community leaders","support_provider/community_leaders","select_one","4_1_3_2"
+"select_one 4_1_3_2","_4_1_3_2_3","Would any of the following individuals or organisations provide your household support in case of need: Individuals from a different community (family/ friends/ farmers)","support_provider/ind_different_community","select_one","4_1_3_2"
+"select_one 4_1_3_2","_4_1_3_2_4","Would any of the following individuals or organisations provide your household support in case of need: Individuals from my community (family/ friends/ fellow farmers)","support_provider/ind_own_community","select_one","4_1_3_2"
+"select_one 4_1_3_2","_4_1_3_2_5","Would any of the following individuals or organisations provide your household support in case of need: Local farmer cooperatives","support_provider/cooperatives","select_one","4_1_3_2"
+"select_one 4_1_3_2","_4_1_3_2_6","Would any of the following individuals or organisations provide your household support in case of need: Local farmer producer organization","support_provider/farmer_organization","select_one","4_1_3_2"
+"select_one 4_1_3_2","_4_1_3_2_7","Would any of the following individuals or organisations provide your household support in case of need: Local government","support_provider/local_government","select_one","4_1_3_2"
+"select_one 4_1_3_2","_4_1_3_2_8","Would any of the following individuals or organisations provide your household support in case of need: Moneylenders","support_provider/moneylenders","select_one","4_1_3_2"
+"select_one 4_1_3_2","_4_1_3_2_9","Would any of the following individuals or organisations provide your household support in case of need: National government","support_provider/national_government","select_one","4_1_3_2"
+"select_one 4_1_3_2","_4_1_3_2_10","Would any of the following individuals or organisations provide your household support in case of need: NGOs","support_provider/ngo","select_one","4_1_3_2"
+"select_one 4_1_3_2","_4_1_3_2_11","Would any of the following individuals or organisations provide your household support in case of need: Other local associations (e.g. women support groups, youth groups)","support_provider/local_organization","select_one","4_1_3_2"
+"select_one 4_1_3_2","_4_1_3_2_12","Would any of the following individuals or organisations provide your household support in case of need: Shops/private input dealer","support_provider/shops","select_one","4_1_3_2"
+"select_one 4_1_3_2","_4_1_3_2_13","Would any of the following individuals or organisations provide your household support in case of need: Other (please specify)","support_provider/other","select_one","4_1_3_2"
+"select_multiple 2_4_1","_2_4_1","Please select all the sources of income for your household?","income_sources","select_multiple","2_4_1"
+"integer","_4_1_2_1_1","In the past 12 months, approximately how much income in [local currency] did the household make from: Crop production","income_amount_crop","integer",NA
+"integer","_4_1_2_1_2","In the past 12 months, approximately how much income in [local currency] did the household make from: Livestock production","income_amount_livestock","integer",NA
+"integer","_4_1_2_1_3","In the past 12 months, approximately how much income in [local currency] did the household make from: Fish production","income_amount_fish","integer",NA
+"integer","_4_1_2_1_4","In the past 12 months, approximately how much income in [local currency] did the household make from: Other family business","income_amount_family_business","integer",NA
+"integer","_4_1_2_1_5","In the past 12 months, approximately how much income in [local currency] did the household make from: Casual labour","income_amount_casual_labour","integer",NA
+"integer","_4_1_2_1_6","In the past 12 months, approximately how much income in [local currency] did the household make from: Formal labour office job","income_amount_formal_labour","integer",NA
+"integer","_4_1_2_1_7","In the past 12 months, approximately how much income in [local currency] did the household make from: Cash transfers","income_amount_transfers","integer",NA
+"integer","_4_1_2_1_8","In the past 12 months, approximately how much income in [local currency] did the household make from: Leasing agricultural or non-agricultural land","income_amount_leasing_land","integer",NA
+"integer","_4_1_2_1_9","In the past 12 months, approximately how much income in [local currency] did the household make from: Subsidy","income_amount_subsidy","integer",NA
+"integer","_4_1_2_1_10","In the past 12 months, approximately how much income in [local currency] did the household make from: other source of income","income_amount_other","integer",NA
+"select_one 2_6_1_1","_2_6_1_1","Does the household earn enough income from farming to support the family?","income_sufficiency","select_one","2_6_1_1"
+"select_one 2_6_1_2","_2_6_1_2","How would you rate the stability of the household income?","income_stability","select_one","2_6_1_2"
+"select_one 3_2_1_2","_3_2_1_2","In the last 12 months, did the household spend more money on the farm than it earns from the farm?","financial_deficit","select_one","3_2_1_2"
+"integer","_4_1_4_1","How many of the following assets do household members own?: Car","assets_car","integer",NA
+"integer","_4_1_4_2","How many of the following assets do household members own?: Motorbike","assets_motorbike","integer",NA
+"integer","_4_1_4_3","How many of the following assets do household members own?: Bicycle","assets_bicycle","integer",NA
+"integer","_4_1_4_4","How many of the following assets do household members own?: Gas cooker","assets_gas_cooker","integer",NA
+"integer","_4_1_4_5","How many of the following assets do household members own?: Electric cooker","assets_electric_cooker","integer",NA
+"integer","_4_1_4_6","How many of the following assets do household members own?: Mobile phone","assets_mobile_phone","integer",NA
+"integer","_4_1_4_7","How many of the following assets do household members own?: Smartphone (with internet access)","assets_smarthphone","integer",NA
+"integer","_4_1_4_8","How many of the following assets do household members own?: Ox-plough","assets_ox_plough","integer",NA
+"integer","_4_1_4_9","How many of the following assets do household members own?: Tractor","assets_tractor","integer",NA
+"integer","_4_1_4_10","How many of the following assets do household members own?: Plow","assets_plow","integer",NA
+"integer","_4_1_4_11","How many of the following assets do household members own?: Seed drill","assets_seed_drill","integer",NA
+"integer","_4_1_4_12","How many of the following assets do household members own?: Crop storage facility","assets_crop_storage","integer",NA
+"integer","_4_1_4_13_1","How many of the following assets do household members own?: other asset","assets_other","integer",NA
+"select_one 4_1_1_5","_4_1_1_5","In the past 5 years, has your household needed credit to support investment in your farming business, but was unable to obtain it?","credit","select_one","4_1_1_5"
+"select_multiple 4_1_1_6_1","_4_1_1_5_1","Please indicate the source of the credit you obtained for your farming business","credit_source","select_multiple","4_1_1_6_1"
+"select_multiple 4_1_1_6_2","_4_1_1_5_2","Credit for what types of investment","credit_purpose","select_multiple","4_1_1_6_2"
+"select_one 4_1_1_5_3","_4_1_1_5_3","Have your farm/household fully paid off the credit?","credit_payment_full","select_one","4_1_1_5_3"
+"select_one 4_1_1_5_4","_4_1_1_5_4","How do you feel about your farm/household's ability to meet credit repayments now and until the loans are fully repaid?","credit_payment_hability","select_one","4_1_1_5_4"
+"select_one 2_5_1","_2_5_1_1","Do you and your family have access to enough: Healthy food?","access_healthy_food","select_one","2_5_1"
+"select_one 2_5_1","_2_5_1_2","Do you and your family have access to enough: Diversified food?","access_diversified_food","select_one","2_5_1"
+"select_one 2_5_1","_2_5_1_3","Do you and your family have access to enough: Seasonal food?","access_seasonal_food","select_one","2_5_1"
+"select_one 2_5_1","_2_5_1_4","Do you and your family have access to enough: Traditional food?","access_traditional_food","select_one","2_5_1"
+"select_one 4_1_2_2","_4_1_2_2","In the past 7 days, what percentage of the household's income was used for buying food","income_spend_on_food_percentage","select_one","4_1_2_2"
+"select_multiple 3_2_1_3_1","_3_2_1_3_1","Please observe the farmer's main household and ask, what material is the roof of the house made of?","roof_material","select_multiple","3_2_1_3_1"
+"select_multiple 3_2_1_3_2","_3_2_1_3_2","Please observe the farmer's main household and ask, what material are the walls of the house made of?","walls_material","select_multiple","3_2_1_3_2"
+"select_one 4_1_5","_4_1_5_1_1","Does your household have the following services: Drinking water piped to the household","accessibility_drinking_water","select_one","4_1_5"
+"select_one 4_1_5","_4_1_5_1_2","Does your household have the following services: Toilet with piped sewer or septic tank","accessibility_piped_sewer","select_one","4_1_5"
+"select_one 4_1_5","_4_1_5_1_3","Does your household have the following services: Electrical energy","accessibility_electrical_energy","select_one","4_1_5"
+"select_one 4_1_5","_4_1_5_1_4","Does your household have the following services: Waste (rubbish) collection service","accessibility_waste_collection","select_one","4_1_5"
+"select_one 4_1_5","_4_1_5_1_5","Does your household have the following services: Mobile phone reception","accessibility_waste_phone_reception","select_one","4_1_5"
+"select_one 4_1_5","_4_1_5_1_6","Does your household have the following services: Internet","accessibility_internet","select_one","4_1_5"
+"select_one 1_2_1_17","_1_2_1_17","How far (one way) is the household from your CLOSEST FARMLAND?: Please select the unit you would like to use.","metric_distance_closest_farmland","select_one","1_2_1_17"
+"select_one 4_1_5_2","_1_2_1_17_1","How far (one way) is the household from your CLOSEST FARMLAND?: State the main mode of transport","mode_distance_closest_farmland","select_one","4_1_5_2"
+"integer","_1_2_1_17_2","How far (one way) is the household from your CLOSEST FARMLAND?","distance_closest_farmland","integer",NA
+"select_one 1_2_1_17","_4_1_5_2_1","How far (one way) is the household from the closest accessible and functioning FRESHWATER SOURCE?: Please select the unit you would like to use.","metric_distance_water_source","select_one","1_2_1_17"
+"select_one 4_1_5_2","_4_1_5_2_1_1","How far (one way) is the household from the closest accessible and functioning FRESHWATER SOURCE?: State the main mode of transport","mode_distance_water_source","select_one","4_1_5_2"
+"integer","_4_1_5_2_1_2","How far (one way) is the household from the closest accessible and functioning FRESHWATER SOURCE?","distance_water_source","integer",NA
+"select_one 1_2_1_17","_4_1_5_2_2","How far (one way) is the household from the closest accessible and functioning PRIMARY SCHOOL?: Please select the unit you would like to use.","metric_distance_primary_school","select_one","1_2_1_17"
+"select_one 4_1_5_2","_4_1_5_2_2_1","How far (one way) is the household from the closest accessible and functioning PRIMARY SCHOOL?: State the main mode of transport","mode_distance_primary_school","select_one","4_1_5_2"
+"integer","_4_1_5_2_2_2","How far (one way) is the household from the closest accessible and functioning PRIMARY SCHOOL?","distance_primary_school","integer",NA
+"select_one 1_2_1_17","_4_1_5_2_3","How far (one way) is the household from the closest accessible and functioning PUBLIC HOSPITAL OR HEALTH FACILITY?: Please select the unit you would like to use.","metric_distance_hospital","select_one","1_2_1_17"
+"select_one 4_1_5_2","_4_1_5_2_3_1","How far (one way) is the household from the closest accessible and functioning PUBLIC HOSPITAL OR HEALTH FACILITY?: State the main mode of transport","mode_distance_hospital","select_one","4_1_5_2"
+"integer","_4_1_5_2_3_2","How far (one way) is the household from the closest accessible and functioning PUBLIC HOSPITAL OR HEALTH FACILITY?","distance_hospital","integer",NA
+"select_one 1_2_1_17","_4_1_5_2_4","How far (one way) is the household from the closest accessible and functioning LIVESTOCK MARKET?: Please select the unit you would like to use.","metric_distance_livestock_market","select_one","1_2_1_17"
+"select_one 4_1_5_2","_4_1_5_2_4_1","How far (one way) is the household from the closest accessible and functioning LIVESTOCK MARKET?: State the main mode of transport","mode_distance_livestock_market","select_one","4_1_5_2"
+"integer","_4_1_5_2_4_2","How far (one way) is the household from the closest accessible and functioning LIVESTOCK MARKET?","distance_livestock_market","integer",NA
+"select_one 1_2_1_17","_4_1_5_2_5","How far (one way) is the household from the closest accessible and functioning AGRICULTURAL/CROPS MARKET?: Please select the unit you would like to use.","metric_distance_crop_market","select_one","1_2_1_17"
+"select_one 4_1_5_2","_4_1_5_2_5_1","How far (one way) is the household from the closest accessible and functioning AGRICULTURAL/CROPS MARKET?: State the main mode of transport","mode_distance_crop_market","select_one","4_1_5_2"
+"integer","_4_1_5_2_5_2","How far (one way) is the household from the closest accessible and functioning AGRICULTURAL/CROPS MARKET?","distance_crop_market","integer",NA
+"select_one 1_2_1_17","_4_1_5_2_6","How far (one way) is the household from the closest accessible and functioning PUBLIC TRANSPORT?: Please select the unit you would like to use.","metric_distance_publich_transport","select_one","1_2_1_17"
+"select_one 4_1_5_2","_4_1_5_2_6_1","How far (one way) is the household from the closest accessible and functioning PUBLIC TRANSPORT?: State the main mode of transport","mode_distance_publich_transport","select_one","4_1_5_2"
+"integer","_4_1_5_2_6_2","How far (one way) is the household from the closest accessible and functioning PUBLIC TRANSPORT?","distance_publich_transport","integer",NA
+"select_one 1_2_1_17","_4_1_5_2_7","How far (one way) is the household from the closest accessible and functioning WELL-MAINTAINED ROAD SUITABLE FOR CARS?: Please select the unit you would like to use.","metric_distance_main_road","select_one","1_2_1_17"
+"select_one 4_1_5_2","_4_1_5_2_7_1","How far (one way) is the household from the closest accessible and functioning WELL-MAINTAINED ROAD SUITABLE FOR CARS?: State the main mode of transport","mode_distance_main_road","select_one","4_1_5_2"
+"integer","_4_1_5_2_7_2","How far (one way) is the household from the closest accessible and functioning WELL-MAINTAINED ROAD SUITABLE FOR CARS?","distance_main_road","integer",NA
+"select_one 3_3_1_1","_3_3_1_1_0","How much land area is covered by natural and semi-natural vegetation on land owned, rented or used by the household: Any natural or semi-natural vegetation (bushland, fallow land, hedgerows, natural grassland, ponds, lakes, forest patches etc)","vegetation_cover_total","select_one","3_3_1_1"
+"select_one 3_3_1_1","_3_3_1_1_1","How much land area is covered by natural and semi-natural vegetation on land owned, rented or used by the household: Bushland patches","vegetation_cover_bushland","select_one","3_3_1_1"
+"select_one 3_3_1_1","_3_3_1_1_2","How much land area is covered by natural and semi-natural vegetation on land owned, rented or used by the household: Fallow land which is unproductive for at least 1 year","vegetation_cover_fallow","select_one","3_3_1_1"
+"select_one 3_3_1_1","_3_3_1_1_3","How much land area is covered by natural and semi-natural vegetation on land owned, rented or used by the household: Hedgerows/Live fences","vegetation_cover_hedgerows","select_one","3_3_1_1"
+"select_one 3_3_1_1","_3_3_1_1_4","How much land area is covered by natural and semi-natural vegetation on land owned, rented or used by the household: Natural grassland","vegetation_cover_grassland","select_one","3_3_1_1"
+"select_one 3_3_1_1","_3_3_1_1_5","How much land area is covered by natural and semi-natural vegetation on land owned, rented or used by the household: Ponds or lakes","vegetation_cover_pond","select_one","3_3_1_1"
+"select_one 3_3_1_1","_3_3_1_1_6","How much land area is covered by natural and semi-natural vegetation on land owned, rented or used by the household: Remnant forest patches","vegetation_cover_forest","select_one","3_3_1_1"
+"select_one 3_3_1_1","_3_3_1_1_7","How much land area is covered by natural and semi-natural vegetation on land owned, rented or used by the household: Wetlands","vegetation_cover_wetland","select_one","3_3_1_1"
+"select_one 3_3_1_1","_3_3_1_1_8","How much land area is covered by natural and semi-natural vegetation on land owned, rented or used by the household: Woodlots","vegetation_cover_woodlots","select_one","3_3_1_1"
+"select_one 3_3_1_1","_3_3_1_1_9","How much land area is covered by natural and semi-natural vegetation on land owned, rented or used by the household: Other (please specify)","vegetation_cover_other","select_one","3_3_1_1"
+"select_one 3_3_1_2","_3_3_1_2_1","How would you describe the plant diversity (i.e., number of plant species) in: Bushland patches","vegetation_diversity_bushland","select_one","3_3_1_2"
+"select_one 3_3_1_2","_3_3_1_2_2","How would you describe the plant diversity (i.e., number of plant species) in: Fallow land which is unproductive for at least 1 year","vegetation_diversity_fallow","select_one","3_3_1_2"
+"select_one 3_3_1_2","_3_3_1_2_3","How would you describe the plant diversity (i.e., number of plant species) in: Hedgerows/Live fences","vegetation_diversity_hedgerows","select_one","3_3_1_2"
+"select_one 3_3_1_2","_3_3_1_2_4","How would you describe the plant diversity (i.e., number of plant species) in: Natural grassland","vegetation_diversity_grassland","select_one","3_3_1_2"
+"select_one 3_3_1_2","_3_3_1_2_6","How would you describe the plant diversity (i.e., number of plant species) in: Remnant forest patches","vegetation_diversity_forest","select_one","3_3_1_2"
+"select_one 3_3_1_2","_3_3_1_2_7","How would you describe the plant diversity (i.e., number of plant species) in: Wetlands","vegetation_diversity_wetland","select_one","3_3_1_2"
+"select_one 3_3_1_2","_3_3_1_2_8","How would you describe the plant diversity (i.e., number of plant species) in: Woodlots","vegetation_diversity_woodlots","select_one","3_3_1_2"
+"select_one 3_3_1_3","_3_3_1_3","How would you describe the diversity of insect pollinators on your farm?","diversity_pollinators","select_one","3_3_1_3"
+"select_one 3_3_1_3","_3_3_1_3_1","How would you describe the diversity of crop and livestock pests on your farm?","diversity_pests","select_one","3_3_1_3"
+"select_one 3_3_1_3","_3_3_1_3_2","How would you describe the diversity of natural crop and livestock pest enemies on your farm?","diversity_pest_enemies","select_one","3_3_1_3"
+"select_one 3_3_1_4","_3_3_1_4","How would you describe the diversity of mammals on your farm?","diversity_mammals","select_one","3_3_1_4"
+"select_one 3_3_1_5","_3_3_1_5","How would you describe the amount of trees (or perennial woody plants) on your farm?","abundance_trees","select_one","3_3_1_5"
+"select_one 3_3_1_6","_3_3_1_6","How would you describe the diversity of trees (or perennial woody plants) on your farm?","diversity_trees","select_one","3_3_1_6"
+"select_multiple 1_4_2_1","_1_4_2_1","In the last 12 months [add country meaning], what did you produce on your farm?","farm_products","select_multiple","1_4_2_1"
+"select_one 1_4_2_2","_1_4_2_2_1","Select the share of harvested CROPS (including perennial crops) used for: Household consumption","use_percentage_crops_household_consumption","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_2_2","Select the share of harvested CROPS (including perennial crops) used for: Own livestock consumption","use_percentage_crops_own_livestock_consumption","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_2_3","Select the share of harvested CROPS (including perennial crops) used for: Sales","use_percentage_crops_sales","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_2_4","Select the share of harvested CROPS (including perennial crops) used for: Gifts","use_percentage_crops_gift","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_2_5","Select the share of harvested CROPS (including perennial crops) used for: Wasted/lost","use_percentage_crops_wasted","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_2_6","Select the share of harvested CROPS (including perennial crops) used for: Other use","use_percentage_crops_other","select_one","1_4_2_2"
+"select_one 2_6_1_4","_2_6_1_4_1","Do you get a fair price for your produced CROPS?","fair_price_crops","select_one","2_6_1_4"
+"select_one 1_4_2_2","_1_4_2_3_1","Select the share of produced LIVESTOCK used for: Household consumption","use_percentage_livestock_household_consumption","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_3_3","Select the share of produced LIVESTOCK used for: Household use","use_percentage_livestock_own_livestock_consumption","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_3_4","Select the share of produced LIVESTOCK used for: Sales","use_percentage_livestock_sales","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_3_5","Select the share of produced LIVESTOCK used for: Gifts","use_percentage_livestock_gift","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_3_6","Select the share of produced LIVESTOCK used for: Wasted/lost","use_percentage_livestock_wasted","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_3_7","Select the share of produced LIVESTOCK used for: Other use","use_percentage_livestock_other","select_one","1_4_2_2"
+"select_one 2_6_1_4","_2_6_1_4_2","Do you get a fair price for your produced LIVESTOCK?","fair_price_livestock","select_one","2_6_1_4"
+"select_one 1_4_2_2","_1_4_2_4_1","Select the share of produced FISH used for: Household consumption","use_percentage_fish_household_consumption","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_4_2","Select the share of produced FISH used for: Own livestock consumption","use_percentage_fish_own_fish_consumption","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_4_3","Select the share of produced FISH used for: Sales","use_percentage_fish_sales","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_4_4","Select the share of produced FISH used for: Gifts","use_percentage_fish_gift","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_4_5","Select the share of produced FISH used for: Wasted/lost","use_percentage_fish_wasted","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_4_6","Select the share of produced FISH used for: Other use","use_percentage_fish_other","select_one","1_4_2_2"
+"select_one 2_6_1_4","_2_6_1_4_3","Do you get a fair price for your produced FISH?","fair_price_fish","select_one","2_6_1_4"
+"select_one 1_4_2_2","_1_4_2_5_1","Select the share of produced WOOD/BARK/RUBBER/ETC (FROM TREES) used for: Household use for cooking","use_percentage_trees_h_cooking","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_5_2","Select the share of produced WOOD/BARK/RUBBER/ETC (FROM TREES) used for: Household use for building","use_percentage_trees_h_building","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_5_3","Select the share of produced WOOD/BARK/RUBBER/ETC (FROM TREES) used for: Household use for heating","use_percentage_trees_h_heating","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_5_4","Select the share of produced WOOD/BARK/RUBBER/ETC (FROM TREES) used for: Household other use","use_percentage_trees_h_other","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_5_5","Select the share of produced WOOD/BARK/RUBBER/ETC (FROM TREES) used for: Sales","use_percentage_trees_sales","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_5_6","Select the share of produced WOOD/BARK/RUBBER/ETC (FROM TREES) used for: Gifts","use_percentage_trees_gift","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_5_7","Select the share of produced WOOD/BARK/RUBBER/ETC (FROM TREES) used for: Wasted/lost","use_percentage_trees_wasted","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_5_8","Select the share of produced WOOD/BARK/RUBBER/ETC (FROM TREES) used for: Other use","use_percentage_trees_other","select_one","1_4_2_2"
+"select_one 2_6_1_4","_2_6_1_4_4","Do you get a fair price for your produced wood, bark, rubber, etc. (from TREES)?","fair_price_wood","select_one","2_6_1_4"
+"select_one 1_4_2_2","_1_4_2_6_1","Select the share of produced HONEY used for: Household consumption","use_percentage_honey_household_consumption","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_6_3","Select the share of produced HONEY used for: Sales","use_percentage_honey_sales","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_6_4","Select the share of produced HONEY used for: Gifts","use_percentage_honey_gift","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_6_5","Select the share of produced HONEY used for: Wasted/lost","use_percentage_honey_wasted","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_6_6","Select the share of produced HONEY used for: Other use","use_percentage_honey_other","select_one","1_4_2_2"
+"select_one 2_6_1_4","_2_6_1_4_5","Do you get a fair price for your produced HONEY?","fair_price_honey","select_one","2_6_1_4"
+"select_one 1_4_2_2","_1_4_2_7_1","Select the share of produced OTHER ON-FARM PRODUCT used for: Household consumption","use_percentage_other_household_consumption","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_7_2","Select the share of produced OTHER ON-FARM PRODUCT used for: Own livestock consumption","use_percentage_other_own_livestock_consumption","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_7_3","Select the share of produced OTHER ON-FARM PRODUCT used for: On-farm use","use_percentage_other_on_farm_use","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_7_4","Select the share of produced OTHER ON-FARM PRODUCT used for: Sales","use_percentage_other_sales","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_7_5","Select the share of produced OTHER ON-FARM PRODUCT used for: Gifts","use_percentage_other_gift","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_7_6","Select the share of produced OTHER ON-FARM PRODUCT used for: Wasted/lost","use_percentage_other_wasted","select_one","1_4_2_2"
+"select_one 1_4_2_2","_1_4_2_7_7","Select the share of produced OTHER ON-FARM PRODUCT used for: Other","use_percentage_other_other","select_one","1_4_2_2"
+"text","_2_7_1_6_1","Specify other places where you sell the OTHER on-farm products:","fair_price_other","text",NA
+"calculate","_3_4_1_1_7_1_calculate","Number of household members working PERMANENTLY (all year around) on your farm","n_nhlabour_permanent_adults_wa_male","calculate",NA
+"calculate","_3_4_1_1_7_2_calculate","Number of household members working  SEASONALY (only during peak period) on your farm","n_nhlabour_seasonal_adults_wa_male","calculate",NA
+"calculate","c1","Name of the crop species  (including perennial crops) that were produced on your farm in the last 12 months [add country meaning]","crop_name_1","calculate",NA
+"calculate","c2","Name of the crop species  (including perennial crops) that were produced on your farm in the last 12 months [add country meaning]","crop_name_2","calculate",NA
+"calculate","c3","Name of the crop species  (including perennial crops) that were produced on your farm in the last 12 months [add country meaning]","crop_name_3","calculate",NA
+"calculate","c4","Name of the crop species  (including perennial crops) that were produced on your farm in the last 12 months [add country meaning]","crop_name_4","calculate",NA
+"calculate","c5","Name of the crop species  (including perennial crops) that were produced on your farm in the last 12 months [add country meaning]","crop_name_5","calculate",NA
+"calculate","c6","Name of the crop species  (including perennial crops) that were produced on your farm in the last 12 months [add country meaning]","crop_name_6","calculate",NA
+"calculate","c7","Name of the crop species  (including perennial crops) that were produced on your farm in the last 12 months [add country meaning]","crop_name_7","calculate",NA
+"calculate","c8","Name of the crop species  (including perennial crops) that were produced on your farm in the last 12 months [add country meaning]","crop_name_8","calculate",NA
+"calculate","c9","Name of the crop species  (including perennial crops) that were produced on your farm in the last 12 months [add country meaning]","crop_name_9","calculate",NA
+"calculate","c10","Name of the crop species  (including perennial crops) that were produced on your farm in the last 12 months [add country meaning]","crop_name_10","calculate",NA
+"calculate","c11","Name of the crop species  (including perennial crops) that were produced on your farm in the last 12 months [add country meaning]","crop_name_11","calculate",NA
+"calculate","c12","Name of the crop species  (including perennial crops) that were produced on your farm in the last 12 months [add country meaning]","crop_name_12","calculate",NA
+"calculate","c13","Name of the crop species  (including perennial crops) that were produced on your farm in the last 12 months [add country meaning]","crop_name_13","calculate",NA
+"calculate","c14","Name of the crop species  (including perennial crops) that were produced on your farm in the last 12 months [add country meaning]","crop_name_14","calculate",NA
+"calculate","c15","Name of the crop species  (including perennial crops) that were produced on your farm in the last 12 months [add country meaning]","crop_name_15","calculate",NA
+"calculate","c16","Name of the crop species  (including perennial crops) that were produced on your farm in the last 12 months [add country meaning]","crop_name_16","calculate",NA
+"calculate","c17","Name of the crop species  (including perennial crops) that were produced on your farm in the last 12 months [add country meaning]","crop_name_17","calculate",NA
+"calculate","c18","Name of the crop species  (including perennial crops) that were produced on your farm in the last 12 months [add country meaning]","crop_name_18","calculate",NA
+"calculate","c19","Name of the crop species  (including perennial crops) that were produced on your farm in the last 12 months [add country meaning]","crop_name_19","calculate",NA
+"calculate","c20","Name of the crop species  (including perennial crops) that were produced on your farm in the last 12 months [add country meaning]","crop_name_20","calculate",NA
+"decimal","_3_4_2_1_1","What is the total area of land used for growing crops in ${_1_4_1_1_calculate}?","cropland_area","decimal",NA
+"calculate","_3_3_3_1_calculate_2","Practices used on your cropland in the past [localised description of 12 months]","cropland_practices","calculate",NA
+"decimal","_3_3_3_2_2","Provide the approximate area of land under this practice in hectares or acres:","ecol_practices_mulching_area","decimal",NA
+"integer","_3_4_2_1_8_2","What percentage of the total crop production was lost or damaged in the last 12 months [add country meaning]","crop_damage","integer",NA
+"select_one 2_8_1_1","_2_8_1_1","Where do you source most of your seeds?","seeds_source","select_one","2_8_1_1"
+"select_one 2_8_1_2","_2_8_1_2","Do the crops you grow come from certified quality seeds or locally adapted varieties (e.g. traditional cultivars, landraces)?","seeds_certified_local","select_one","2_8_1_2"
+"select_one 4_1_7_1","_4_1_7_1","How would you describe the slope of your farmland?","soil_slope_perception","select_one","4_1_7_1"
+"select_one 4_1_7_2","_4_1_7_2","How would you describe the level of soil erosion problem on your farmland?","soil_erosion_perception","select_one","4_1_7_2"
+"select_one 4_1_7_3","_4_1_7_3","How would you describe the fertility of your soil on your farmland?","soil_fertility_perception","select_one","4_1_7_3"
+"select_multiple 1_4_3_1","_1_4_3_1","Over the past 12 months [add country meaning], what did you do to improve the soil fertility of cropland?","soil_fertility_management","select_multiple","1_4_3_1"
+"select_multiple 2_9_1_1","_2_9_1_1","Which ecological practices do you use on cropland to improve soil quality and health?","soil_fertility_ecol_practices","select_multiple","2_9_1_1"
+"select_multiple 1_4_3_5","_1_4_3_5","Over the past 12 months [add country meaning], what did you do to manage pests on cropland?","pest_management","select_multiple","1_4_3_5"
+"select_multiple 3_3_1_7","_3_3_1_7","What ecological practices did you apply in the last 12 months [add country meaning] on the farm to manage crop pests?","pest_management_ecol_practices","select_multiple","3_3_1_7"
+"select_one 4_1_1_7","_4_1_1_7","Do you have access to subsidies for agricultural inputs?","subsidies_agricultural_inputs","select_one","4_1_1_7"
+"decimal","_3_4_2_2_1_1","What is the area of land used for livestock production in ${_1_4_1_1_calculate}: Land you own:","livestockland_area_owned","decimal",NA
+"decimal","_3_4_2_2_1_2","What is the area of land used for livestock production in ${_1_4_1_1_calculate}: Share grazing land:","livestockland_area_shared","decimal",NA
+"calculate","l1","Name of the different livestock species did you keep in the last 12 months [add country meaning]","livestock_name_1","calculate",NA
+"calculate","l2","Name of the different livestock species did you keep in the last 12 months [add country meaning]","livestock_name_2","calculate",NA
+"calculate","l3","Name of the different livestock species did you keep in the last 12 months [add country meaning]","livestock_name_3","calculate",NA
+"calculate","l4","Name of the different livestock species did you keep in the last 12 months [add country meaning]","livestock_name_4","calculate",NA
+"calculate","l5","Name of the different livestock species did you keep in the last 12 months [add country meaning]","livestock_name_5","calculate",NA
+"calculate","l6","Name of the different livestock species did you keep in the last 12 months [add country meaning]","livestock_name_6","calculate",NA
+"calculate","l7","Name of the different livestock species did you keep in the last 12 months [add country meaning]","livestock_name_7","calculate",NA
+"calculate","l8","Name of the different livestock species did you keep in the last 12 months [add country meaning]","livestock_name_8","calculate",NA
+"calculate","l9","Name of the different livestock species did you keep in the last 12 months [add country meaning]","livestock_name_9","calculate",NA
+"calculate","l10","Name of the different livestock species did you keep in the last 12 months [add country meaning]","livestock_name_10","calculate",NA
+"select_one 2_8_3_1","_2_8_3_1","Where do you source most of your livestock?","livestock_source","select_one","2_8_3_1"
+"select_one 3_4_4_1","_3_4_4_1","Are the livestock you keep exotic or local?","livestock_exotic_local","select_one","3_4_4_1"
+"select_one 3_4_4_2","_3_4_4_2","Are livestock fed with dry feed (e.g. grains, hay)","livestock_feed","select_one","3_4_4_2"
+"select_one 3_4_4_3","_3_4_4_3","Have the livestock received any vaccinations in the last 12 months","livestock_vaccinations","select_one","3_4_4_3"
+"select_one 3_4_4_4","_3_4_4_4","Have the livestock received preventative antibiotics in the last 12 months","livestock_antibiotics","select_one","3_4_4_4"
+"select_one 3_4_2_2_8","_3_4_2_2_8","What was the extent of injury, illness or death of livestock due to diseases in the last 12 months","livestock_injury","select_one","3_4_2_2_8"
+"select_multiple 1_4_3_8","_1_4_3_8","Over the past 12 months [add country meaning], how did you manage livestock diseases","livestock_diseases_management","select_multiple","1_4_3_8"
+"select_one 2_10_1_1","_2_10_1_1","Are the animals of your farm healthy and happy?","livestock_health","select_one","2_10_1_1"
+"select_multiple 2_10_1_2","_2_10_1_2","What do you do on the farm to keep animals healthy and happy?","livestock_health_practice","select_multiple","2_10_1_2"
+"select_multiple 3_3_3_3","_3_3_3_3","On the grazing land (owned, leased or shared), did you apply in the last 12 months any of the following practices?","livestock_practices","select_multiple","3_3_3_3"
+"decimal","_3_4_2_3_2","What is the total surface area in ${_1_4_1_1_calculate} of water bodies, wetlands, paddy fields or other aquaculture systems used for producing fish?","fishland_area","decimal",NA
+"calculate","f1","Name of the different fish species did you keep in the last 12 months [add country meaning]","fish_name_1","calculate",NA
+"calculate","f2","Name of the different fish species did you keep in the last 12 months [add country meaning]","fish_name_2","calculate",NA
+"calculate","f3","Name of the different fish species did you keep in the last 12 months [add country meaning]","fish_name_3","calculate",NA
+"calculate","f4","Name of the different fish species did you keep in the last 12 months [add country meaning]","fish_name_4","calculate",NA
+"calculate","f5","Name of the different fish species did you keep in the last 12 months [add country meaning]","fish_name_5","calculate",NA
+"calculate","f6","Name of the different fish species did you keep in the last 12 months [add country meaning]","fish_name_6","calculate",NA
+"calculate","f7","Name of the different fish species did you keep in the last 12 months [add country meaning]","fish_name_7","calculate",NA
+"calculate","f8","Name of the different fish species did you keep in the last 12 months [add country meaning]","fish_name_8","calculate",NA
+"calculate","f9","Name of the different fish species did you keep in the last 12 months [add country meaning]","fish_name_9","calculate",NA
+"calculate","f10","Name of the different fish species did you keep in the last 12 months [add country meaning]","fish_name_10","calculate",NA
+"select_one 2_8_5_1","_2_8_5_1","Where do you source most of your spawn, fry or fingerling species and varieties?","spawn_source","select_one","2_8_5_1"
+"select_multiple 2_8_5_2","_2_8_5_2","Where do you source your fish feed?","fish_feed_source","select_multiple","2_8_5_2"
+"select_multiple 2_8_5_3","_2_8_5_3","What types of fish feed did you primarily use in the last 12 months?","fish_feed_type","select_multiple","2_8_5_3"
+"select_one 3_4_2_3_3","_3_4_2_3_3","What was the extent of injury, illness or death of fish due to diseases in the last 12 months","fish_injury","select_one","3_4_2_3_3"
+"select_multiple 1_4_3_9","_1_4_3_9","Over the past 12 months [add country meaning], how did you manage fish diseases","fish_diseases_management","select_multiple","1_4_3_9"
+"select_multiple 3_3_3_4","_3_3_3_4","On the fish production land, did you apply in the last 12 months any of the following practices?","fish_practices","select_multiple","3_3_3_4"
+"select_multiple 2_12_1","_2_12_1","In addition to actions you mentioned previously, is there anything else you do on your farm to make sure their are positive relationships between animals, crops, trees, soil and water?","synergy_practices","select_multiple","2_12_1"
+"select_one 4_2_1_1","_4_2_1_1_1","Do you perceive that the temperature has changed over the last 30 years?","temperature_change_perception","select_one","4_2_1_1"
+"select_one 4_2_1_1","_4_2_1_1_2","Do you perceive that the amount of rainfall has changed over the last 30 years?","rainfall_amount_change_perception","select_one","4_2_1_1"
+"select_multiple 4_2_1_2","_4_2_1_2_1","Do you perceive that the timing of rainfall has changed over the last 30 years?","rainfall_timing_change_perception","select_multiple","4_2_1_2"
+"select_one 4_2_1_3","_4_2_1_3_1","In the last 12 months [add country meaning], have you experienced any flood conditions on your farmland?","flood_experience_perception","select_one","4_2_1_3"
+"select_one 4_2_1_3","_4_2_1_3_2","In the last 12 months [add country meaning], have you experienced any drought conditions on your farmland?","drought_experience_perception","select_one","4_2_1_3"
+"select_one 3_3_4_1","_3_3_4_1","Do you irrigate your cropland?","irrigation","select_one","3_3_4_1"
+"select_multiple 3_3_4_1_1","_3_3_4_1_1","What methods of irrigation do you use","irrigation_method","select_multiple","3_3_4_1_1"
+"select_multiple 3_3_4_1_2","_3_3_4_1_2","Where do you source your water for irrigation?","irrigation_source","select_multiple","3_3_4_1_2"
+"select_multiple 3_3_4_1_2","_3_3_4_4","Where do you source your water for drinking water for livestock?","water_source_livestock","select_multiple","3_3_4_1_2"
+"select_multiple 3_3_4_2","_3_3_4_2","Do you have any of the following rainwater harvesting systems in place?","rainwater_harvesting","select_multiple","3_3_4_2"
+"select_multiple 3_3_4_3","_3_3_4_3_1","During which months of the year do you find it difficult to access enough water for your agricultural needs (e.g. growing crops, drinking water for livestock): During a normal year","water_accessibility_difficulty_normal_year","select_multiple","3_3_4_3"
+"select_multiple 3_3_4_3","_3_3_4_3_2","During which months of the year do you find it difficult to access enough water for your agricultural needs (e.g. growing crops, drinking water for livestock): During a flood year","water_accessibility_difficulty_flood_year","select_multiple","3_3_4_3"
+"select_multiple 3_3_4_3","_3_3_4_3_3","During which months of the year do you find it difficult to access enough water for your agricultural needs (e.g. growing crops, drinking water for livestock): During a drought year","water_accessibility_difficulty_drought_year","select_multiple","3_3_4_3"
+"select_multiple 2_8_4_1","_2_8_4_1","What types of energy do you use for: Irrigation","energy_irrigation","select_multiple","2_8_4_1"
+"select_multiple 2_8_4_2","_2_8_4_2","What types of energy do you use for: Tillage, sowing or harvesting","energy_tillage_haverst","select_multiple","2_8_4_2"
+"select_multiple 2_8_4_3","_2_8_4_3","What types of energy do you use for: Cooking","energy_cooking","select_multiple","2_8_4_3"
+"select_multiple 2_8_4_4","_2_8_4_4","What types of energy do you use for: Cleaning, processing or transporting harvested food","energy_cleaning_transporting","select_multiple","2_8_4_4"
+"select_one 2_8_4_5","_2_8_4_5","Where do you source most of your energy?","energy_source","select_one","2_8_4_5"

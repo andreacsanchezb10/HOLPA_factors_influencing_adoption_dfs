@@ -3,6 +3,8 @@ library(dplyr)
 library(readr)  # for parse_number()
 
 per_data_clean<- read.csv("per_data.csv",sep=",")
+global_survey<-read.csv("global_survey.csv",sep=",")
+per_global_choices<-read.csv("per_global_choices.csv",sep=",")
 
 names(per_data_clean)
 #####################################
@@ -19,29 +21,6 @@ per_data_clean<- per_data_clean%>%
   mutate(across(starts_with("nonhired_labour_"), ~ replace_na(.x, 0)))%>%
   mutate(across(starts_with("hired_labour_"), ~ replace_na(.x, 0)))
 
-
-### Change name_choice code to numeric codes for: ----
-#gender; marital_status
-categorical_choices_new_cols <- intersect(colnames(per_data_clean), unique(per_global_choices$column_name_new[!is.na(per_global_choices$name_new)]))
-print(categorical_choices_new_cols)
-
-per_data_clean<-per_data_clean
-# Replace values dynamically for all common columns
-for (col in categorical_choices_new_cols) {
-  mapping <- per_global_choices %>%
-    filter(!is.na(name_new))%>%
-    
-    filter(column_name_new == col) %>%
-    select(name_choice, name_new) %>%
-    { setNames(.$name_new, .$name_choice) }  # Alternative to deframe()
-  
-  per_data_clean[[col]] <- recode(per_data_clean[[col]], !!!mapping)
-}
-
-sort(unique(per_data_clean$marital_status))
-sort(unique(per_data_clean$gender))
-str(per_data_clean$marital_status)
-str(per_data_clean$gender)
 
 #### categorical and binary data as factor 
 sort(unique(global_survey$type_question))
@@ -68,26 +47,26 @@ per_data_clean<-per_data_clean%>%
     #Household head age
     age = 2025-year_birth,
     #Total adults (18-65 years old) in household
-    n_adults_wa = n_adults_wa_male+n_adults_wa_female,
+    num_adults_wa = num_adults_wa_male+num_adults_wa_female,
     #Total adults (>65 years old) in household
-    n_adults_old= n_adults_old_male+n_adults_old_female,
+    num_adults_old= num_adults_old_male+num_adults_old_female,
     #Total children in household
-    n_children= n_children_male+n_children_female ,
+    num_children= num_children_male+num_children_female ,
     #Total adults in household (18->65 years old) 
-    n_adults_total= n_adults_wa+n_adults_old ,
+    num_adults_total= num_adults_wa+num_adults_old ,
     #Total number of people in household
-    n_people = n_adults_total+n_children,
+    num_people = num_adults_total+num_children,
     #Total number of permanent hired labour
-    n_hlabour_permanent_total= rowSums(across(starts_with("n_hlabour_permanent.")), na.rm = TRUE),
+    num_hlabour_permanent_total= rowSums(across(starts_with("num_hlabour_permanent.")), na.rm = TRUE),
     #Total number of seasonal hired labour
-    n_hlabour_seasonal_total= rowSums(across(starts_with("n_hlabour_seasonal.")), na.rm = TRUE),
+    num_hlabour_seasonal_total= rowSums(across(starts_with("num_hlabour_seasonal.")), na.rm = TRUE),
     #Total number of permanent household labour
-    n_nhlabour_permanent_total=rowSums(across(starts_with("n_nhlabour_permanent.")), na.rm = TRUE),
+    num_nhlabour_permanent_total=rowSums(across(starts_with("num_nhlabour_permanent.")), na.rm = TRUE),
     #Total number of seasonal household labour
-    n_nhlabour_seasonal_total=rowSums(across(starts_with("n_nhlabour_seasonal.")), na.rm = TRUE),
+    num_nhlabour_seasonal_total=rowSums(across(starts_with("num_nhlabour_seasonal.")), na.rm = TRUE),
     #Number of secondary occupations
     across(starts_with("occupation_secondary_list"), ~ as.numeric(as.character(.))),  
-    n_occupation_secondary_list = rowSums(as.matrix(select(., starts_with("occupation_secondary_list"))), na.rm = TRUE),
+    num_occupation_secondary_list = rowSums(as.matrix(select(., starts_with("occupation_secondary_list"))), na.rm = TRUE),
     #Farmer as a primary occupation
     "occupation_primary_farmer" = ifelse(occupation_primary=="1", "1","0"))
 
@@ -110,23 +89,23 @@ per_data_clean <- per_data_clean %>%
   mutate(
     #Number of ecological practices use on cropland to improve soil quality and health
     across(starts_with("soil_fertility_ecol_practices."), ~ as.numeric(as.character(.))),
-    n_soil_fertility_ecol_practices = rowSums(across(starts_with("soil_fertility_ecol_practices.")), na.rm = TRUE),
+    num_soil_fertility_ecol_practices = rowSums(across(starts_with("soil_fertility_ecol_practices.")), na.rm = TRUE),
     #Number of farm products type in the last 12 months
     across(starts_with("farm_products."), ~ as.numeric(as.character(.))),
-    n_farm_products = rowSums(across(starts_with("farm_products.")), na.rm = TRUE),
+    num_farm_products = rowSums(across(starts_with("farm_products.")), na.rm = TRUE),
     #Number of practices implemented to keep animals on the farm healthy and happy?
     across(starts_with("livestock_health_practice."), ~ as.numeric(as.character(.))),
-    n_livestock_health_practice = rowSums(across(starts_with("livestock_health_practice.")), na.rm = TRUE),
+    num_livestock_health_practice = rowSums(across(starts_with("livestock_health_practice.")), na.rm = TRUE),
     #Number of management practices used to manage livestock diseases in the last 12 months
     across(starts_with("livestock_diseases_management."), ~ as.numeric(as.character(.))),
-    n_livestock_diseases_management= rowSums(across(starts_with("livestock_diseases_management.")), na.rm = TRUE),
+    num_livestock_diseases_management= rowSums(across(starts_with("livestock_diseases_management.")), na.rm = TRUE),
     #Number of ORGANIC management practices used to manage livestock diseases in the last 12 months
-    n_livestock_diseases_management_organic = rowSums(select(., c("livestock_diseases_management.3",
+    num_livestock_diseases_management_organic = rowSums(select(., c("livestock_diseases_management.3",
                                                                   "livestock_diseases_management.4",
                                                                   "livestock_diseases_management.5",
                                                                   "livestock_diseases_management.6")),na.rm = TRUE),
     #Number of CHEMICAL management practices used to manage livestock diseases in the last 12 months
-    n_livestock_diseases_management_organic = rowSums(select(., c("livestock_diseases_management.1",
+    num_livestock_diseases_management_organic = rowSums(select(., c("livestock_diseases_management.1",
                                                                   "livestock_diseases_management.2")),na.rm = TRUE))
 
 ### NATURAL CAPITAL ----
@@ -197,7 +176,8 @@ per_data_clean <- per_data_clean %>%
     
     
     
-    
+write.csv(per_data_clean,"per_data_clean.csv",row.names=FALSE)
+
     
     
     
