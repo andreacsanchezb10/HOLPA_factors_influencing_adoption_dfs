@@ -108,7 +108,7 @@ print(columns_factor)  # Check if it holds expected values
 per_summary_categorical <- summary_stats_factor(per_data_clean,columns_factor,per_categorical_choices,factors_list)
 per_summary_categorical
 print(per_summary_categorical)  # Check if it holds expected values
-
+sort(unique(per_summary_categorical$factor))
 write.csv(per_summary_categorical,"per_summary_categorical.csv",row.names=FALSE)
 
 #############################################################    
@@ -122,6 +122,7 @@ library(patchwork) # For combining multiple plots
 # df <- read.csv("your_data.csv")
 
 # Select only numeric columns
+factors_list$column_name_new[factors_list$metric_type == "continuous"]
 columns_numeric <- intersect(factors_list$column_name_new[factors_list$metric_type == "continuous"], colnames(per_data_clean))
 
 columns_numeric 
