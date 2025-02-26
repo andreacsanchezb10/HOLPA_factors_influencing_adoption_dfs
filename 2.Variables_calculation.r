@@ -71,7 +71,45 @@ per_data_clean<-per_data_clean%>%
     "occupation_primary_farmer" = ifelse(occupation_primary=="1", "1","0"))
 
 x<-per_data_clean %>%
-  select(starts_with("human_wellbeing_"),starts_with("agroecol_perspective_"))
+  select(starts_with("energy_irrigation."))
+         starts_with("energy_tillage_haverst."))
+
+### PHYSICAL CAPITAL ----
+# Function to classify energy type dynamically
+classify_energy_type <- function(df, prefix, renewable_keywords, nonrenewable_keywords, new_col_name) {
+  renewable_sources <- grep(paste0("^", prefix, ".*(", paste(renewable_keywords, collapse = "|"), ")$"), colnames(df), value = TRUE)
+  nonrenewable_sources <- grep(paste0("^", prefix, ".*(", paste(nonrenewable_keywords, collapse = "|"), ")$"), colnames(df), value = TRUE)
+  
+  df %>%
+    rowwise() %>%
+    mutate(
+      renewable_used = sum(c_across(any_of(renewable_sources)), na.rm = TRUE) > 0,
+      nonrenewable_used = sum(c_across(any_of(nonrenewable_sources)), na.rm = TRUE) > 0,
+      !!new_col_name := case_when(
+        renewable_used & !nonrenewable_used ~ 5,
+        renewable_used & nonrenewable_used ~ 3,
+        !renewable_used & nonrenewable_used ~ 1,
+        TRUE ~ NA_real_
+      )
+    ) %>%
+    ungroup() %>%
+    select(-renewable_used, -nonrenewable_used)  # Remove temp columns
+}
+
+# Define keywords to classify renewable and non-renewable energy sources
+renewable_keywords <- c("Wind_turbine", "Solar_panel", "Burning_plant_materials", "Cow_dung_cakes","Animal_traction","Human_power.by_hand_only","Biogas")
+nonrenewable_keywords <- c("Electricity", "Gas", "Coal", "Petrol_or_diesel","LPG","Oil")
+
+# Apply function to irrigation and tillage automatically
+per_data_clean <- classify_energy_type(per_data_clean, "energy_irrigation", renewable_keywords, nonrenewable_keywords, "energy_irrigation_type")
+per_data_clean <- classify_energy_type(per_data_clean, "energy_tillage_haverst", renewable_keywords, nonrenewable_keywords, "energy_tillage_haverst_type")
+per_data_clean <- classify_energy_type(per_data_clean, "energy_cooking", renewable_keywords, nonrenewable_keywords, "energy_cooking_type")
+per_data_clean <- classify_energy_type(per_data_clean, "energy_cleaning_transporting", renewable_keywords, nonrenewable_keywords, "energy_cleaning_transporting_type")
+per_data_clean<-per_data_clean%>%
+  mutate(energy_type = rowMedians(as.matrix(select(., c(energy_irrigation_type,
+                                                        energy_tillage_haverst_type,
+                                                        energy_cooking_type,
+                                                        energy_cleaning_transporting_type))), na.rm = TRUE))%>%
 
 
 ### FARMER BEHAVIOUR ----

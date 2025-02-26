@@ -1,5 +1,6 @@
 library(dplyr)
 library(tidyr)
+library(stringr)
 
 
 per_data_clean<- read.csv("per_data_clean.csv",sep=",")
@@ -109,5 +110,34 @@ per_summary_categorical
 print(per_summary_categorical)  # Check if it holds expected values
 
 write.csv(per_summary_categorical,"per_summary_categorical.csv",row.names=FALSE)
+
+#############################################################    
+########## GRAPHS #####-----
+#############################################################
+
+library(ggplot2)
+library(patchwork) # For combining multiple plots
+
+# Example: Load your data
+# df <- read.csv("your_data.csv")
+
+# Select only numeric columns
+columns_numeric <- intersect(factors_list$column_name_new[factors_list$metric_type == "continuous"], colnames(per_data_clean))
+
+columns_numeric 
+
+# Create histogram plots for each numeric column
+plot_list <- lapply(columns_numeric, function(col) {
+  ggplot(per_data_clean, aes(x = .data[[col]])) +
+    geom_histogram(bins = 30, fill = "steelblue", color = "black", alpha = 0.7) +
+    labs(title = col) +
+    theme_minimal()
+})
+
+# Arrange all histograms in a grid
+histogram_plot <- wrap_plots(plot_list) + plot_annotation(title = "Histograms of Numeric Variables")
+
+# Display
+print(histogram_plot)
 
 
