@@ -78,7 +78,7 @@ summary_stats_factor <- function(df,factor_valid_columns,categorical_choices,fac
 }
     
 #############################################################    
-########## SUMMARY STATISTICS #####-----
+########## DATA VISUALIZATION #####-----
 #############################################################
 
 ###### --- NUMERICAL VARIABLES -----
@@ -152,7 +152,6 @@ write.csv(per_summary_categorical,"per_summary_categorical.csv",row.names=FALSE)
 
 
 ### Boxplot Matrix
-
 # Define the number of variables per plot
 num_per_plot <- 36  # Adjust as needed
 
