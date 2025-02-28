@@ -19,6 +19,7 @@ print(columns_categorical_nominal)  # Check if it holds expected values
 
 per_data_clean<- per_data_clean%>%
   mutate(across(all_of(columns_categorical_nominal), as.factor))
+sort(unique(per_data_clean$dfs_adoption_binary))
 
 #### Convert continuous variables to numeric
 columns_continuous <- intersect(per_summary_numerical$column_name_new, colnames(per_data_clean))
@@ -29,19 +30,21 @@ per_data_clean<- per_data_clean%>%
 
 ############# SELECT VARIABLE FOR ANALYSIS -----
 #### Select the factors that were listed as important for adoption
-per_variables_list<-c(unique(per_summary_categorical$column_name_new2),unique(per_summary_numerical$column_name_new))
+per_variables_list<-c(unique(per_summary_categorical$column_name_new2))#,unique(per_summary_numerical$column_name_new))
 per_variables_list
 
 per_data_analysis<- per_data_clean%>%
-  select(all_of(per_variables_list))
+  dplyr::select(all_of(per_variables_list))
 
 str(per_data_analysis)
 #### Remove columns with NA values TO CHECK: HOW I'M GOING TO DEAL WITH MISSING VALUES
-per_data_analysis <- na.omit(per_data_analysis)
 
 #check the columns with NA
 na_columns <- colnames(per_data_analysis)[colSums(is.na(per_data_analysis)) > 0]
 print(na_columns)
+
+per_data_analysis <- per_data_analysis%>%
+  dplyr::select(!all_of(na_columns))
 
 
 ## CHECK remove the outcomes different than dfs_adoption_binary, 
@@ -85,8 +88,15 @@ excluded_for_continuous<- c ( "dfs_agroforestry_area" ,"dfs_agroforestry_area" ,
 
 
 per_data_analysis.binary<- per_data_analysis%>%
-  select(!all_of(excluded_for_binary))%>%
-  select(-temperature_change_perception,-rainfall_timing_change_perception.nochange )
+  dplyr::select(!all_of(excluded_for_binary))%>%
+  dplyr::select(where(~ !(is.factor(.) && nlevels(.) < 2)))%>%
+  dplyr::select(-energy_type,-fair_price_livestock,-human_wellbeing_5 )
+
+write.csv(per_data_analysis.binary,"per_data_analysis.binary.csv",row.names=FALSE)
+
+
+
+  -temperature_change_perception,-rainfall_timing_change_perception.nochange )
 
 summary(per_data_analysis.binary)
 names(per_data_analysis)
@@ -94,6 +104,107 @@ names(per_data_analysis)
 str(per_data_analysis)
 
 sort(unique(per_data_analysis.binary$temperature_change_perception ))
+
+#################
+
+str(per_data_analysis.binary$dfs_adoption_binary)
+library("MXM")
+library(survival)
+
+
+set.seed(12345678)
+
+
+## Identifying the best combination of SES hyperparameters
+
+per.cs.ses<- cv.ses(per_data_analysis.binary$dfs_adoption_binary,  # Reference as column in the data
+       dataset = per_data_analysis.binary[, -which(names(per_data_analysis.binary) == "dfs_adoption_binary")], 
+       wei = NULL, kfolds = 4,  
+       alphas = c(0.1, 0.05, 0.01), max_ks = c(5,4,3,2), task = "C", 
+       metric = NULL, modeler = NULL, ses_test = NULL, ncores = 1)
+
+per.cs.ses
+per.cs.ses$best_performance
+per.cs.ses$best_configuration
+
+
+
+### testIndLogistic 
+# - Outcome: Binary 
+# - Predictors: Mixed; 
+# - Regression: Logistic regression; 
+# - Robust option: No
+str(per_data_analysis.binary$dfs_adoption_binary)
+
+ses.testIndLogistic <- SES(
+  target = per_data_analysis.binary$dfs_adoption_binary,  # Reference as column in the data
+  dataset = per_data_analysis.binary[, -which(names(per_data_analysis.binary) == "dfs_adoption_binary")], 
+  max_k = 3, 
+  threshold = 0.05, 
+  test = "testIndLogistic"
+)
+ses.testIndLogistic
+
+
+plot(ses.testIndLogistic, mode = "all")
+
+hashObj <- ses.testIndLogistic@hashObject
+hashObj
+ses.testIndLogistic2 <- SES(
+  target = per_data_analysis.binary$dfs_adoption_binary,  # Reference as column in the data
+  dataset = per_data_analysis.binary[, -which(names(per_data_analysis.binary) == "dfs_adoption_binary")], 
+  max_k = 3, 
+  threshold = 0.05, 
+  test = "testIndLogistic",
+  hash = TRUE
+  #hashObject = hashObj
+)
+ses.testIndLogistic2
+summary(ses.testIndLogistic$selectedVars)
+
+
+
+
+### testIndSpeedglm ,
+# - Outcome: Continuous binary or counts
+# - Predictors:Mixed Linear, logistic and
+# - Regression: Poisson regression
+# - Robust option: No
+
+ses.testIndSpeedglm <- SES(
+  target = per_data_analysis.binary$dfs_adoption_binary,  # Reference as column in the data
+  dataset = per_data_analysis.binary[, -which(names(per_data_analysis.binary) == "dfs_adoption_binary")], 
+  max_k = 3, 
+  threshold = 0.05, 
+  #test = "testIndSpeedglm"
+)
+ses.testIndSpeedglm
+
+
+
+MXM::gomp(target = per_data_analysis.binary$dfs_adoption_binary,
+              dataset = per_data_analysis.binary[, -which(names(per_data_analysis.binary) == "dfs_adoption_binary")],
+              test = "testIndLogistic")
+
+MXM::MMPC(target = per_data_analysis.binary$dfs_adoption_binary,
+          dataset = per_data_analysis.binary[, -which(names(per_data_analysis.binary) == "dfs_adoption_binary")],
+          test = "testIndLogistic")
+
+
+
+sesObject2 <- SES(dfs_adoption_binary, per_data_analysis.binary,
+                  max_k = 2, threshold = 0.01, test = "testIndFisher")
+
+
+
+# get the run time
+sesObject@runtime;
+sesObject2@runtime;
+
+# MMPC algorithm 
+mmpcObject <- MMPC(target, dataset, max_k = 3, threshold = 0.05, test="testIndFisher");
+mmpcObject@selectedVars
+mmpcObject@runtime
 
 
 
@@ -188,10 +299,10 @@ get_selected_features <- function(bn_model, target = "dfs_adoption_binary") {
 
 # ----- ALGORITHMS AND PARAMETERS GRID -----
 alphas <- c(0.05, 0.01)
-tests <- c("mi","mi-adf","mi-sh")
-algorithms <- c("pc.stable", "gs", "iamb", "fast.iamb", "inter.iamb", "iamb.fdr", "hc")
+tests <- c("mi")
+algorithms <- c("pc.stable", "gs", "iamb", "fast.iamb", "inter.iamb", "iamb.fdr", "mmhc")
 n_rep <- 10   # number of CV repetitions
-k <- 10       # 10-fold CV
+k <- 10      # 10-fold CV
 
 # Initialize a list to store selected features for each algorithm-parameter combination.
 # We will store one feature set per fold across all repetitions.
@@ -204,6 +315,7 @@ for (alg in algorithms) {
     }
   }
 }
+
 
 # ----- REPEATED 10-FOLD CROSS-VALIDATION -----
 rep_index <- 1  # to index each fold across repetitions
@@ -238,8 +350,8 @@ for (r in 1:n_rep) {
             bn_model <- inter.iamb(train_fold, test = test, alpha = alpha)
           } else if (alg == "iamb.fdr") {
             bn_model <- iamb.fdr(train_fold, test = test, alpha = alpha)
-          } else if (alg == "hc") {
-            bn_model <- hc(train_fold)
+          } else if (alg == "mmhc") {
+            bn_model <- mmhc(train_fold)
           }
           
           # Extract the selected features for the target variable.
@@ -255,6 +367,42 @@ for (r in 1:n_rep) {
   }
   cat("\n")
 }
+
+
+# Convert selected_features into a dataframe with separate repetition and fold
+results_df <- do.call(rbind, lapply(names(selected_features), function(key) {
+  # Extract subset, algorithm, alpha, and test correctly
+  key_parts <- unlist(strsplit(key, "_alpha_|_test_"))  # Split by "alpha_" and "test_"
+  
+  subset_algo <- key_parts[1]  # Contains subset + algorithm (need to split further)
+  subset_algo_parts <- unlist(strsplit(subset_algo, "_"))
+  
+  subset_name <- paste(subset_algo_parts[1:(length(subset_algo_parts)-1)], collapse = "_")  # Everything except last
+  algorithm <- subset_algo_parts[length(subset_algo_parts)]  # Last part is algorithm
+  
+  alpha_value <- as.numeric(key_parts[2])  # Extract alpha
+  test_type <- key_parts[3]  # Extract test
+  
+  # Iterate over repetitions and folds
+  do.call(rbind, lapply(seq_along(selected_features[[key]]), function(rep_fold_index) {
+    rep_number <- ceiling(rep_fold_index / k)  # Calculate repetition index
+    fold_number <- (rep_fold_index - 1) %% k + 1  # Calculate fold index within the repetition
+    
+    data.frame(
+      #Subset = subset_name,
+      Algorithm = algorithm,
+      Alpha = alpha_value,
+      Test = test_type,
+      Repetition = rep_number,  # Now explicitly separating repetition
+      Fold = fold_number,  # Now explicitly separating fold
+      Selected_Factors = paste(selected_features[[key]][[rep_fold_index]], collapse = ", "),
+      stringsAsFactors = FALSE
+    )
+  }))
+}))
+
+# Display results as dataframe
+print(results_df)
 
 # ----- STABILITY ASSESSMENT: Compute Pairwise Jaccard Similarity -----
 jaccard <- function(set1, set2) {
@@ -289,7 +437,7 @@ for (key in names(stability_scores)) {
 # ----- IDENTIFY STABLE FEATURES -----
 # Define a threshold for stability (e.g., features appearing in at least 80% of folds).
 stable_features <- list()
-threshold <- 0.1
+threshold <- 0.2
 for (alg in algorithms) {
   for (alpha in alphas) {
     for (test in tests) {
@@ -479,6 +627,10 @@ for (alg in algorithms) {
 
 ###############################################################
 ######### FEATURE SELECTION FOR MIXED DATA ############----
+
+library(MXM)
+
+
 
 #https://www.datacamp.com/tutorial/feature-selection-R-boruta
 library("Boruta")

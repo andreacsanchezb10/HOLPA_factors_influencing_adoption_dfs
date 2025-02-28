@@ -220,13 +220,13 @@ sheet_names
 
 
 [11]  "per_3_4_1_2_7_2_1_begin_repeat"
-[16] "per_3_4_1_2_1_2_1_begin_repeat" "per_2_4_1_begin_group"          "per_3_2_1_3_1_begin_group"     
+[16] "per_3_4_1_2_1_2_1_begin_repeat" ""          ""     
 [21]       "per_3_4_3_1_2_begin_repeat"    
 
 
 [26] "per_3_4_2_2_2_begin_repeat"     "per_3_4_2_2_6_begin_repeat"     "per_3_4_2_3_2_begin_repeat"     "per_3_4_2_3_2_4_begin_repeat"          
 [31]                     "per_3_3_4_1_3_begin_repeat"             
-[36]               "per_2_3_1_begin_group"          "per_3_4_3_1_1_Corregido"        "per_3_4_3_4_2_begin_repeat"    
+[36]                        "per_3_4_3_1_1_Corregido"        "per_3_4_3_4_2_begin_repeat"    
 [41] "per_3_4_3_3_1_1_Corregido"  
 
 
@@ -256,7 +256,15 @@ per_data<- per_maintable%>%
   left_join(per_3_3_4_begin_group, by=c("kobo_farmer_id","country"))%>%
   left_join(per_2_8_4_begin_group, by=c("kobo_farmer_id","country"))%>%
   left_join(per_3_3_1_begin_group, by=c("kobo_farmer_id","country"))%>%
-  left_join(per_2_12_1_begin_group, by=c("kobo_farmer_id","country"))
+  left_join(per_2_12_1_begin_group, by=c("kobo_farmer_id","country"))%>%
+  left_join(per_2_3_1_begin_group, by=c("kobo_farmer_id","country"))%>%
+  left_join(per_3_2_1_3_1_begin_group, by=c("kobo_farmer_id","country"))%>%
+  left_join(per_2_4_1_begin_group, by=c("kobo_farmer_id","country"))
+
+
+  
+
+
 
 names(per_data)
 

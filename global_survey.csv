@@ -66,7 +66,7 @@
 "select_one 2_2_1_2","_2_2_1_2","How often does your household influence the decision-making that goes into the management of your community's land and natural resources?","influence_nr_frequency","select_one","2_2_1_2"
 "select_one 2_2_1_3","_2_2_1_3","In your opinion, are your community's land and natural resources well-managed?","nr_management_opinion","select_one","2_2_1_3"
 "select_multiple 2_3_1_1","_2_3_1_1","Select all the associations/organizations of which you or other HH members are part of","membership","select_multiple","2_3_1_1"
-"select_one 2_3_1_4","_2_3_1_4","In your opinion, how effective are farmer associations/organizations at supporting farmers in business?","trust_famers_associations","select_one","2_3_1_4"
+"select_one 2_3_1_4","_2_3_1_4","In your opinion, how effective are farmer associations/organizations at supporting farmers in business?","perception_associations_effectiveness","select_one","2_3_1_4"
 "decimal","_1_4_1_1_1","What is the total area in hectares (or acres) of land (agricultural or not) that your household: Currently OWNS:","land_tenure_own_area","decimal",NA
 "decimal","_1_4_1_1_2","What is the total area in hectares (or acres) of land (agricultural or not) that your household: Currently LEASES from another person:","land_tenure_lease_area","decimal",NA
 "decimal","_1_4_1_1_3","What is the total area in hectares (or acres) of land (agricultural or not) that your household: Currently HOLDS USE RIGHTS, either alone or jointly with someone else:","land_tenure_hold_area","decimal",NA
@@ -74,7 +74,7 @@
 "select_multiple 4_1_2_1","_4_1_3_1","In the last 12 months, what were the most severe shocks faced by the household","household_shock","select_multiple","4_1_2_1"
 "select_multiple 4_1_2_1_2","_4_1_3_1_2","What did the household members do to cope with the shocks","household_shock_recover_activities","select_multiple","4_1_2_1_2"
 "select_one 2_6_1_3","_2_6_1_3","How would you rate the capacity of the household's income and agricultural production to recover from shocks/perturbations?","household_shock_recover_capacity","select_one","2_6_1_3"
-"select_one 4_1_1_6","_4_1_1_6","Do you have insurance against agricultural losses?","insurance_agric_losses","select_one","4_1_1_6"
+"select_one 4_1_1_6","_4_1_1_6","Do you have insurance against agricultural losses?","insurance_agric_losses_level","select_one","4_1_1_6"
 "select_one 4_1_3_2","_4_1_3_2_1","Would any of the following individuals or organisations provide your household support in case of need: Banks","support_provider/bank","select_one","4_1_3_2"
 "select_one 4_1_3_2","_4_1_3_2_2","Would any of the following individuals or organisations provide your household support in case of need: Community leaders","support_provider/community_leaders","select_one","4_1_3_2"
 "select_one 4_1_3_2","_4_1_3_2_3","Would any of the following individuals or organisations provide your household support in case of need: Individuals from a different community (family/ friends/ farmers)","support_provider/ind_different_community","select_one","4_1_3_2"
@@ -131,7 +131,7 @@
 "select_one 4_1_5","_4_1_5_1_2","Does your household have the following services: Toilet with piped sewer or septic tank","accessibility_piped_sewer","select_one","4_1_5"
 "select_one 4_1_5","_4_1_5_1_3","Does your household have the following services: Electrical energy","accessibility_electrical_energy","select_one","4_1_5"
 "select_one 4_1_5","_4_1_5_1_4","Does your household have the following services: Waste (rubbish) collection service","accessibility_waste_collection","select_one","4_1_5"
-"select_one 4_1_5","_4_1_5_1_5","Does your household have the following services: Mobile phone reception","accessibility_waste_phone_reception","select_one","4_1_5"
+"select_one 4_1_5","_4_1_5_1_5","Does your household have the following services: Mobile phone reception","accessibility_phone_reception","select_one","4_1_5"
 "select_one 4_1_5","_4_1_5_1_6","Does your household have the following services: Internet","accessibility_internet","select_one","4_1_5"
 "select_one 1_2_1_17","_1_2_1_17","How far (one way) is the household from your CLOSEST FARMLAND?: Please select the unit you would like to use.","metric_distance_closest_farmland","select_one","1_2_1_17"
 "select_one 4_1_5_2","_1_2_1_17_1","How far (one way) is the household from your CLOSEST FARMLAND?: State the main mode of transport","mode_distance_closest_farmland","select_one","4_1_5_2"

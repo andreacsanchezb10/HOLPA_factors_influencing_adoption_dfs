@@ -1,7 +1,13 @@
 library(dplyr)
 library(tidyr)
 library(stringr)
-
+library(ggplot2)
+library(patchwork) # For combining multiple plots
+library(caret)
+library(AppliedPredictiveModeling)
+library(readxl)
+library(ggplot2)
+library(reshape2)
 
 per_data_clean<- read.csv("per_data_clean.csv",sep=",")
 global_survey<-read.csv("global_survey.csv",sep=",")
@@ -75,7 +81,8 @@ summary_stats_factor <- function(df,factor_valid_columns,categorical_choices,fac
 ########## SUMMARY STATISTICS #####-----
 #############################################################
 
-### For numeric variables
+###### --- NUMERICAL VARIABLES -----
+### Summary statistics
 columns_numeric <- intersect(factors_list$column_name_new[factors_list$metric_type == "continuous"], colnames(per_data_clean))
 print(columns_numeric)  # Check if it holds expected values
 per_summary_numerical <- summary_stats_num(per_data_clean,columns_numeric)
@@ -84,7 +91,37 @@ per_summary_numerical
 write.csv(per_summary_numerical,"per_summary_numerical.csv",row.names=FALSE)
 
 
-### For factor and binary variables
+### Histogram plots for each numerical variable
+plot_list <- lapply(columns_numeric, function(col) {
+  ggplot(per_data_clean, aes(x = .data[[col]])) +
+    geom_histogram(bins = 30, fill = "steelblue", color = "black", alpha = 0.7) +
+    labs(title = col) +
+    theme_minimal()
+})
+
+histogram_plot <- wrap_plots(plot_list) + plot_annotation(title = "Histograms of Numeric Variables")
+print(histogram_plot)
+
+### Scatterplot Matrix
+long_data <- melt(per_data_clean, id.vars = "dfs_adoption_binary", measure.vars = columns_numeric)
+
+ggplot(long_data, aes(x = dfs_adoption_binary, y =  value, color = dfs_adoption_binary)) +
+  geom_point(alpha = 0.5) +
+  facet_wrap(~variable, scales = "free") +
+  theme_minimal()
+
+### Boxplot Matrix
+featurePlot(x = per_data_clean[,columns_numeric], 
+            y = as.factor(per_data_clean$dfs_adoption_binary), 
+            plot = "box", 
+            ## Pass in options to bwplot() 
+            scales = list(y = list(relation="free"),
+                          x = list(rot = 90)),  
+            layout = c(6,6 ))
+
+
+###### --- CATEGORICAL AND BINARY VARIABLES -----
+### Summary statistics
 per_categorical_choices<-per_global_choices%>%
   mutate(name_new=as.character(name_new),
          name_choice= if_else(is.na(name_new),name_choice,name_new))%>%
@@ -111,34 +148,77 @@ print(per_summary_categorical)  # Check if it holds expected values
 sort(unique(per_summary_categorical$factor))
 write.csv(per_summary_categorical,"per_summary_categorical.csv",row.names=FALSE)
 
-#############################################################    
-########## GRAPHS #####-----
-#############################################################
+
+
+
+### Boxplot Matrix
+
+# Define the number of variables per plot
+num_per_plot <- 36  # Adjust as needed
+
+# Split categorical variables into chunks
+split_vars <- split(columns_factor, ceiling(seq_along(columns_factor) / num_per_plot))
+
+# Loop over chunks and generate separate plots
+for (i in seq_along(split_vars)) {
+  subset_vars <- split_vars[[i]]
+  
+  # Convert data to long format for the subset
+  long_data_subset <- melt(per_data_clean, id.vars = "dfs_adoption_binary", measure.vars = subset_vars)
+  
+  p <- ggplot(long_data_subset) +
+    geom_bar(position =  "stack", aes(x = value, fill = dfs_adoption_binary)) +
+    facet_wrap(~variable, scales = "free", ncol = 6) + 
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+    ggtitle(paste("Categorical Variables - Batch", i))
+  
+  print(p)  # Display the plot
+  
+  # Save each plot separately
+  #ggsave(filename = paste0("categorical_variables_batch_", i, ".png"), plot = p, width = 12, height = 8)
+}
+print(p)  # Display the plot
+
+
 
 library(ggplot2)
-library(patchwork) # For combining multiple plots
+library(reshape2)
 
-# Example: Load your data
-# df <- read.csv("your_data.csv")
+# Define the number of variables per plot
+num_per_plot <- 36  # Adjust as needed
 
-# Select only numeric columns
-factors_list$column_name_new[factors_list$metric_type == "continuous"]
-columns_numeric <- intersect(factors_list$column_name_new[factors_list$metric_type == "continuous"], colnames(per_data_clean))
+# Convert categorical variables to factors (if not already)
+per_data_clean[, columns_factor] <- lapply(per_data_clean[, columns_factor], as.factor)
 
-columns_numeric 
+# Split categorical variables into chunks
+split_vars <- split(columns_factor, ceiling(seq_along(columns_factor) / num_per_plot))
 
-# Create histogram plots for each numeric column
-plot_list <- lapply(columns_numeric, function(col) {
-  ggplot(per_data_clean, aes(x = .data[[col]])) +
-    geom_histogram(bins = 30, fill = "steelblue", color = "black", alpha = 0.7) +
-    labs(title = col) +
-    theme_minimal()
-})
-
-# Arrange all histograms in a grid
-histogram_plot <- wrap_plots(plot_list) + plot_annotation(title = "Histograms of Numeric Variables")
-
-# Display
-print(histogram_plot)
-
+# Loop over chunks and generate separate plots
+for (i in seq_along(split_vars)) {
+  subset_vars <- split_vars[[i]]
+  
+  # Convert data to long format for the subset
+  long_data_subset <- melt(per_data_clean, id.vars = "dfs_adoption_binary", measure.vars = subset_vars)
+  
+  # Ensure dfs_adoption_binary is a factor
+  long_data_subset$dfs_adoption_binary <- as.factor(long_data_subset$dfs_adoption_binary)
+  
+  # Create the plot
+  p <- ggplot(long_data_subset, aes(x = value, fill = dfs_adoption_binary)) +
+    geom_bar(position = "dodge") +
+    facet_wrap(~variable, scales = "free", ncol = 6) + 
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+    ggtitle(paste("Categorical Variables - Batch", i))
+  
+  # Print the plot explicitly
+  print(p)
+  
+  # Save each plot separately
+  #ggsave(filename = paste0("categorical_variables_batch_", i, ".png"), plot = p, width = 12, height = 8)
+  
+  # Pause for a moment to allow plots to render in some environments
+  Sys.sleep(1)
+}
 
