@@ -7,12 +7,12 @@ global_survey<-read.csv("global_survey.csv",sep=",")
 per_global_choices<-read.csv("per_global_choices.csv",sep=",")
 
 names(per_data_clean)
-#####################################
-########## DATA TYPE CONVERSION -----
-#####################################
-### Continuous data as numeric ----
-names(global_survey)
-sort(unique(global_survey$type_question))
+#############################################################    
+########## DATA TYPE CONVERSION #####-----
+#############################################################
+
+###### --- NUMERICAL VARIABLES -----
+#### Convert continuous variables to numeric
 per_columns_numeric <- intersect(global_survey$column_name_new[global_survey$type_question %in% c( "decimal", "integer")], colnames(per_data_clean))
 print(per_columns_numeric)  # Check if it holds expected values
 
@@ -21,9 +21,8 @@ per_data_clean<- per_data_clean%>%
   mutate(across(starts_with("nonhired_labour_"), ~ replace_na(.x, 0)))%>%
   mutate(across(starts_with("hired_labour_"), ~ replace_na(.x, 0)))
 
-
-#### categorical and binary data as factor 
-sort(unique(global_survey$type_question))
+###### --- CATEGORICAL AND BINARY VARIABLES -----
+#### Convert categorical and binary to factor
 per_columns_numeric <- intersect(global_survey$column_name_new[global_survey$type_question %in% c( "decimal", "integer")], colnames(per_data_clean))
 
 per_columns_factor <- intersect(global_survey$column_name_new[global_survey$type_question %in%c("calculate","select_multiple", "select_one","text" )], colnames(per_data_clean))
@@ -109,8 +108,13 @@ classify_energy_type <- function(df, prefix, renewable_keywords, nonrenewable_ke
 renewable_keywords <- c("Wind_turbine", "Solar_panel", "Burning_plant_materials", "Cow_dung_cakes","Animal_traction","Human_power.by_hand_only","Biogas")
 nonrenewable_keywords <- c("Electricity", "Gas", "Coal", "Petrol_or_diesel","LPG","Oil")
 
+x<-per_data_clean%>%
+  select(energy_irrigation_type)
+
+
 # Type of energy used for: irrigation
-per_data_clean <- classify_energy_type(per_data_clean, "energy_irrigation", renewable_keywords, nonrenewable_keywords, "energy_irrigation_type")
+per_data_clean <- classify_energy_type(per_data_clean, "energy_irrigation", renewable_keywords, nonrenewable_keywords, "energy_irrigation_type")%>%
+  mutate(energy_irrigation_type= ifelse(is.na(energy_irrigation_type), 0,energy_irrigation_type))
 #Type of energy used for: Tillage, sowing or harvesting
 per_data_clean <- classify_energy_type(per_data_clean, "energy_tillage_haverst", renewable_keywords, nonrenewable_keywords, "energy_tillage_haverst_type")
 #Type of energy used for: Cooking
@@ -341,5 +345,4 @@ write.csv(per_data_clean,"per_data_clean.csv",row.names=FALSE)
 
 ## to check: controlar si hay otras preguntas donde se citen dfs, ver las practicas de livestock
 
-names(per_data_clean)
 

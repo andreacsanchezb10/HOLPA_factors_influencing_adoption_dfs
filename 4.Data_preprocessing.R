@@ -1,7 +1,7 @@
 library(dplyr)
 library(readxl)
 library(caret)
-
+library(reshape2)
 
 
 factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")
@@ -22,7 +22,7 @@ per_variables_list
 per_data_analysis<- per_data_clean%>%
   dplyr::select(all_of(per_variables_list))
 
-dim(per_data_analysis) #[1] 200 111 #200 farmers; 111 variables evaluated
+dim(per_data_analysis) #[1] 200 109 #200 farmers; 109 variables evaluated
 
 
 #############################################################    
@@ -69,32 +69,32 @@ nzv # the variables with nzv== TRUE should be remove
 
 nzv_list <- nearZeroVar(per_data_analysis)
 
+#### Create the ggplot
 long_data <- melt(per_data_analysis, id.vars = "dfs_adoption_binary", measure.vars = nzv_list)
 
-# Create the ggplot
 ggplot(long_data, aes(x = value, fill = dfs_adoption_binary)) +
   geom_bar(position = "stack") +
   facet_wrap(~variable, scales = "free", ncol = 6) + 
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-#### TO CHECK IN THE CALCULATION STEP, THE ENERGY TYPE, FISH FAIR PRICE IS WRONG!
 problems<- per_data_analysis[, nzv_list]
 
 #### Remove nzv variables from data
 per_data_analysis_Filterednzv<- per_data_analysis[, -nzv_list]
 
-dim(per_data_analysis_Filterednzv) #[1] 200 77 #200 farmers; 77 variables retained
+dim(per_data_analysis_Filterednzv) #[1] 200 75 #200 farmers; 75 variables retained
 
 ###### only for continuous variables...
-###### --- identify correlated predictors
+###### --- CORRRELATED PREDICTORS -----
+
 
 descrCor <-  cor(per_data_analysis_Filterednzv)
 
 ###### ---  identify linear dependencies
 x<-findLinearCombos(per_data_analysis_Filterednzv)
 
-###### --- IMPUTING MISSING DATA
+###### --- IMPUTING MISSING DATA ----
 na_columns <- colnames(per_data_analysis_Filterednzv)[colSums(is.na(per_data_analysis_Filterednzv)) > 0]
 print(na_columns)
 
@@ -103,71 +103,121 @@ print(na_columns)
 problems2<- per_data_analysis_Filterednzv%>%
   select(all_of(na_columns))
 
+###### --- FBED -----
+library(MXM)
+dataset_name<-per_data_analysis_Filterednzv
+bc_dataset <- per_data_analysis_Filterednzv[ , !(names(per_data_analysis_Filterednzv) %in% c("dfs_adoption_binary"))] # Remove target from feature matrix
+bc_target <- as.factor(per_data_analysis_Filterednzv$dfs_adoption_binary)
+
+alphas <- c(0.001, 0.005, 0.01, 0.05, 0.1) #significance level α of the conditional independence test
+test<- "testIndLogistic" # conditional independence test for outcome = binary, predictors= mixed
 
 
 
 
-per_data_analysis <- per_data_analysis%>%
-  dplyr::select(!all_of(na_columns))
+
+cv.fbed.reg(bc_target, bc_dataset, #id, kfolds = 10, 
+                  folds = NULL, alphas = c(0.01, 0.05), ks = 0:2) 
+
+help(cv.fbed.lmm.reg)
+
+results <- lapply(alphas, function(thresh) {
+  fbed.reg(
+    target = bc_target,
+    dataset = bc_dataset,
+    test =test, # 
+    K = 1:10,
+    threshold = thresh,  # Setting alpha as the significance threshold
+    backward= TRUE
+  )
+})
+
+results$[[1]]$res
+
+num_selected<-length(results$selectedVars)
 
 
+fbed.reg<- fbed.reg(target= bc_target,
+                    dataset= bc_dataset,
+                    test= "testIndLogistic",
+                    K=0:10,
+                    threshold= 0.05,
+                    )
+         #, wei,  method, gam, )
+fbed.reg
+fbed.reg$res$univ
+fbed.reg$mod
+fbed.reg$res
+cv.fbed.reg
+fbed.reg$best_performance
+fbed.reg$best_configuration
+
+plot(fbed.reg, mode = "all")
+fbed.reg
+fbed.reg$res$info
+###### --- RECURSIVE FEATURE SELECTION -----
+library(caret)
+library(mlbench)
+library(Hmisc)
+library(randomForest)
+### Advantages of Recursive Feature Elimination (RFE)
+# - Can handle high-dimensional datasets and identify the most important features.
+# - Can handle interactions between features and is suitable for complex datasets.
+# - Can be used with any supervised learning algorithm.
+### Limitations of Recursive Feature Elimination (RFE)
+# - Can be computationally expensive for large datasets.
+# - May not be the best approach for datasets with many correlated features.
+# - May not work well with noisy or irrelevant features.
+
+dataset_name<-per_data_analysis_Filterednzv%>%
+  select(-energy_cooking_type,-farmer_agency_1,-farmer_agency_3 ,
+         -dfs_agroforestry_adoption, -dfs_homegarden_adoption, -dfs_intercropping_adoption)
+
+predictors <- dataset_name[ , !(names(dataset_name) %in% c("dfs_adoption_binary"))] # Remove target from feature matrix
+target <- as.factor(dataset_name$dfs_adoption_binary)
+ncolPredictors<-ncol(predictors)
 
 
+set.seed(123)  # For reproducibility
 
-
-
-
-## CHECK remove the outcomes different than dfs_adoption_binary, 
-excluded_for_binary<- c ( "dfs_agroforestry_adoption"  ,                    
-                          "dfs_cover_crops_adoption" ,                       "dfs_crop_rotation_adoption" ,                    
-                          "dfs_fallow_adoption"   ,                          "dfs_hedgerows_adoption" ,                        
-                          "dfs_homegarden_adoption",                         "dfs_intercropping_adoption",                     
-                          "dfs_strip_vegetation_adoption"  )
-
-
-
-"dfs_agroforestry_area" ,"dfs_agroforestry_area" ,
-"dfs_cover_crops_area", "dfs_homegarden_area" ,   
-
-"dfs_crop_rotation_area" ,
-"dfs_intercropping_area"    ,                      "dfs_fallow_area",                                
-"dfs_strip_vegetation_area",                       "dfs_hedgerows_area",
+# Define control parameters for RFE
+rfctrl <- rfeControl(
+  functions = rfFuncs,     # Use Random Forest for feature selection
+  method = "repeatedcv",   # Use repeated k-fold cross-validation
+  number = 10,             # 10-fold cross-validation
+  repeats = 5,             # Repeat X times for stability
+  verbose = TRUE
 )
 
-## CHECK remove the outcomes different than "dfs_total_area"
-excluded_for_continuous<- c ( "dfs_agroforestry_area" ,"dfs_agroforestry_area" ,
-                              "dfs_cover_crops_area", "dfs_homegarden_area" ,   
-                              "dfs_adoption_binary",                                 
-                              "dfs_crop_rotation_area" ,
-                              "dfs_intercropping_area"    ,                      "dfs_fallow_area",                                
-                              "dfs_strip_vegetation_area",                       "dfs_hedgerows_area",
-                              "dfs_agroforestry_adoption"  ,                    
-                              "dfs_cover_crops_adoption" ,                       "dfs_crop_rotation_adoption" ,                    
-                              "dfs_fallow_adoption"   ,                          "dfs_hedgerows_adoption" ,                        
-                              "dfs_homegarden_adoption",                         "dfs_intercropping_adoption",                     
-                              "dfs_strip_vegetation_adoption",
-                              "education_level","ethnicity","marital_status",
-                              "rainfall_timing_change_perception.nochange",     
-                              "rainfall_timing_change_perception.notsure" ,     
-                              "rainfall_timing_change_perception.startearlier",
-                              "rainfall_timing_change_perception.startlater" ,  
-                              "rainfall_timing_change_perception.stopearlier" , 
-                              "rainfall_timing_change_perception.stoplater" ,   
-                              "rainfall_timing_change_perception.unpredictable",
-                              "temperature_change_perception")
+
+set.seed(123)  # Ensure reproducibility
+
+# Run Recursive Feature Elimination
+rfe_result <- rfe(
+  x = predictors, 
+  y = target, 
+  sizes = c(1:ncolPredictors ),  # Number of features to evaluate
+  rfeControl = rfctrl
+)
+
+# View the results
+print(rfe_result)
+predictors(rfe_result)
+rfe_result$fit
+head(rfe_result$resample)
+print(rfe_result$metric) #Accuracy if target is categorical
 
 
-per_data_analysis.binary<- per_data_analysis%>%
-  dplyr::select(!all_of(excluded_for_binary))%>%
-  dplyr::select(where(~ !(is.factor(.) && nlevels(.) < 2)))%>%
-  dplyr::select(-energy_type,-fair_price_livestock,-human_wellbeing_5 )
+# Plot variable selection results
+plot(rfe_result, type = c("g", "o"))  # Graphical + Overlayed plots
+trellis.par.set(caretTheme())
+plot(rfe_result, type = c("g", "o"))
 
-write.csv(per_data_analysis.binary,"per_data_analysis.binary.csv",row.names=FALSE)
+# Extract the best set of features selected by RFE
+best_features <- predictors(rfe_result)
+best_features
 
 
-
-
-###### --- DISCRETIZATION OF CONTINUOUS VARIABLES -----
 
 
 
