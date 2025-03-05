@@ -109,7 +109,7 @@ dataset_name<-per_data_analysis_Filterednzv
 bc_dataset <- per_data_analysis_Filterednzv[ , !(names(per_data_analysis_Filterednzv) %in% c("dfs_adoption_binary"))] # Remove target from feature matrix
 bc_target <- as.factor(per_data_analysis_Filterednzv$dfs_adoption_binary)
 
-alphas <- c(0.001, 0.005, 0.01, 0.05, 0.1) #significance level α of the conditional independence test
+alphas <- c(0.05, 0.1) #significance level α of the conditional independence test
 test<- "testIndLogistic" # conditional independence test for outcome = binary, predictors= mixed
 
 
@@ -184,8 +184,8 @@ set.seed(123)  # For reproducibility
 rfctrl <- rfeControl(
   functions = rfFuncs,     # Use Random Forest for feature selection
   method = "repeatedcv",   # Use repeated k-fold cross-validation
-  number = 10,             # 10-fold cross-validation
-  repeats = 5,             # Repeat X times for stability
+  number = 4,             # 10-fold cross-validation
+  repeats = 1,             # Repeat X times for stability
   verbose = TRUE
 )
 

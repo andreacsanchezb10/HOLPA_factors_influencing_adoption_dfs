@@ -80,7 +80,25 @@ per_data_clean<-per_data_clean%>%
     num_income_sources==1~ "0",
     TRUE~ NA))
     
+### BIOPHYSICAL CONTEXT ----
+y<-per_data_clean%>%
+  mutate(across(starts_with("soil_depth_"), ~str_extract(.x, "(?<=depth_).*")))%>%
+  mutate(across(starts_with("soil_depth_"), ~ as.numeric(as.character(.))))%>%
+  mutate(soil_depth = rowSums(as.matrix(select(., starts_with("soil_depth_"))), na.rm = TRUE)/3)%>%
+  mutate(soil_depth= round(soil_depth, digits=0))%>%
+  select(soil_depth_1,soil_depth_2,soil_depth_3,soil_depth)%>%
+  mutate(soil_depth=paste0("depth_",soil_depth))
+  
 
+  
+
+
+# Print result
+print(df_cleaned)
+
+
+x<-per_data_clean%>%
+  select(soil_depth_1,soil_depth_2,soil_depth_3)
 
 ### PHYSICAL CAPITAL ----
 # Function to classify energy type dynamically
@@ -107,10 +125,6 @@ classify_energy_type <- function(df, prefix, renewable_keywords, nonrenewable_ke
 # Define keywords to classify renewable and non-renewable energy sources
 renewable_keywords <- c("Wind_turbine", "Solar_panel", "Burning_plant_materials", "Cow_dung_cakes","Animal_traction","Human_power.by_hand_only","Biogas")
 nonrenewable_keywords <- c("Electricity", "Gas", "Coal", "Petrol_or_diesel","LPG","Oil")
-
-x<-per_data_clean%>%
-  select(energy_irrigation_type)
-
 
 # Type of energy used for: irrigation
 per_data_clean <- classify_energy_type(per_data_clean, "energy_irrigation", renewable_keywords, nonrenewable_keywords, "energy_irrigation_type")%>%
@@ -154,10 +168,6 @@ per_data_clean<-per_data_clean%>%
 
 
 ### FARMER BEHAVIOUR ----
-x<-per_data_clean%>%
-  select(starts_with("farmer_agency_"))
-
-
 per_data_clean<- per_data_clean %>%
   #Human well being score
   mutate(across(starts_with("human_wellbeing_"), ~ as.numeric(as.factor(.))))%>%
@@ -204,7 +214,6 @@ per_data_clean <- per_data_clean %>%
                                                                   "livestock_diseases_management.2")),na.rm = TRUE))
 
 ### NATURAL CAPITAL ----
-
 per_data_clean<-per_data_clean%>%
   # Farm size
   mutate(farm_size= land_tenure_own_area+land_tenure_lease_area+land_tenure_hold_area)
@@ -264,7 +273,6 @@ per_data_clean<-per_data_clean%>%
   
 
 ### POLITICAL AND INSTITUTIONAL CONTEXT: Knowledge ----
-
 per_data_clean<-per_data_clean%>%
   mutate(
     #Number of training topics
@@ -290,9 +298,11 @@ per_data_clean<-per_data_clean%>%
     access_info_exchange_traders= ifelse(num_info_exchange_traders>0, "1","0"),
     #Number of information sources
     across(starts_with("access_info_exchange_"), ~ as.numeric(as.character(.))),
-    num_info_exchange_sources= rowSums(across(starts_with("access_info_exchange_")), na.rm = TRUE))
+    num_info_exchange_sources= rowSums(across(starts_with("access_info_exchange_")), na.rm = TRUE))%>%
+    mutate(access_info_exchange=ifelse(num_info_exchange_sources>0, "1","0"))
     
-
+  
+  
 ### POLITICAL AND INSTITUTIONAL CONTEXT: Financial risk management ----
 per_data_clean<-per_data_clean%>%
   #Access to insurance against agricultural losses
@@ -301,8 +311,6 @@ per_data_clean<-per_data_clean%>%
 sort(unique(per_data_clean$insurance_agric_losses_access))
 
 ### SOCIAL CAPITAL ----
-
-
 per_data_clean<-per_data_clean%>%
   #Number of association/organization memberships
   mutate(across(starts_with("membership."), ~ as.numeric(as.character(.))))%>%

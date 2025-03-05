@@ -11,7 +11,7 @@ library(purrr)
 
 # Define the function to process each sheet
 process_survey_data <- function(sheet_name, country_name, column_id_rename) {
-  survey_data <- read_excel(per_survey_path, sheet = sheet_name)
+  survey_data <- read_excel(per_h_survey_path, sheet = sheet_name)
   
   # Apply transformations
   survey_data <- survey_data %>%
@@ -94,7 +94,7 @@ practices_begin_group <- function(data, cropland_practices,cropland_practices_ar
 # Read the Excel file
 factors_list <- read_excel("factors_list.xlsx")
 
-global_survey <- read_excel("factors_list.xlsx",sheet = "holpa_survey")%>%
+h_global_survey <- read_excel("factors_list.xlsx",sheet = "holpa_survey")%>%
   select("type", "name","label::English ((en))","column_name_new")%>% #select only the necessary columns
   #rename columns names
   rename("label_question" = "label::English ((en))")%>%
@@ -110,7 +110,7 @@ global_survey <- read_excel("factors_list.xlsx",sheet = "holpa_survey")%>%
   mutate(list_name = str_replace_all(list_name, " ", ""))%>%
   filter(!is.na(column_name_new))
 
-write.csv(global_survey,"global_survey.csv",row.names=FALSE)
+write.csv(h_global_survey,"h_global_survey.csv",row.names=FALSE)
 
 global_choices <- read_excel("factors_list.xlsx",sheet = "holpa_choices")%>%
   select("list_name","name","label::English ((en))","name_new")%>%
@@ -126,13 +126,31 @@ mutate(name_new= case_when(
 write.csv(global_choices,"global_choices.csv",row.names=FALSE)
 
 
+f_global_survey <- read_excel("factors_list.xlsx",sheet = "fieldwork_survey")%>%
+  select("type", "name","label::English ((en))","column_name_new")%>% #select only the necessary columns
+  #rename columns names
+  rename("label_question" = "label::English ((en))")%>%
+  rename("name_question" = "name")%>%
+  #remove rows without questions
+  filter(!type%in%c("begin_group","begin_repeat","end_repeat","end_group","start","end","audio"))%>%
+  #separate question type components
+  mutate(type_question = ifelse(substr(type,1,10)=="select_one","select_one",
+                                ifelse(substr(type,1,10)=="select_mul","select_multiple",type)))%>%
+  #create column with list_name codes matching the choices worksheet
+  mutate(list_name = if_else(type_question== "select_one"|type_question== "select_multiple", 
+                             str_replace(.$type, paste0(".*", .$type_question), ""),NA))%>%
+  mutate(list_name = str_replace_all(list_name, " ", ""))%>%
+  filter(!is.na(column_name_new))
+
+
 ##### Peru ----
 # Define file path
-per_form_path <- "C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Peru/peru_data_clean/per_holpa_household_form_clean.xlsx" #path andrea
-per_survey_path <- "C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Peru/peru_data_clean/per_holpa_household_survey_clean.xlsx" #path andrea
+per_h_form_path <- "C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Peru/peru_data_clean/per_holpa_household_form_clean.xlsx" #path andrea
+per_h_survey_path <- "C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Peru/peru_data_clean/per_holpa_household_survey_clean.xlsx" #path andrea
+per_f_survey_path<-"C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Peru/peru_data_clean/per/per_fieldwork_format.csv"
 
 
-per_choices <- read_excel(per_form_path, sheet = "choices")%>%
+per_choices <- read_excel(per_h_form_path, sheet = "choices")%>%
   mutate(country= "peru",
          name_new=NA)%>%
   select("list_name","name","label::English (en)","country",name_new)%>%
@@ -146,7 +164,7 @@ per_global_choices<-global_choices%>%
   arrange(desc(country == "global")) %>%
   #Removing duplicates
   distinct(list_name,name_choice, .keep_all = TRUE) %>%
-  right_join(global_survey,by="list_name",relationship="many-to-many")%>%
+  right_join(h_global_survey,by="list_name",relationship="many-to-many")%>%
   mutate(label_choice.country=NA)%>%
   dplyr::bind_rows(data.frame(
     list_name= c(rep("3_3_1_2",8)),
@@ -169,8 +187,21 @@ per_global_choices<-global_choices%>%
 
 write.csv(per_global_choices,"per_global_choices.csv",row.names=FALSE)
 
-# Read all sheet names
-sheet_names <- excel_sheets(per_survey_path)
+
+f_column_mapping <- f_global_survey %>%
+  select(name_question,column_name_new )  # Select only the relevant columns
+print(f_column_mapping)
+
+per_f_survey<- read.csv(per_f_survey_path)
+colnames(per_f_survey) <- gsub("^X", "", colnames(per_f_survey))
+per_f_survey<-per_f_survey%>%
+  select(all_of(unique(f_column_mapping$name_question)),kobo_farmer_id,country)
+
+names(per_f_survey)
+
+
+# Read all sheet names from per_household survey
+sheet_names <- excel_sheets(per_h_survey_path)
 sheet_names
 
 
@@ -220,7 +251,7 @@ sheet_names
 
 
 [11]  "per_3_4_1_2_7_2_1_begin_repeat"
-[16] "per_3_4_1_2_1_2_1_begin_repeat" ""          ""     
+[16] "per_3_4_1_2_1_2_1_begin_repeat" ""            
 [21]       "per_3_4_3_1_2_begin_repeat"    
 
 
@@ -259,17 +290,14 @@ per_data<- per_maintable%>%
   left_join(per_2_12_1_begin_group, by=c("kobo_farmer_id","country"))%>%
   left_join(per_2_3_1_begin_group, by=c("kobo_farmer_id","country"))%>%
   left_join(per_3_2_1_3_1_begin_group, by=c("kobo_farmer_id","country"))%>%
-  left_join(per_2_4_1_begin_group, by=c("kobo_farmer_id","country"))
-
-
+  left_join(per_2_4_1_begin_group, by=c("kobo_farmer_id","country"))%>%
+  left_join(per_f_survey, by=c("kobo_farmer_id","country"))
   
-
-
-
+  
 names(per_data)
-
+colnames(per_data)
 # Process all select_multiple columns
-select_multiple<-global_survey%>%
+select_multiple<-h_global_survey%>%
   filter(type_question=="select_multiple")
 
 per_select_multiple_cols <- intersect(colnames(per_data), unique(select_multiple$name_question))
@@ -280,7 +308,7 @@ per_select_multiple <- per_data %>%
   select(kobo_farmer_id,all_of(per_select_multiple_cols)) %>%
   pivot_longer(cols =-kobo_farmer_id, names_to = "name_question", values_to = "name_choice")%>%   # Reshape to long format
   separate_rows(name_choice, sep = ",") %>%  # Split multiple responses into separate rows
-  left_join(global_survey%>%select(name_question, column_name_new),by="name_question")%>%
+  left_join(h_global_survey%>%select(name_question, column_name_new),by="name_question")%>%
   mutate(value = 1) %>% # Assign 1 for presence
   mutate(column_name_new= if_else(is.na(column_name_new),name_question,column_name_new))%>%
   pivot_wider(id_cols=kobo_farmer_id,names_from = c(column_name_new, name_choice), values_from = value,
@@ -295,24 +323,31 @@ per_data<-per_data%>%
   left_join(per_select_multiple, by=c("kobo_farmer_id"))
 
 names(per_data)
+
 #####################################
 ########## RENAME COLUMN NAMES ----
 #####################################
 # Ensure old column names exist in per_data
-column_mapping <- global_survey %>%
+h_column_mapping <- h_global_survey %>%
   select(name_question,column_name_new )  # Select only the relevant columns
+print(h_column_mapping)
+
+column_mapping<- rbind(h_column_mapping, f_column_mapping)
 print(column_mapping)
 
 existing_cols <- colnames(per_data)
+print(existing_cols)
 
 # Create a named vector for renaming
 rename_vector <- setNames(column_mapping$column_name_new, column_mapping$name_question)
-
+rename_vector
 # Rename only matching columns
 colnames(per_data) <- ifelse(existing_cols %in% names(rename_vector), rename_vector[existing_cols], existing_cols)
 
 # Check the updated column names
 print(colnames(per_data))
+
+
 
 #####################################
 ########## DATA SELECTION ----
