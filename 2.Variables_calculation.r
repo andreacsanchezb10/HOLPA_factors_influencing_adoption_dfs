@@ -56,18 +56,24 @@ per_data_clean<-per_data_clean%>%
     #Total number of people in household
     num_people = num_adults_total+num_children,
     #Total number of permanent hired labour
-    num_hlabour_permanent_total= rowSums(across(starts_with("num_hlabour_permanent.")), na.rm = TRUE),
+    num_hlabour_permanent_total= rowSums(across(starts_with("num_hlabour_permanent_")), na.rm = TRUE),
     #Total number of seasonal hired labour
-    num_hlabour_seasonal_total= rowSums(across(starts_with("num_hlabour_seasonal.")), na.rm = TRUE),
+    num_hlabour_seasonal_total= rowSums(across(starts_with("num_hlabour_seasonal_")), na.rm = TRUE),
     #Total number of permanent household labour
-    num_nhlabour_permanent_total=rowSums(across(starts_with("num_nhlabour_permanent.")), na.rm = TRUE),
+    num_nhlabour_permanent_total=rowSums(across(starts_with("num_nhlabour_permanent_")), na.rm = TRUE),
     #Total number of seasonal household labour
-    num_nhlabour_seasonal_total=rowSums(across(starts_with("num_nhlabour_seasonal.")), na.rm = TRUE),
+    num_nhlabour_seasonal_total=rowSums(across(starts_with("num_nhlabour_seasonal_")), na.rm = TRUE),
+    #Farm has hired/free/exchange labour
+    hlabour = num_hlabour_permanent_total+num_hlabour_seasonal_total,
+    hlabour= ifelse(hlabour>0, "1","0"),
     #Number of secondary occupations
     across(starts_with("occupation_secondary_list"), ~ as.numeric(as.character(.))),  
     num_occupation_secondary_list = rowSums(as.matrix(select(., starts_with("occupation_secondary_list"))), na.rm = TRUE),
+
     #Farmer as a primary occupation
-    "occupation_primary_farmer" = ifelse(occupation_primary=="1", "1","0"))
+    occupation_primary_farmer = ifelse(occupation_primary=="1", "1","0"))
+
+
 
 ### FINANCIAL CAPITAL ----
 per_data_clean<-per_data_clean%>%
@@ -78,27 +84,49 @@ per_data_clean<-per_data_clean%>%
     num_income_sources>2~ "5",
     num_income_sources==2~ "2",
     num_income_sources==1~ "0",
-    TRUE~ NA))
-    
+    TRUE~ NA))%>%
+  #Availability of non-farm income
+  mutate(income_access_nonfarm = rowSums(as.matrix(select(., c(income_sources.casual_labour,
+                                                            income_sources.transfers,
+                                                            income_sources.other,
+                                                            income_sources.subsidy,
+                                                            income_sources.other_business,
+                                                            income_sources.leasing))), na.rm = TRUE))%>%
+  mutate(income_access_nonfarm = ifelse(income_access_nonfarm>0, "1","0"))%>%
+  #On-farm income
+  mutate(income_amount_onfarm= rowSums(as.matrix(select(., c(income_amount_crop,
+                                                             income_amount_livestock,
+                                                             income_amount_fish))), na.rm = TRUE))%>%
+  #Non-farm income amount
+  mutate(income_amount_nonfarm= rowSums(as.matrix(select(., c(income_amount_family_business,
+                                                              income_amount_casual_labour,
+                                                              income_amount_formal_labour,
+                                                              income_amount_transfers,
+                                                              income_amount_leasing_land,
+                                                              income_amount_subsidy,
+                                                              income_amount_other))), na.rm = TRUE))%>%
+  #Total income amount
+  mutate(income_amount_total= income_amount_onfarm+income_amount_nonfarm)%>%
+  #Access to credit
+  mutate(credit_access= ifelse(credit=="2", "1","0"))%>%
+  #Access to credit is a constraint
+  mutate(credit_access_constraint= ifelse(credit=="1", "1","0"))%>%
+  mutate(across(starts_with("assets_"), ~ ifelse(. == "9999"|is.na(.),"0", .))) %>%  # Replace 9999 with 0
+    mutate(across(starts_with("assets_"), ~ as.numeric(as.character(.))))%>%
+  mutate(num_different_assets =rowSums(across(starts_with("assets_"), ~ .>0)))
+
+
 ### BIOPHYSICAL CONTEXT ----
-y<-per_data_clean%>%
+per_data_clean<-per_data_clean%>%
+  #Soil depth
   mutate(across(starts_with("soil_depth_"), ~str_extract(.x, "(?<=depth_).*")))%>%
   mutate(across(starts_with("soil_depth_"), ~ as.numeric(as.character(.))))%>%
   mutate(soil_depth = rowSums(as.matrix(select(., starts_with("soil_depth_"))), na.rm = TRUE)/3)%>%
   mutate(soil_depth= round(soil_depth, digits=0))%>%
-  select(soil_depth_1,soil_depth_2,soil_depth_3,soil_depth)%>%
   mutate(soil_depth=paste0("depth_",soil_depth))
   
 
-  
 
-
-# Print result
-print(df_cleaned)
-
-
-x<-per_data_clean%>%
-  select(soil_depth_1,soil_depth_2,soil_depth_3)
 
 ### PHYSICAL CAPITAL ----
 # Function to classify energy type dynamically
@@ -164,9 +192,74 @@ per_data_clean<-per_data_clean%>%
     accessibility_piped_sewer==0 &accessibility_waste_collection==1~ "2",
     accessibility_piped_sewer==1 &accessibility_waste_collection==0~ "2",
     accessibility_piped_sewer==0 &accessibility_waste_collection==0~ "0",
-    TRUE~ NA))
-
-
+    TRUE~ NA)) %>%
+#Distances to services
+  mutate(metric_distance_closest_farmland= case_when(country=="peru"~ "minutes",TRUE~"NA"),
+         metric_distance_water_source=case_when(country=="peru"~ "minutes",TRUE~"NA"),
+         metric_distance_primary_school=case_when(country=="peru"~ "minutes",TRUE~"NA"),
+         metric_distance_hospital=case_when(country=="peru"~ "minutes",TRUE~"NA"),
+         metric_distance_livestock_market=case_when(country=="peru"~ "minutes",TRUE~"NA"),
+         metric_distance_crop_market=case_when(country=="peru"~ "minutes",TRUE~"NA"),
+         metric_distance_publich_transport=case_when(country=="peru"~ "minutes",TRUE~"NA"),
+         metric_distance_main_road=case_when(country=="peru"~ "minutes",TRUE~"NA"))%>%
+  #Distance to the closest farmland
+  mutate(distance_closest_farmland=across(starts_with("distance_"), ~ as.numeric(as.character(.))))%>%
+  mutate(distance_closest_farmland = case_when(
+    mode_distance_closest_farmland %in% c("walking")& metric_distance_closest_farmland %in% c("minutes")~distance_closest_farmland,
+    mode_distance_closest_farmland %in% c("motobike","motorbike", "car")& metric_distance_closest_farmland %in% c("minutes")~distance_closest_farmland*10, # assumes car speed of 50km/h and walking speed of 5 km/h  
+    mode_distance_closest_farmland %in% c("cycling")& metric_distance_closest_farmland %in% c("minutes")~distance_closest_farmland*3, # assumes bike speed of 15km/h and walking speed of 5 km/h
+    mode_distance_closest_farmland %in% c("horse","donkey")& metric_distance_closest_farmland %in% c("minutes")~distance_closest_farmland*2, # assumes horse speed of 10km/h and walking speed of 5 km/h
+    TRUE~distance_closest_farmland))%>%
+  #Distance to the closest fresh water source
+  mutate(distance_water_source = case_when(
+    mode_distance_water_source%in% c("walking")& metric_distance_water_source %in% c("minutes")~distance_water_source,
+    mode_distance_water_source %in% c("motobike","motorbike", "car")& metric_distance_water_source %in% c("minutes")~distance_water_source*10, # assumes car speed of 50km/h and walking speed of 5 km/h  
+    mode_distance_water_source %in% c("cycling")& metric_distance_water_source %in% c("minutes")~distance_water_source*3, # assumes bike speed of 15km/h and walking speed of 5 km/h
+    mode_distance_water_source %in% c("horse","donkey")& metric_distance_water_source %in% c("minutes")~distance_water_source*2, # assumes horse speed of 10km/h and walking speed of 5 km/h
+    TRUE~distance_water_source))%>%
+  #Distance to closest primary school
+  mutate(distance_primary_school = case_when(
+    mode_distance_primary_school%in% c("walking")& metric_distance_primary_school %in% c("minutes")~distance_primary_school,
+    mode_distance_primary_school %in% c("motobike","motorbike", "car")& metric_distance_primary_school %in% c("minutes")~distance_primary_school*10, # assumes car speed of 50km/h and walking speed of 5 km/h  
+    mode_distance_primary_school %in% c("cycling")& metric_distance_primary_school %in% c("minutes")~distance_primary_school*3, # assumes bike speed of 15km/h and walking speed of 5 km/h
+    mode_distance_primary_school %in% c("horse","donkey")& metric_distance_primary_school %in% c("minutes")~distance_primary_school*2, # assumes horse speed of 10km/h and walking speed of 5 km/h
+    TRUE~distance_primary_school))%>%
+  #Distance to hospital
+  mutate(distance_hospital = case_when(
+    mode_distance_hospital%in% c("walking")& metric_distance_hospital %in% c("minutes")~distance_hospital,
+    mode_distance_hospital %in% c("motobike","motorbike", "car")& metric_distance_hospital %in% c("minutes")~distance_hospital*10, # assumes car speed of 50km/h and walking speed of 5 km/h  
+    mode_distance_hospital %in% c("cycling")& metric_distance_hospital %in% c("minutes")~distance_hospital*3, # assumes bike speed of 15km/h and walking speed of 5 km/h
+    mode_distance_hospital %in% c("horse","donkey")& metric_distance_hospital %in% c("minutes")~distance_hospital*2, # assumes horse speed of 10km/h and walking speed of 5 km/h
+    TRUE~distance_hospital))%>%
+  #Distance to livestock market
+  mutate(distance_livestock_market = case_when(
+    mode_distance_livestock_market%in% c("walking")& metric_distance_livestock_market %in% c("minutes")~distance_livestock_market,
+    mode_distance_livestock_market%in% c("motobike","motorbike", "car")& metric_distance_livestock_market %in% c("minutes")~distance_livestock_market*10, # assumes car speed of 50km/h and walking speed of 5 km/h  
+    mode_distance_livestock_market %in% c("cycling")& metric_distance_livestock_market %in% c("minutes")~distance_livestock_market*3, # assumes bike speed of 15km/h and walking speed of 5 km/h
+    mode_distance_livestock_market %in% c("horse","donkey")& metric_distance_livestock_market %in% c("minutes")~distance_livestock_market*2, # assumes horse speed of 10km/h and walking speed of 5 km/h
+    TRUE~distance_livestock_market))%>%
+  #Distance to crop market
+  mutate(distance_crop_market = case_when(
+    mode_distance_crop_market%in% c("walking")& metric_distance_crop_market %in% c("minutes")~distance_crop_market,
+    mode_distance_crop_market%in% c("motobike","motorbike", "car")& metric_distance_crop_market %in% c("minutes")~distance_crop_market*10, # assumes car speed of 50km/h and walking speed of 5 km/h  
+    mode_distance_crop_market %in% c("cycling")& metric_distance_crop_market %in% c("minutes")~distance_crop_market*3, # assumes bike speed of 15km/h and walking speed of 5 km/h
+    mode_distance_crop_market %in% c("horse","donkey")& metric_distance_crop_market %in% c("minutes")~distance_crop_market*2, # assumes horse speed of 10km/h and walking speed of 5 km/h
+    TRUE~distance_crop_market))%>%
+  #Distance to public transport
+  mutate(distance_publich_transport = case_when(
+    mode_distance_publich_transport%in% c("walking")& metric_distance_publich_transport %in% c("minutes")~distance_publich_transport,
+    mode_distance_publich_transport%in% c("motobike","motorbike", "car")& metric_distance_publich_transport %in% c("minutes")~distance_publich_transport*10, # assumes car speed of 50km/h and walking speed of 5 km/h  
+    mode_distance_publich_transport %in% c("cycling")& metric_distance_publich_transport %in% c("minutes")~distance_publich_transport*3, # assumes bike speed of 15km/h and walking speed of 5 km/h
+    mode_distance_publich_transport %in% c("horse","donkey")& metric_distance_publich_transport %in% c("minutes")~distance_publich_transport*2, # assumes horse speed of 10km/h and walking speed of 5 km/h
+    TRUE~distance_publich_transport))%>%
+  #Distance to main road
+  mutate(distance_main_road = case_when(
+    mode_distance_main_road%in% c("walking")& metric_distance_main_road %in% c("minutes")~distance_main_road,
+    mode_distance_main_road%in% c("motobike","motorbike", "car")& metric_distance_main_road %in% c("minutes")~distance_main_road*10, # assumes car speed of 50km/h and walking speed of 5 km/h  
+    mode_distance_main_road %in% c("cycling")& metric_distance_main_road %in% c("minutes")~distance_main_road*3, # assumes bike speed of 15km/h and walking speed of 5 km/h
+    mode_distance_main_road %in% c("horse","donkey")& metric_distance_main_road %in% c("minutes")~distance_main_road*2, # assumes horse speed of 10km/h and walking speed of 5 km/h
+    TRUE~distance_main_road))
+  
 ### FARMER BEHAVIOUR ----
 per_data_clean<- per_data_clean %>%
   #Human well being score
@@ -180,8 +273,34 @@ per_data_clean<- per_data_clean %>%
     farmer_agency_1!=0 &farmer_agency_3==0 ~ farmer_agency_1,
     farmer_agency_1!=0 &farmer_agency_3!=0 ~ rowMedians(as.matrix(select(., c(farmer_agency_1, farmer_agency_3))), na.rm = TRUE),
     TRUE~ NA))%>%
-  mutate(farmer_agency_1_3= round(farmer_agency_1_3, digits=0))
-  
+  mutate(farmer_agency_1_3= round(farmer_agency_1_3, digits=0))%>%
+  #Perceived credit repayment confidence
+  mutate(credit_payment_hability= case_when(
+    credit_payment_full== "1"~ "5",
+    is.na(credit_payment_full)~ "0",
+    TRUE~credit_payment_hability))
+
+
+x<-per_data_clean%>%
+  select(crop_damage_cause)%>%
+  mutate(crop_damage_cause = str_extract(crop_damage_cause, "(?<=//).*"))%>%
+  #Perceived pests as production constraint
+  mutate(crop_damage_cause_pest= if_else(str_detect(crop_damage_cause, "pest"), "1", "0"),
+         crop_damage_cause_pest= if_else(is.na(crop_damage_cause_pest), "0", crop_damage_cause_pest))%>%
+  #Perceived climate change as production constraint
+  mutate(crop_damage_cause_climate= if_else(str_detect(crop_damage_cause, "climate_change")|
+                                              str_detect(crop_damage_cause,"drought")|
+                                              str_detect(crop_damage_cause,"flood")|
+                                              str_detect(crop_damage_cause,"temperature" )|
+                                              str_detect(crop_damage_cause,"rain"), "1", "0"),
+         crop_damage_cause_climate= if_else(is.na(crop_damage_cause_climate), "0", crop_damage_cause_climate))%>%
+  #Perceived market characteristics as production constraint
+  mutate(crop_damage_cause_market= if_else(str_detect(crop_damage_cause, "lack of market")|
+                                              str_detect(crop_damage_cause,"low prices"), "1", "0"),
+         crop_damage_cause_market= if_else(is.na(crop_damage_cause_market), "0", crop_damage_cause_market))
+
+sort(unique(x$crop_damage_cause))
+
 
 
   #Perspective on agroecology score
@@ -190,6 +309,19 @@ per_data_clean<- per_data_clean %>%
 
 
 ### FARM MANAGEMENT CHARACTERISTICS ----
+  names(per_data_clean)
+per_data_clean<-per_data_clean%>%
+    select(starts_with("soil_fertility_management."))%>%
+    rename("soil_fertility_management_chemical"="soil_fertility_management.1")%>%
+    rename("soil_fertility_management_organic"="soil_fertility_management.2")%>%
+    rename("soil_fertility_management_ecol_practices"="soil_fertility_management.3")
+    
+  
+  
+  
+  
+  
+  
 per_data_clean <- per_data_clean %>%
   mutate(
     #Number of ecological practices use on cropland to improve soil quality and health
@@ -212,6 +344,11 @@ per_data_clean <- per_data_clean %>%
     #Number of CHEMICAL management practices used to manage livestock diseases in the last 12 months
     num_livestock_diseases_management_organic = rowSums(select(., c("livestock_diseases_management.1",
                                                                   "livestock_diseases_management.2")),na.rm = TRUE))
+  
+  
+  
+  
+  
 
 ### NATURAL CAPITAL ----
 per_data_clean<-per_data_clean%>%

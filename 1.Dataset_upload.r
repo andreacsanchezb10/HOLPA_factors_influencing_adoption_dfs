@@ -30,12 +30,12 @@ nhlabour_begin_group <- function(data,workers,permanent_seasonal) {
            group_workers= as.character(group_workers),
            num_workers= as.numeric(num_workers))%>%
     mutate(group_workers= case_when(
-      group_workers %in% c("adultos varones mayores (>65 años)","adultos mayores varones (>65 años)")~ paste0("nhlabour_",permanent_seasonal,"_adults_old_male"),
-      group_workers%in%c("Adultos varones (≥18 y ≤65 años)","adultos varones (≥18 y ≤65)")~paste0("nhlabour_",permanent_seasonal,"_adults_wa_male"),
-      group_workers%in%c("Mujeres adultas (≥18 y ≤65 años)","mujeres adultas (≥18 y ≤65)")~paste0("nhlabour_",permanent_seasonal,"_adults_wa_female"),
-      group_workers=="mujeres adultas mayores (>65 años)"~paste0("nhlabour_",permanent_seasonal,"_adults_old_female"),
-      group_workers=="niñas (<18 años)"~ paste0("nhlabour_",permanent_seasonal,"_children_female"),
-      group_workers=="niños varones (<18 años)"~paste0("nhlabour_",permanent_seasonal,"_children_male"),
+      group_workers %in% c("adultos varones mayores (>65 años)","adultos mayores varones (>65 años)")~ paste0("num_nhlabour_",permanent_seasonal,"_adults_old_male"),
+      group_workers%in%c("Adultos varones (≥18 y ≤65 años)","adultos varones (≥18 y ≤65)")~paste0("num_nhlabour_",permanent_seasonal,"_adults_wa_male"),
+      group_workers%in%c("Mujeres adultas (≥18 y ≤65 años)","mujeres adultas (≥18 y ≤65)")~paste0("num_nhlabour_",permanent_seasonal,"_adults_wa_female"),
+      group_workers=="mujeres adultas mayores (>65 años)"~paste0("num_nhlabour_",permanent_seasonal,"_adults_old_female"),
+      group_workers=="niñas (<18 años)"~ paste0("num_nhlabour_",permanent_seasonal,"_children_female"),
+      group_workers=="niños varones (<18 años)"~paste0("num_nhlabour_",permanent_seasonal,"_children_male"),
       
       TRUE ~ group_workers))%>%
     select(kobo_farmer_id,num_workers,group_workers)%>%
@@ -48,12 +48,12 @@ hlabour_begin_group <- function(data,group_workers,num_workers,permanent_seasona
     mutate(group_workers= as.character(group_workers),
            num_workers= as.numeric(num_workers))%>%
     mutate(group_workers= case_when(
-      group_workers %in% c("adultos varones mayores (>65 años)","adultos mayores varones (>65 años)")~ paste0("hlabour_",permanent_seasonal,"_adults_old_male"),
-      group_workers%in%c("Adultos varones (≥18 y ≤65 años)","adultos varones (≥18 y ≤65)")~paste0("hlabour_",permanent_seasonal,"_adults_wa_male"),
-      group_workers%in%c("Mujeres adultas (≥18 y ≤65 años)","mujeres adultas (≥18 y ≤65)")~paste0("hlabour_",permanent_seasonal,"_adults_wa_female"),
-      group_workers=="mujeres adultas mayores (>65 años)"~paste0("hlabour_",permanent_seasonal,"_adults_old_female"),
-      group_workers=="niñas (<18 años)"~ paste0("hlabour_",permanent_seasonal,"_children_female"),
-      group_workers=="niños varones (<18 años)"~paste0("hlabour_",permanent_seasonal,"_children_male"),
+      group_workers %in% c("adultos varones mayores (>65 años)","adultos mayores varones (>65 años)")~ paste0("num_hlabour_",permanent_seasonal,"_adults_old_male"),
+      group_workers%in%c("Adultos varones (≥18 y ≤65 años)","adultos varones (≥18 y ≤65)")~paste0("num_hlabour_",permanent_seasonal,"_adults_wa_male"),
+      group_workers%in%c("Mujeres adultas (≥18 y ≤65 años)","mujeres adultas (≥18 y ≤65)")~paste0("num_hlabour_",permanent_seasonal,"_adults_wa_female"),
+      group_workers=="mujeres adultas mayores (>65 años)"~paste0("num_hlabour_",permanent_seasonal,"_adults_old_female"),
+      group_workers=="niñas (<18 años)"~ paste0("num_hlabour_",permanent_seasonal,"_children_female"),
+      group_workers=="niños varones (<18 años)"~paste0("num_hlabour_",permanent_seasonal,"_children_male"),
       
       TRUE ~ group_workers))%>%
     select(kobo_farmer_id,num_workers,group_workers)%>%
@@ -246,8 +246,6 @@ per_3_3_3_2_begin_repeat<-per_3_3_3_2_begin_repeat%>%
 
 
 colnames(per_3_3_3_2_begin_repeat)
-
-sheet_names
 
 
 [11]  "per_3_4_1_2_7_2_1_begin_repeat"
