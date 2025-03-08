@@ -11,7 +11,7 @@ library(purrr)
 
 # Define the function to process each sheet
 process_survey_data <- function(sheet_name, country_name, column_id_rename) {
-  survey_data <- read_excel(per_h_survey_path, sheet = sheet_name)
+  survey_data <- read_excel(paste0(per_path,"per_holpa_household_survey_clean.xlsx"), sheet = sheet_name)
   
   # Apply transformations
   survey_data <- survey_data %>%
@@ -145,12 +145,13 @@ f_global_survey <- read_excel("factors_list.xlsx",sheet = "fieldwork_survey")%>%
 
 ##### Peru ----
 # Define file path
-per_h_form_path <- "C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Peru/peru_data_clean/per_holpa_household_form_clean.xlsx" #path andrea
-per_h_survey_path <- "C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Peru/peru_data_clean/per_holpa_household_survey_clean.xlsx" #path andrea
-per_f_survey_path<-"C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Peru/peru_data_clean/per/per_fieldwork_format.csv"
+per_path <- "C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Peru/peru_data_clean/" #household form
+
+per_h_survey_path <- "C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Peru/peru_data_clean/per_holpa_household_survey_clean.xlsx" #household survey
+per_f_survey_path<-"C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Peru/peru_data_clean/per/per_fieldwork_format.csv" #fieldwork survey
 
 
-per_choices <- read_excel(per_h_form_path, sheet = "choices")%>%
+per_choices <- read_excel(paste0(per_path,"per_holpa_household_form_clean.xlsx"), sheet = "choices")%>%
   mutate(country= "peru",
          name_new=NA)%>%
   select("list_name","name","label::English (en)","country",name_new)%>%
@@ -187,7 +188,7 @@ per_global_choices<-global_choices%>%
 
 write.csv(per_global_choices,"per_global_choices.csv",row.names=FALSE)
 
-
+#Fieldwork survey
 f_column_mapping <- f_global_survey %>%
   select(name_question,column_name_new )  # Select only the relevant columns
 print(f_column_mapping)
@@ -197,11 +198,45 @@ colnames(per_f_survey) <- gsub("^X", "", colnames(per_f_survey))
 per_f_survey<-per_f_survey%>%
   select(all_of(unique(f_column_mapping$name_question)),kobo_farmer_id,country)
 
-names(per_f_survey)
+#Soil results
+names(per_soil_results)
+
+per_soil_results <- read_excel(paste0(per_path,"per_soil_results_250924.xlsx"), sheet = "Resultados suelos")%>%
+  rename("soil_main_crop"="NUEVA CLASIFICACION",
+         "kobo_farmer_id"="Código del \r\nencuestado" ,
+         "MO_percentage"="MO %",
+         "sand_percentage"="% Arena",
+         "clay_percentage"="% Arciclla",
+         "silt_percentage"=  "% Limo",
+         "soil_class_tx"="Clase Tx")%>%
+  filter(!is.na(kobo_farmer_id))%>%
+  mutate(soil_class_tx=case_when(
+    soil_class_tx=="Arcillo Arenoso"~ "Clayey Sandy",
+    soil_class_tx=="Arcillo Limoso"~ "Clayey Silty",
+    soil_class_tx=="Arcilloso"~ "Clayey",
+    soil_class_tx=="Arena"~ "Sandy",
+    soil_class_tx%in% c("Arena Franca","Arena Franco","Franco Arenosa","Franco Arenoso")~ "Sandy Loam",
+    soil_class_tx%in%c("Fraco", "Franco")~ "Loam",
+    soil_class_tx=="Franco Arcillo Arenoso"~ "Clayey Sandy Loam",
+    soil_class_tx=="Franco Arcillo Limoso"~ "Silty Clay Loam",
+    soil_class_tx%in%c("Franco arcilloso","Franco Arcilloso")~ "Clay Loam",
+    soil_class_tx=="Franco Limoso"~ "Silty Loam",
+    TRUE~ NA)) %>%
+  group_by(kobo_farmer_id)%>%
+  mutate(soil_pH_mean= mean(pH),
+         soil_MO_percentage_mean= mean(MO_percentage))%>%
+  ungroup()%>%
+  distinct(kobo_farmer_id, soil_pH_mean,soil_MO_percentage_mean, .keep_all = TRUE) %>%
+  select(kobo_farmer_id, soil_pH_mean,soil_MO_percentage_mean)
+  
+
+
+
+  
 
 
 # Read all sheet names from per_household survey
-sheet_names <- excel_sheets(per_h_survey_path)
+sheet_names <- excel_sheets(paste0(per_path,"per_holpa_household_survey_clean.xlsx"))
 sheet_names
 
 
@@ -220,6 +255,9 @@ walk(sheet_names, function(sheet) {
 
 
 per_maintable <- permaintable
+per_maintable$end_time <- as.numeric(per_maintable$end_time)
+per_maintable$end_time <- as.Date(per_maintable$end_time, origin = "1899-12-30")
+
 per_3_4_1_1_7_1_begin_repeat<-per_3_4_1_1_7_1_begin_repeat%>%
   rename("nonhired_permanent_workers"="_3_4_1_1_7_1_calculate")%>%
   nhlabour_begin_group(.,.$nonhired_permanent_workers,"permanent")
@@ -245,7 +283,21 @@ per_3_3_3_2_begin_repeat<-per_3_3_3_2_begin_repeat%>%
   practices_begin_group(.,.$cropland_practices,.$cropland_practices_area)
 
 
-colnames(per_3_3_3_2_begin_repeat)
+per_3_4_2_2_2_begin_repeat<-per_3_4_2_2_2_begin_repeat%>%
+  rename("livestock_name_main"="_3_4_2_2_2_calculate",
+         "livestock_main_breed_number"="_3_4_2_2_3",
+         "livestock_main_animal_number"="_3_4_2_2_4")%>%
+  mutate(livestock_name_main=  str_extract(livestock_name_main, "(?<=//).*"),
+         livestock_main_breed_number = as.numeric(livestock_main_breed_number), 
+         livestock_main_animal_number = as.numeric(livestock_main_animal_number)) %>%
+  select(kobo_farmer_id,livestock_name_main,livestock_main_breed_number,livestock_main_animal_number)%>%
+  distinct(kobo_farmer_id, livestock_name_main, .keep_all = TRUE) %>% # Keep unique rows
+  pivot_wider(id_cols=kobo_farmer_id, 
+              names_from = livestock_name_main, 
+              values_from = c(livestock_main_breed_number,livestock_main_animal_number),
+              values_fill = list(livestock_main_breed_number = 0, livestock_main_animal_number = 0))
+
+
 
 
 [11]  "per_3_4_1_2_7_2_1_begin_repeat"
@@ -253,7 +305,7 @@ colnames(per_3_3_3_2_begin_repeat)
 [21]       "per_3_4_3_1_2_begin_repeat"    
 
 
-[26] "per_3_4_2_2_2_begin_repeat"     "per_3_4_2_2_6_begin_repeat"     "per_3_4_2_3_2_begin_repeat"     "per_3_4_2_3_2_4_begin_repeat"          
+[26] ""     "per_3_4_2_2_6_begin_repeat"     "per_3_4_2_3_2_begin_repeat"     "per_3_4_2_3_2_4_begin_repeat"          
 [31]                     "per_3_3_4_1_3_begin_repeat"             
 [36]                        "per_3_4_3_1_1_Corregido"        "per_3_4_3_4_2_begin_repeat"    
 [41] "per_3_4_3_3_1_1_Corregido"  
@@ -289,8 +341,13 @@ per_data<- per_maintable%>%
   left_join(per_2_3_1_begin_group, by=c("kobo_farmer_id","country"))%>%
   left_join(per_3_2_1_3_1_begin_group, by=c("kobo_farmer_id","country"))%>%
   left_join(per_2_4_1_begin_group, by=c("kobo_farmer_id","country"))%>%
-  left_join(per_f_survey, by=c("kobo_farmer_id","country"))
+  left_join(per_f_survey, by=c("kobo_farmer_id","country"))%>%
+  left_join(per_3_4_2_2_2_begin_repeat, by=c("kobo_farmer_id"))%>%
+  left_join(per_soil_results, by=c("kobo_farmer_id"))
+
   
+  
+per_soil_results
   
 names(per_data)
 colnames(per_data)
@@ -345,6 +402,8 @@ colnames(per_data) <- ifelse(existing_cols %in% names(rename_vector), rename_vec
 # Check the updated column names
 print(colnames(per_data))
 
+per_data<- per_data%>%
+  rename("farm_elevation"="_elevation")
 
 
 #####################################

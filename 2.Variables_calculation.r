@@ -1,29 +1,30 @@
 library(matrixStats)
 library(dplyr)
 library(readr)  # for parse_number()
+library(stringr)
 
-per_data_clean<- read.csv("per_data.csv",sep=",")
+per_data<- read.csv("per_data.csv",sep=",")
 global_survey<-read.csv("global_survey.csv",sep=",")
 per_global_choices<-read.csv("per_global_choices.csv",sep=",")
 
-names(per_data_clean)
+names(per_data)
 #############################################################    
 ########## DATA TYPE CONVERSION #####-----
 #############################################################
 
 ###### --- NUMERICAL VARIABLES -----
 #### Convert continuous variables to numeric
-per_columns_numeric <- intersect(global_survey$column_name_new[global_survey$type_question %in% c( "decimal", "integer")], colnames(per_data_clean))
+per_columns_numeric <- intersect(global_survey$column_name_new[global_survey$type_question %in% c( "decimal", "integer")], colnames(per_data))
 print(per_columns_numeric)  # Check if it holds expected values
 
-per_data_clean<- per_data_clean%>%
+per_data_clean<- per_data%>%
   mutate(across(all_of(per_columns_numeric), as.numeric))%>%
   mutate(across(starts_with("nonhired_labour_"), ~ replace_na(.x, 0)))%>%
   mutate(across(starts_with("hired_labour_"), ~ replace_na(.x, 0)))
 
 ###### --- CATEGORICAL AND BINARY VARIABLES -----
 #### Convert categorical and binary to factor
-per_columns_numeric <- intersect(global_survey$column_name_new[global_survey$type_question %in% c( "decimal", "integer")], colnames(per_data_clean))
+per_columns_numeric <- intersect(global_survey$column_name_new[global_survey$type_question %in% c( "decimal", "integer")], colnames(per_data))
 
 per_columns_factor <- intersect(global_survey$column_name_new[global_survey$type_question %in%c("calculate","select_multiple", "select_one","text" )], colnames(per_data_clean))
 print(per_columns_factor)  # Check if it holds expected values
@@ -36,17 +37,151 @@ str(per_data_clean$gender)
 names(per_data_clean)
 
 #############################################################
-########## VARIABLES CALCULATION #####-----
+########## OUTCOMES CALCULATION #####-----
 #############################################################
 
-##### FACTORS ----
+### Potential outcomes ----
+per_data_clean <- per_data_clean %>%
+  mutate(
+    # total area (ha) of cropland under diversified farming systems
+    across(starts_with("dfs_") & ends_with("_area"), ~ as.numeric(as.character(.))),
+    dfs_total_area = rowSums(select(., starts_with("dfs_") & ends_with("_area")) %>% mutate(across(everything(), as.numeric)), na.rm = TRUE),
+    # adoption of diversified farming systems binary (1=yes,0=no)
+    dfs_adoption_binary = as.factor(ifelse(dfs_total_area > 0, "1","0")),
+    dfs_crop_rotation_adoption= as.factor(ifelse(dfs_crop_rotation_area > 0, "1","0")),
+    
+    dfs_agroforestry_adoption= as.factor(ifelse(dfs_agroforestry_area > 0, "1","0")),
+    dfs_cover_crops_adoption= as.factor(ifelse(dfs_cover_crops_area > 0, "1","0")),
+    dfs_homegarden_adoption= as.factor(ifelse(dfs_homegarden_area > 0, "1","0")),
+    dfs_intercropping_adoption= as.factor(ifelse(dfs_intercropping_area > 0, "1","0")),
+    dfs_fallow_adoption= as.factor(ifelse(dfs_fallow_area > 0, "1","0")),
+    dfs_strip_vegetation_adoption= as.factor(ifelse(dfs_strip_vegetation_area > 0, "1","0")),
+    dfs_hedgerows_adoption= as.factor(ifelse(dfs_hedgerows_area > 0, "1","0")))
+
+#############################################################
+########## FACTORS CALCULATION #####-----
+#############################################################
+
+
+
+### BIOPHYSICAL CONTEXT ----
+per_data_clean<-per_data_clean%>%
+  #Soil depth
+  mutate(across(starts_with("soil_depth_"), ~str_extract(.x, "(?<=depth_).*")))%>%
+  mutate(across(starts_with("soil_depth_"), ~ as.numeric(as.character(.))))%>%
+  mutate(soil_depth = rowSums(as.matrix(select(., starts_with("soil_depth_"))), na.rm = TRUE)/3)%>%
+  mutate(soil_depth= round(soil_depth, digits=0))%>%
+  mutate(soil_depth=paste0("depth_",soil_depth))%>%
+  #Year of assessment
+  mutate(year_assessment= str_extract(end_time, "^\\d{4}"))%>%
+  #Rainfall timing change
+  mutate(rainfall_timing_change_perception= case_when(
+    rainfall_timing_change_perception.startearlier=="1"~"1",
+    rainfall_timing_change_perception.startlater=="1"~"1",
+    rainfall_timing_change_perception.unpredictable=="1"~"1",
+    rainfall_timing_change_perception.stopearlier=="1"~"1",
+    rainfall_timing_change_perception.stoplater=="1"~"1",
+    TRUE~"0"))
+
+
+### FINANCIAL CAPITAL ----
+per_data_clean<-per_data_clean%>%
+  #Income sources
+  mutate(across(starts_with("income_sources."), ~ as.numeric(as.character(.))))%>%
+  mutate(num_income_sources = rowSums(as.matrix(select(., starts_with("income_sources."))), na.rm = TRUE))%>%
+  mutate(income_sources= case_when(
+    num_income_sources>2~ "5",
+    num_income_sources==2~ "2",
+    num_income_sources==1~ "0",
+    TRUE~ NA))%>%
+  #Availability of non-farm income
+  mutate(income_access_nonfarm = rowSums(as.matrix(select(., c(income_sources.casual_labour,
+                                                               income_sources.transfers,
+                                                               income_sources.other,
+                                                               income_sources.subsidy,
+                                                               income_sources.other_business,
+                                                               income_sources.leasing))), na.rm = TRUE))%>%
+  mutate(income_access_nonfarm = ifelse(income_access_nonfarm>0, "1","0"))%>%
+  #On-farm income
+  mutate(income_amount_onfarm= rowSums(as.matrix(select(., c(income_amount_crop,
+                                                             income_amount_livestock,
+                                                             income_amount_fish))), na.rm = TRUE))%>%
+  #Non-farm income amount
+  mutate(income_amount_nonfarm= rowSums(as.matrix(select(., c(income_amount_family_business,
+                                                              income_amount_casual_labour,
+                                                              income_amount_formal_labour,
+                                                              income_amount_transfers,
+                                                              income_amount_leasing_land,
+                                                              income_amount_subsidy,
+                                                              income_amount_other))), na.rm = TRUE))%>%
+  #Total income amount
+  mutate(income_amount_total= income_amount_onfarm+income_amount_nonfarm)%>%
+  #Access to credit
+  mutate(credit_access= ifelse(credit=="2", "1","0"))%>%
+  #Access to credit is a constraint
+  mutate(credit_access_constraint= ifelse(credit=="1", "1","0"))%>%
+  mutate(across(starts_with("assets_"), ~ ifelse(. == "9999"|is.na(.),"0", .))) %>%  # Replace 9999 with 0
+  mutate(across(starts_with("assets_"), ~ as.numeric(as.character(.))))%>%
+  #Number of assets
+  mutate(assets_count =rowSums(across(starts_with("assets_"), ~ .>0)))%>%
+  #Livestock count
+  #Reference: Marc BENOIT, Patrick VEYSSET Livestock unit calculation: a method based on energy requirements to refine the study of livestock farming systems
+  mutate(livestock_count_tlu= (livestock_main_animal_number_Cattle*1)+ #Cattle TLU=1
+           (livestock_main_animal_number_Pigs*0.2)+ #Pigs 0.2
+           (livestock_main_animal_number_Chickens*0.01)+ #Poultry 0.01
+           (livestock_main_animal_number_Ducks*0.01)+ #Poultry 0.01
+           (livestock_main_animal_number_Turkeys*0.01)+ #Poultry 0.01
+           (livestock_main_animal_number_Cuyes*0.01)+ #Cuyes 0.01
+           (livestock_main_animal_number_rabbits*0.02))%>% #Rabbits 0.01
+  #Household held a debt
+  mutate(household_held_debt=case_when(credit_payment_full=="0"~ "1",TRUE~"0"))%>%
+  #High-cost roof materials
+  mutate(high_cost_roof_material= case_when(
+    roof_material.Galvanized_iron_or_aluminum_or_other_metal_sheets=="1"~"1",
+    roof_material._brick=="1"~"1",
+    roof_material.Concrete=="1"~"1",
+    roof_material._stone=="1"~"1",
+    TRUE~"0"))%>%
+  #High-cost walls materials
+    mutate(high_cost_walls_material= case_when(
+    walls_material.Bricks=="1"~"1",
+    walls_material.Stones=="1"~"1",
+    walls_material.Iron_sheet=="1"~"1",
+    TRUE~"0"))
+  
+  
+
 ### HUMAN CAPITAL ----
 per_data_clean<-per_data_clean%>%
-  mutate(
     #Household head age
-    age = 2025-year_birth,
+  mutate(age = 2025-year_birth)%>%
+    #Ethnicity
+    mutate( ethnicity= case_when(ethnicity %in% c("Ashaninka","Quechua")~ "Ashaninka or Quechua", TRUE~ ethnicity))%>%
+  #Level of education farmer
+  mutate(education_level_finished= case_when(
+    education_level%in%c("1","4")~"1",
+    education_level%in%c("2","11")~"0",
+    education_level%in%c("3","6","8")~"2",
+    education_level%in%c("5","7","9","10")  ~"3",
+    TRUE~NA))%>%
+  #Level of education of most male household members
+  mutate(education_level_male_finished= case_when(
+    education_level_male%in%c("1","4")~"1",
+    education_level_male%in%c("2","11")~"0",
+    education_level_male%in%c("3","6","8")~"2",
+    education_level_male%in%c("5","7","9","10")  ~"3",
+    TRUE~NA))%>%
+  #Level of education of most female household members
+  mutate(education_level_female_finished= case_when(
+      education_level_female%in%c("1","4")~"1",
+      education_level_female%in%c("2","11")~"0",
+      education_level_female%in%c("3","6","8")~"2",
+      education_level_female%in%c("5","7","9","10")  ~"3",
+      TRUE~NA))%>%
+  #Level of education of most household members
+  mutate(education_level_household_finished= pmax(education_level_finished, education_level_male_finished, education_level_female_finished, na.rm = TRUE))%>%
     #Total adults (18-65 years old) in household
-    num_adults_wa = num_adults_wa_male+num_adults_wa_female,
+  mutate(num_adults_wa = num_adults_wa_male+num_adults_wa_female,
     #Total adults (>65 years old) in household
     num_adults_old= num_adults_old_male+num_adults_old_female,
     #Total children in household
@@ -69,62 +204,11 @@ per_data_clean<-per_data_clean%>%
     #Number of secondary occupations
     across(starts_with("occupation_secondary_list"), ~ as.numeric(as.character(.))),  
     num_occupation_secondary_list = rowSums(as.matrix(select(., starts_with("occupation_secondary_list"))), na.rm = TRUE),
-
     #Farmer as a primary occupation
-    occupation_primary_farmer = ifelse(occupation_primary=="1", "1","0"))
+    occupation_primary_farmer = ifelse(occupation_primary=="1", "1","0"))%>%
+  mutate(full_time_farmer= case_when(occupation_primary_farmer=="1"&occupation_secondary=="0"~"1",TRUE~"0"))%>%
+select(occupation_primary_farmer,occupation_secondary,full_time_farmer)
 
-
-
-### FINANCIAL CAPITAL ----
-per_data_clean<-per_data_clean%>%
-  #Income sources
-  mutate(across(starts_with("income_sources."), ~ as.numeric(as.character(.))))%>%
-  mutate(num_income_sources = rowSums(as.matrix(select(., starts_with("income_sources."))), na.rm = TRUE))%>%
-  mutate(income_sources= case_when(
-    num_income_sources>2~ "5",
-    num_income_sources==2~ "2",
-    num_income_sources==1~ "0",
-    TRUE~ NA))%>%
-  #Availability of non-farm income
-  mutate(income_access_nonfarm = rowSums(as.matrix(select(., c(income_sources.casual_labour,
-                                                            income_sources.transfers,
-                                                            income_sources.other,
-                                                            income_sources.subsidy,
-                                                            income_sources.other_business,
-                                                            income_sources.leasing))), na.rm = TRUE))%>%
-  mutate(income_access_nonfarm = ifelse(income_access_nonfarm>0, "1","0"))%>%
-  #On-farm income
-  mutate(income_amount_onfarm= rowSums(as.matrix(select(., c(income_amount_crop,
-                                                             income_amount_livestock,
-                                                             income_amount_fish))), na.rm = TRUE))%>%
-  #Non-farm income amount
-  mutate(income_amount_nonfarm= rowSums(as.matrix(select(., c(income_amount_family_business,
-                                                              income_amount_casual_labour,
-                                                              income_amount_formal_labour,
-                                                              income_amount_transfers,
-                                                              income_amount_leasing_land,
-                                                              income_amount_subsidy,
-                                                              income_amount_other))), na.rm = TRUE))%>%
-  #Total income amount
-  mutate(income_amount_total= income_amount_onfarm+income_amount_nonfarm)%>%
-  #Access to credit
-  mutate(credit_access= ifelse(credit=="2", "1","0"))%>%
-  #Access to credit is a constraint
-  mutate(credit_access_constraint= ifelse(credit=="1", "1","0"))%>%
-  mutate(across(starts_with("assets_"), ~ ifelse(. == "9999"|is.na(.),"0", .))) %>%  # Replace 9999 with 0
-    mutate(across(starts_with("assets_"), ~ as.numeric(as.character(.))))%>%
-  mutate(num_different_assets =rowSums(across(starts_with("assets_"), ~ .>0)))
-
-
-### BIOPHYSICAL CONTEXT ----
-per_data_clean<-per_data_clean%>%
-  #Soil depth
-  mutate(across(starts_with("soil_depth_"), ~str_extract(.x, "(?<=depth_).*")))%>%
-  mutate(across(starts_with("soil_depth_"), ~ as.numeric(as.character(.))))%>%
-  mutate(soil_depth = rowSums(as.matrix(select(., starts_with("soil_depth_"))), na.rm = TRUE)/3)%>%
-  mutate(soil_depth= round(soil_depth, digits=0))%>%
-  mutate(soil_depth=paste0("depth_",soil_depth))
-  
 
 
 
@@ -280,49 +364,99 @@ per_data_clean<- per_data_clean %>%
     is.na(credit_payment_full)~ "0",
     TRUE~credit_payment_hability))
 
-
-x<-per_data_clean%>%
-  select(crop_damage_cause)%>%
-  mutate(crop_damage_cause = str_extract(crop_damage_cause, "(?<=//).*"))%>%
-  #Perceived pests as production constraint
-  mutate(crop_damage_cause_pest= if_else(str_detect(crop_damage_cause, "pest"), "1", "0"),
-         crop_damage_cause_pest= if_else(is.na(crop_damage_cause_pest), "0", crop_damage_cause_pest))%>%
-  #Perceived climate change as production constraint
-  mutate(crop_damage_cause_climate= if_else(str_detect(crop_damage_cause, "climate_change")|
-                                              str_detect(crop_damage_cause,"drought")|
-                                              str_detect(crop_damage_cause,"flood")|
-                                              str_detect(crop_damage_cause,"temperature" )|
-                                              str_detect(crop_damage_cause,"rain"), "1", "0"),
-         crop_damage_cause_climate= if_else(is.na(crop_damage_cause_climate), "0", crop_damage_cause_climate))%>%
-  #Perceived market characteristics as production constraint
-  mutate(crop_damage_cause_market= if_else(str_detect(crop_damage_cause, "lack of market")|
-                                              str_detect(crop_damage_cause,"low prices"), "1", "0"),
-         crop_damage_cause_market= if_else(is.na(crop_damage_cause_market), "0", crop_damage_cause_market))
-
-sort(unique(x$crop_damage_cause))
-
-
-
-  #Perspective on agroecology score
-  mutate(across(starts_with("agroecol_perspective_"), ~ as.numeric(as.factor(.))))%>%
+#Perspective on agroecology score
+mutate(across(starts_with("agroecol_perspective_"), ~ as.numeric(as.factor(.))))%>%
   mutate(agroecol_perspective_median = rowMedians(as.matrix(select(., starts_with("agroecol_perspective_"))), na.rm = TRUE))
 
 
-### FARM MANAGEMENT CHARACTERISTICS ----
-  names(per_data_clean)
+### VULNERABILITY CONTEXT ----
 per_data_clean<-per_data_clean%>%
-    select(starts_with("soil_fertility_management."))%>%
+  #Perceived pests as risk/shock
+  mutate(crop_damage_cause = str_extract(crop_damage_cause, "(?<=//).*"))%>%
+  mutate(perceived_shock_pest= case_when(
+    str_detect(crop_damage_cause, "pest")~ "1",
+    household_shock.8=="1"~ "1", #Pest or disease outbreaks
+    TRUE~"0"))%>%
+  #Perceived climatic conditions as risk/shock
+  mutate(perceived_shock_climate= case_when(
+    str_detect(crop_damage_cause, "climate_change")~ "1",
+    str_detect(crop_damage_cause,"drought")~ "1",
+    str_detect(crop_damage_cause,"flood")~ "1",
+    str_detect(crop_damage_cause,"temperature" )~ "1",
+    str_detect(crop_damage_cause,"rain")~ "1",
+    household_shock.1 =="1"~ "1", #Extreme weather events (e.g. cyclones, dust storm, excess rainfall, insuficient rainfall, frost, high temperatures, high winds)
+    TRUE~"0"))%>%
+  #Perceived market characteristics as risk/shock
+  mutate(perceived_shock_market= case_when(
+    str_detect(crop_damage_cause, "lack of market")~ "1",
+    str_detect(crop_damage_cause,"low prices")~ "1",
+    household_shock.5 =="1"~ "1", #Market disruptions
+    household_shock.10 =="1"~ "1", #Price fluctuations in market
+    TRUE~"0"))%>%
+  #Perceived indebtedness as risk/shock
+  mutate(household_shock.9= NA)%>%
+  mutate(perceived_shock_indebtedness= case_when(
+    credit_payment_hability=="1"~ "1",
+    household_shock.4=="1"~ "1", #Indebtedness
+    TRUE~"0"))%>%
+  #Perceived political change as risk/shock
+  mutate(perceived_shock_political_change= case_when(
+    household_shock.3=="1"~ "1", #Government change
+    household_shock.9=="1"~ "1", #Policy changes
+    TRUE~"0"))%>%
+  #Household shock count
+  mutate(across(starts_with("household_shock."), ~ as.numeric(as.character(.))))%>%
+  mutate(perceived_shock_count = rowSums(as.matrix(select(., starts_with("household_shock."))), na.rm = TRUE))%>%
+  mutate(perceived_shock_count=case_when(household_shock.none==1~ perceived_shock_count-1,TRUE~perceived_shock_count))%>%
+  #Absorptive strategies to cope with shock
+  mutate(household_shock_recover_activities.5 = NA)%>%
+  mutate(household_shock_strategy_absorptive= case_when(
+    household_shock_recover_activities.5=="1"~ "1", #Reduced area under cultivation
+    household_shock_recover_activities.6=="1"~ "1", #Reduced food consumption
+    household_shock_recover_activities.7=="1"~ "1", #Reduced household expenditure
+    household_shock_recover_activities.9=="1"~ "1", #Sold assets
+    household_shock_recover_activities.12=="1"~ "1", #Taken loans
+    TRUE~"0"))%>%
+  #Adaptive strategies to cope with shock
+  mutate(household_shock_strategy_adaptive= case_when(
+    household_shock_recover_activities.2=="1"~ "1", #Diversified on-farm income sources of income
+    household_shock_recover_activities.3=="1"~ "1", #Engage in off-farm income sources
+    household_shock_recover_activities.10=="1"~ "1", #Switched from chemical to organic farming
+    household_shock_recover_activities.11=="1"~ "1", #Switched from organic to chemical farming
+    TRUE~"0"))%>%
+  #Transformative strategies to cope with shock
+  mutate(household_shock_recover_activities.4 = NA)%>%
+  mutate(household_shock_strategy_transformative= case_when(
+    household_shock_recover_activities.1=="1"~ "1", #Accessed insurance or risk management mechanisms
+    household_shock_recover_activities.4=="1"~ "1", #Migrated
+    household_shock_recover_activities.8=="1"~ "1", #Relied on institutional support
+    TRUE~"0"))%>%
+  #Number of activities to cope with shocks
+  mutate(across(starts_with("household_shock_recover_activities."), ~ as.numeric(as.character(.))))%>%
+  mutate(household_shock_strategy_count = rowSums(as.matrix(select(., starts_with("household_shock_recover_activities."))), na.rm = TRUE))%>%
+  mutate(household_shock_strategy_count=case_when(household_shock_recover_activities.none==1~ household_shock_strategy_count-1,TRUE~household_shock_strategy_count))%>%
+  #Household applied shock coping strategy
+  mutate(household_shock_strategy= case_when(household_shock_strategy_count>0~ "1", TRUE~"0")) 
+  
+  
+  
+  
+
+  
+
+
+
+
+ 
+
+
+### FARM MANAGEMENT CHARACTERISTICS ----
+per_data_clean<-per_data_clean%>%
     rename("soil_fertility_management_chemical"="soil_fertility_management.1")%>%
     rename("soil_fertility_management_organic"="soil_fertility_management.2")%>%
     rename("soil_fertility_management_ecol_practices"="soil_fertility_management.3")
     
-  
-  
-  
-  
-  
-  
-per_data_clean <- per_data_clean %>%
+x <- per_data_clean %>%
   mutate(
     #Number of ecological practices use on cropland to improve soil quality and health
     across(starts_with("soil_fertility_ecol_practices."), ~ as.numeric(as.character(.))),
@@ -338,7 +472,7 @@ per_data_clean <- per_data_clean %>%
     num_livestock_diseases_management= rowSums(across(starts_with("livestock_diseases_management.")), na.rm = TRUE),
     #Number of ORGANIC management practices used to manage livestock diseases in the last 12 months
     num_livestock_diseases_management_organic = rowSums(select(., c("livestock_diseases_management.3",
-                                                                  "livestock_diseases_management.4",
+                                                                    "livestock_diseases_management.4",
                                                                   "livestock_diseases_management.5",
                                                                   "livestock_diseases_management.6")),na.rm = TRUE),
     #Number of CHEMICAL management practices used to manage livestock diseases in the last 12 months
@@ -445,7 +579,23 @@ per_data_clean<-per_data_clean%>%
   #Access to insurance against agricultural losses
   mutate(insurance_agric_losses_access= case_when(insurance_agric_losses_level=="0" ~ "0",TRUE~ "1"))
 
+
+x<-per_data_clean%>%
+  select(income_amount_subsidy)%>%
+  mutate(income_access_subsidy= ifelse(income_amount_subsidy>0, "1","0"),
+         income_access_subsidy= ifelse(is.na(income_amount_subsidy), "0",income_access_subsidy))
+income_amount_subsidy
+
+x<-per_data_clean%>%
+  select(starts_with("income_sources."))
+
+
+
+
 sort(unique(per_data_clean$insurance_agric_losses_access))
+
+
+
 
 ### SOCIAL CAPITAL ----
 per_data_clean<-per_data_clean%>%
@@ -457,24 +607,7 @@ per_data_clean<-per_data_clean%>%
   mutate(membership=ifelse(num_membership>0, "1","0"))
 
 
-### OUTCOMES ----
-### Potential outcomes ----
-per_data_clean <- per_data_clean %>%
-  mutate(
-    # total area (ha) of cropland under diversified farming systems
-    across(starts_with("dfs_") & ends_with("_area"), ~ as.numeric(as.character(.))),
-    dfs_total_area = rowSums(select(., starts_with("dfs_") & ends_with("_area")) %>% mutate(across(everything(), as.numeric)), na.rm = TRUE),
-    # adoption of diversified farming systems binary (1=yes,0=no)
-    dfs_adoption_binary = as.factor(ifelse(dfs_total_area > 0, "1","0")),
-    dfs_crop_rotation_adoption= as.factor(ifelse(dfs_crop_rotation_area > 0, "1","0")),
-    
-    dfs_agroforestry_adoption= as.factor(ifelse(dfs_agroforestry_area > 0, "1","0")),
-    dfs_cover_crops_adoption= as.factor(ifelse(dfs_cover_crops_area > 0, "1","0")),
-    dfs_homegarden_adoption= as.factor(ifelse(dfs_homegarden_area > 0, "1","0")),
-    dfs_intercropping_adoption= as.factor(ifelse(dfs_intercropping_area > 0, "1","0")),
-    dfs_fallow_adoption= as.factor(ifelse(dfs_fallow_area > 0, "1","0")),
-    dfs_strip_vegetation_adoption= as.factor(ifelse(dfs_strip_vegetation_area > 0, "1","0")),
-    dfs_hedgerows_adoption= as.factor(ifelse(dfs_hedgerows_area > 0, "1","0")))
+
     
     
     
