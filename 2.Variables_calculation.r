@@ -39,7 +39,6 @@ names(per_data_clean)
 #############################################################
 ########## OUTCOMES CALCULATION #####-----
 #############################################################
-
 ### Potential outcomes ----
 per_data_clean <- per_data_clean %>%
   mutate(
@@ -61,9 +60,6 @@ per_data_clean <- per_data_clean %>%
 #############################################################
 ########## FACTORS CALCULATION #####-----
 #############################################################
-
-
-
 ### BIOPHYSICAL CONTEXT ----
 per_data_clean<-per_data_clean%>%
   #Soil depth
@@ -149,8 +145,6 @@ per_data_clean<-per_data_clean%>%
     walls_material.Iron_sheet=="1"~"1",
     TRUE~"0"))
   
-  
-
 ### HUMAN CAPITAL ----
 per_data_clean<-per_data_clean%>%
     #Household head age
@@ -206,11 +200,7 @@ per_data_clean<-per_data_clean%>%
     num_occupation_secondary_list = rowSums(as.matrix(select(., starts_with("occupation_secondary_list"))), na.rm = TRUE),
     #Farmer as a primary occupation
     occupation_primary_farmer = ifelse(occupation_primary=="1", "1","0"))%>%
-  mutate(full_time_farmer= case_when(occupation_primary_farmer=="1"&occupation_secondary=="0"~"1",TRUE~"0"))%>%
-select(occupation_primary_farmer,occupation_secondary,full_time_farmer)
-
-
-
+  mutate(full_time_farmer= case_when(occupation_primary_farmer=="1"&occupation_secondary=="0"~"1",TRUE~"0"))
 
 ### PHYSICAL CAPITAL ----
 # Function to classify energy type dynamically
@@ -342,8 +332,113 @@ per_data_clean<-per_data_clean%>%
     mode_distance_main_road%in% c("motobike","motorbike", "car")& metric_distance_main_road %in% c("minutes")~distance_main_road*10, # assumes car speed of 50km/h and walking speed of 5 km/h  
     mode_distance_main_road %in% c("cycling")& metric_distance_main_road %in% c("minutes")~distance_main_road*3, # assumes bike speed of 15km/h and walking speed of 5 km/h
     mode_distance_main_road %in% c("horse","donkey")& metric_distance_main_road %in% c("minutes")~distance_main_road*2, # assumes horse speed of 10km/h and walking speed of 5 km/h
-    TRUE~distance_main_road))
+    TRUE~distance_main_road))%>%
+  #Mean of transportation
+  mutate(mean_transport= case_when(
+    assets_car>0~ "1",
+    assets_motorbike>0~ "1",
+    assets_bicycle>0~ "1",
+    str_detect(assets_other_name, "Motocar|motocar|Motofurgon|motofurgon|Furgoneta|Bote") ~ "1",
+    TRUE~ "0"))%>%
+  #hh has a mobile phone
+  mutate(access_mobile_phone= case_when(
+    assets_mobile_phone=="1"~ "1",
+    assets_smarthphone=="1"~ "1",
+    TRUE~ "0"))%>%
+  #hh has machinery
+  mutate(access_machinery= case_when(
+    assets_ox_plough>0~ "1",
+    assets_tractor>0~ "1",
+    assets_plow>0~ "1",
+    assets_seed_drill>0~ "1",
+    str_detect(assets_other_name, "secador solar|Modulo de secado|Secador de cacao|Carretilla|
+               Cultivadora|Cultivadoras|cultivadoras|cultivadora") ~ "1",
+    TRUE~ "0"))%>%
+  #Access to irrigation
+  mutate(across(starts_with("irrigation_method."), ~ as.numeric(as.character(.))),
+         access_irrigation_method= rowSums(select(., starts_with("irrigation_method.")) %>% mutate(across(everything(), as.numeric)), na.rm = TRUE),
+         access_irrigation_method=ifelse(access_irrigation_method>0, "1","0"))%>%
+  #Irrigated land
+  mutate(irrigated_land_percentage= ifelse(is.na(irrigated_land_percentage), 0,irrigated_land_percentage))%>%
+  #Access to rainwater harvesting systems
+  mutate(across(starts_with("rainwater_harvesting."), ~ as.numeric(as.character(.))),
+         access_water_harvest_system= rowSums(select(., starts_with("rainwater_harvesting.")) %>% mutate(across(everything(), as.numeric)), na.rm = TRUE),
+         access_water_harvest_system=access_water_harvest_system-rainwater_harvesting.none,
+         access_water_harvest_system=ifelse(access_water_harvest_system>0, "1","0"))
+
+
+### SOCIAL CAPITAL ----
+per_data_clean<-per_data_clean%>%
+  #Number of association/organization memberships
+  mutate(across(starts_with("membership."), ~ as.numeric(as.character(.))))%>%
+  mutate(num_membership = rowSums(select(., starts_with("membership.")), na.rm = TRUE) -
+           rowSums(select(., c("membership.none", "membership.i.dont.know")), na.rm = TRUE))%>%
+  #Association/organization membership 
+  mutate(membership=ifelse(num_membership>0, "1","0"))%>%
+  #Support from financial institutions
+  mutate(across(starts_with("support_provider."),~replace_na(str_replace(.x, "i-dont-know", "0"),"0")))%>%
+  mutate(support_provider_financial_institution= case_when(
+    support_provider.bank=="1"~"1",
+    support_provider.moneylenders=="1"~"1",
+    TRUE~"0"))%>%
+  #Support from governmental institutions
+  mutate(support_provider_governmental_institution= case_when(
+    support_provider.local_government=="1"~"1",
+    support_provider.national_government=="1"~"1",
+    TRUE~"0"))%>%
+  #Support from community and social networks
+  mutate(support_provider_community= case_when(
+    support_provider.community_leaders=="1"~"1",
+    support_provider.ind_different_community=="1"~"1",
+    support_provider.ind_own_community=="1"~"1",
+    TRUE~"0"))%>%
+  #Support from community and social networks
+  mutate(support_provider_cooperative_organizations= case_when(
+    support_provider.cooperatives=="1"~"1",
+    support_provider.farmer_organization=="1"~"1",
+    support_provider.local_organization=="1"~"1",
+    TRUE~"0"))%>%
+  #Number of institutions that will support household
+  mutate(across(starts_with("support_provider."), ~ as.numeric(as.character(.))),
+         support_provider_count= rowSums(select(., starts_with("support_provider.")) %>% mutate(across(everything(), as.numeric)), na.rm = TRUE))
+
+
+
+
+
+### NATURAL CAPITAL ----
+per_data_clean<-per_data_clean%>%
+  # Farm size
+  mutate(farm_size= land_tenure_own_area+land_tenure_lease_area+land_tenure_hold_area)
+
+per_data_clean<- per_data_clean %>%
+  #Years of farming land
+  mutate(years_farming_land = 2025-year_start_farming_land)%>%
+  #Livestock land area
+  mutate(livestockland_area= livestockland_area_owned+livestockland_area_shared,
+         livestockland_area= ifelse(is.na(livestockland_area), 0,livestockland_area))%>%
+  #Fishland area
+  mutate(fishland_area= ifelse(is.na(fishland_area), 0,fishland_area))%>%
+  #Total production area
+  mutate(total_production_area= cropland_area+livestockland_area+fishland_area)%>%
+  #Area under sustainable agricultural practices
+  mutate(sfp_total_area = rowSums(as.matrix(select(., dfs_total_area,starts_with("ecol_") & ends_with("_area"))), na.rm = TRUE))
   
+y<-per_data_clean%>%
+  #
+  mutate(months_count_water_accessibility_difficulty_normal_year = rowSums(as.matrix(select(., starts_with("water_accessibility_difficulty_normal_year."))), na.rm = TRUE))%>%
+  mutate(months_count_water_accessibility_difficulty_flood_year = rowSums(as.matrix(select(., starts_with("water_accessibility_difficulty_flood_year."))), na.rm = TRUE))%>%
+  select(starts_with("water_accessibility_difficulty_drought_year."))%>%
+  mutate(months_count_water_accessibility_difficulty_drought_year = rowSums(as.matrix(select(., starts_with("water_accessibility_difficulty_drought_year."))), na.rm = TRUE))
+  
+
+  
+  
+  
+  
+  
+
+
 ### FARMER BEHAVIOUR ----
 per_data_clean<- per_data_clean %>%
   #Human well being score
@@ -484,10 +579,7 @@ x <- per_data_clean %>%
   
   
 
-### NATURAL CAPITAL ----
-per_data_clean<-per_data_clean%>%
-  # Farm size
-  mutate(farm_size= land_tenure_own_area+land_tenure_lease_area+land_tenure_hold_area)
+
          
 
 ### POLITICAL AND INSTITUTIONAL CONTEXT: Value chain ----
@@ -597,14 +689,7 @@ sort(unique(per_data_clean$insurance_agric_losses_access))
 
 
 
-### SOCIAL CAPITAL ----
-per_data_clean<-per_data_clean%>%
-  #Number of association/organization memberships
-  mutate(across(starts_with("membership."), ~ as.numeric(as.character(.))))%>%
-  mutate(num_membership = rowSums(select(., starts_with("membership.")), na.rm = TRUE) -
-           rowSums(select(., c("membership.none", "membership.i.dont.know")), na.rm = TRUE))%>%
-  #Association/organization membership 
-  mutate(membership=ifelse(num_membership>0, "1","0"))
+
 
 
 

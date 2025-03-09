@@ -76,10 +76,10 @@ practices_begin_group <- function(data, cropland_practices,cropland_practices_ar
       cropland_practices %in%c("Fallow (leave land unproductive)" )~ "dfs_fallow_area",
       cropland_practices %in%c("Natural strips/vegetation" )~ "dfs_strip_vegetation_area",
       cropland_practices %in%c("Hedgerows/Live fences")~ "dfs_hedgerows_area",
-      
+      cropland_practices %in%c("Pollinator/Flower_strips")~ "dfs_strip_polinator_area",
       #good agricultural practices
       cropland_practices %in%c("Mulching")~ "ecol_practices_mulching_area",
-      
+      cropland_practices %in%c("Push-pull")~ "ecol_practices_pushpull_area",
       TRUE ~ cropland_practices))%>%
     select(kobo_farmer_id,cropland_practices,cropland_practices_area)%>%
     pivot_wider(id_cols=kobo_farmer_id, names_from = cropland_practices, values_from = cropland_practices_area,values_fill = "0")
@@ -147,7 +147,6 @@ f_global_survey <- read_excel("factors_list.xlsx",sheet = "fieldwork_survey")%>%
 # Define file path
 per_path <- "C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Peru/peru_data_clean/" #household form
 
-per_h_survey_path <- "C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Peru/peru_data_clean/per_holpa_household_survey_clean.xlsx" #household survey
 per_f_survey_path<-"C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Peru/peru_data_clean/per/per_fieldwork_format.csv" #fieldwork survey
 
 
@@ -199,8 +198,6 @@ per_f_survey<-per_f_survey%>%
   select(all_of(unique(f_column_mapping$name_question)),kobo_farmer_id,country)
 
 #Soil results
-names(per_soil_results)
-
 per_soil_results <- read_excel(paste0(per_path,"per_soil_results_250924.xlsx"), sheet = "Resultados suelos")%>%
   rename("soil_main_crop"="NUEVA CLASIFICACION",
          "kobo_farmer_id"="Código del \r\nencuestado" ,
@@ -229,12 +226,6 @@ per_soil_results <- read_excel(paste0(per_path,"per_soil_results_250924.xlsx"), 
   distinct(kobo_farmer_id, soil_pH_mean,soil_MO_percentage_mean, .keep_all = TRUE) %>%
   select(kobo_farmer_id, soil_pH_mean,soil_MO_percentage_mean)
   
-
-
-
-  
-
-
 # Read all sheet names from per_household survey
 sheet_names <- excel_sheets(paste0(per_path,"per_holpa_household_survey_clean.xlsx"))
 sheet_names
@@ -244,7 +235,6 @@ sheet_names
 country_name <- "peru"  # Replace with actual country name
 column_id_rename <- "hid"  # Adjust to your specific column
 
-exists("process_survey_data")
 
 
 # Process all sheets and create separate data frames in the environment
@@ -291,13 +281,26 @@ per_3_4_2_2_2_begin_repeat<-per_3_4_2_2_2_begin_repeat%>%
          livestock_main_breed_number = as.numeric(livestock_main_breed_number), 
          livestock_main_animal_number = as.numeric(livestock_main_animal_number)) %>%
   select(kobo_farmer_id,livestock_name_main,livestock_main_breed_number,livestock_main_animal_number)%>%
-  distinct(kobo_farmer_id, livestock_name_main, .keep_all = TRUE) %>% # Keep unique rows
+  distinct(kobo_farmer_id, livestock_name_main, .keep_all = TRUE) %>% 
   pivot_wider(id_cols=kobo_farmer_id, 
               names_from = livestock_name_main, 
               values_from = c(livestock_main_breed_number,livestock_main_animal_number),
               values_fill = list(livestock_main_breed_number = 0, livestock_main_animal_number = 0))
 
+per_3_3_4_1_3_begin_repeat<- per_3_3_4_1_3_begin_repeat%>%
+  distinct(kobo_farmer_id, "_3_3_4_1_3_2", .keep_all = TRUE) 
+ 
+area_per_3_4_3_1_2_begin_repeat<-per_3_4_3_1_2_begin_repeat%>%
+  rename("main_crops_cropland_area"="_3_4_2_1_3")%>%
+  mutate(main_crops_cropland_area = as.numeric(main_crops_cropland_area))%>%
+  #Area of three main crops grown
+  group_by(kobo_farmer_id)%>%
+  mutate(total_main_crops_cropland_area= sum(main_crops_cropland_area))%>%
+  ungroup()%>%
+  select(kobo_farmer_id, total_main_crops_cropland_area)%>%
+  distinct(kobo_farmer_id, total_main_crops_cropland_area, .keep_all = TRUE) 
 
+  
 
 
 [11]  "per_3_4_1_2_7_2_1_begin_repeat"
@@ -305,8 +308,8 @@ per_3_4_2_2_2_begin_repeat<-per_3_4_2_2_2_begin_repeat%>%
 [21]       "per_3_4_3_1_2_begin_repeat"    
 
 
-[26] ""     "per_3_4_2_2_6_begin_repeat"     "per_3_4_2_3_2_begin_repeat"     "per_3_4_2_3_2_4_begin_repeat"          
-[31]                     "per_3_3_4_1_3_begin_repeat"             
+[26]      "per_3_4_2_2_6_begin_repeat"     "per_3_4_2_3_2_begin_repeat"     "per_3_4_2_3_2_4_begin_repeat"          
+[31]                     ""             
 [36]                        "per_3_4_3_1_1_Corregido"        "per_3_4_3_4_2_begin_repeat"    
 [41] "per_3_4_3_3_1_1_Corregido"  
 
@@ -343,14 +346,14 @@ per_data<- per_maintable%>%
   left_join(per_2_4_1_begin_group, by=c("kobo_farmer_id","country"))%>%
   left_join(per_f_survey, by=c("kobo_farmer_id","country"))%>%
   left_join(per_3_4_2_2_2_begin_repeat, by=c("kobo_farmer_id"))%>%
-  left_join(per_soil_results, by=c("kobo_farmer_id"))
+  left_join(per_soil_results, by=c("kobo_farmer_id"))%>%
+  left_join(per_3_3_4_1_3_begin_repeat, by=c("kobo_farmer_id","country"))%>%
+  left_join(area_per_3_4_3_1_2_begin_repeat, by=c("kobo_farmer_id"))
+  
+  
 
   
   
-per_soil_results
-  
-names(per_data)
-colnames(per_data)
 # Process all select_multiple columns
 select_multiple<-h_global_survey%>%
   filter(type_question=="select_multiple")
@@ -377,7 +380,6 @@ per_data<-per_data%>%
 per_data<-per_data%>%
   left_join(per_select_multiple, by=c("kobo_farmer_id"))
 
-names(per_data)
 
 #####################################
 ########## RENAME COLUMN NAMES ----
