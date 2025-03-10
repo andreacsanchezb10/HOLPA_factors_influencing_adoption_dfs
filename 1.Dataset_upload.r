@@ -252,18 +252,73 @@ per_3_4_1_1_7_1_begin_repeat<-per_3_4_1_1_7_1_begin_repeat%>%
   rename("workers"="_3_4_1_1_7_1_calculate",
          "num_hours"="_3_4_1_1_7_1_1")%>%
   nhlabour_begin_group(.,.$workers,.$num_hours ,"permanent")%>%
-  select(kobo_farmer_id,num_workers,group_workers,num_hours)%>%
-  pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = c(num_workers,num_hours),values_fill = 0)
-  
+  select(kobo_farmer_id,group_workers,num_workers,num_hours)%>%
+  mutate(labour_hours= num_workers*num_hours)%>% #total number of workers * average number of hours per day
+  pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = c(num_workers,num_hours,labour_hours),values_fill = 0)
+
 per_3_4_1_2_1_1_begin_repeat<-per_3_4_1_2_1_1_begin_repeat%>%
   rename("group_workers"="_3_4_1_2_1_1_calculate",
          "num_workers"= "_3_4_1_2_1_1_1",
          "num_hours"="_3_4_1_2_1_1_2")%>%
-  hlabour_begin_group(.,.$group_workers,.$num_workers,.$num_hours ,"permanent")
+  hlabour_begin_group(.,.$group_workers,.$num_workers,.$num_hours ,"permanent")%>%
+  select(kobo_farmer_id,group_workers,num_workers,num_hours)%>%
+  mutate(labour_hours= num_workers*num_hours)%>% #total number of workers * average number of hours per day
+  pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = c(num_workers,num_hours,labour_hours),values_fill = 0)
+
+num_labour_per_3_4_1_1_7_2_begin_repeat<-per_3_4_1_1_7_2_begin_repeat%>%
+  rename("workers"="_3_4_1_1_7_2_calculate",
+         "num_seasons"="_3_4_1_1_7_2_1")%>%
+  nhlabour_begin_group(.,.$workers,.$num_seasons,"seasonal")%>%
+  select(kobo_farmer_id,group_workers,num_workers,num_seasons)%>%
+  pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = c(num_workers),values_fill = 0)%>%
+  rename_with(~ paste0("num_workers_", .), .cols = -kobo_farmer_id)
+  
+num_labour_per_3_4_1_2_1_2_begin_repeat
+
+y<-per_3_4_1_2_1_2_begin_repeat%>%
+  rename("group_workers"="_3_4_1_2_1_2_calculate",
+         "num_seasons"= "_3_4_1_2_1_2_1")%>%
+  left_join(per_3_4_1_2_1_2_1_begin_repeat,by=c("kobo_farmer_id","_3_4_1_2_1_2_begin_repeat_rowid"))%>%
+  rename("num_workers"="_3_4_1_2_1_2_1_3")%>%
+  #select(kobo_farmer_id,group_workers,num_workers)%>%
+  group_by(kobo_farmer_id,group_workers)%>%
+  mutate(num_workers= sum(as.numeric(num_workers)))%>%
+  ungroup()
+  distinct(kobo_farmer_id, num_workers, .keep_all = TRUE)%>%
+  mutate(group_workers= case_when(
+    group_workers %in% c("adultos varones mayores (>65 años)","adultos mayores varones (>65 años)")~ paste0("hlabour_seasonal_adults_old_male"),
+    group_workers%in%c("Adultos varones (≥18 y ≤65 años)","adultos varones (≥18 y ≤65)")~paste0("hlabour_seasonal_adults_wa_male"),
+    group_workers%in%c("Mujeres adultas (≥18 y ≤65 años)","mujeres adultas (≥18 y ≤65)")~paste0("hlabour_seasonal_adults_wa_female"),
+    group_workers=="mujeres adultas mayores (>65 años)"~paste0("hlabour_seasonal_adults_old_female"),
+    group_workers=="niñas (<18 años)"~ paste0("hlabour_seasonal_children_female"),
+    group_workers=="niños varones (<18 años)"~paste0("hlabour_seasonal_children_male"),
+    TRUE ~ group_workers))%>%
+  pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = c(num_workers),values_fill = 0)%>%
+  rename_with(~ paste0("num_workers_", .), .cols = -kobo_farmer_id)
 
   
+  distinct(kobo_farmer_id, "_3_4_1_2_1_2_begin_repeat_rowid",num_workers, .keep_all = TRUE)  
+  _3_4_1_2_1_2_begin_repeat_rowid
+  _3_4_1_2_1_2_begin_repeat_rowid
+  
+  
+  distinct()
+  
+  hlabour_begin_group(.,.$group_workers,.$num_workers,.$num_hours ,"permanent")
+  
+
+
+left_join(per_3_4_1_2_7_2_1_begin_repeat,by=c("kobo_farmer_id","_3_4_1_1_7_2_begin_repeat_rowid"))%>%
+  rename("season"="_3_4_1_2_7_2_1_calculate",
+         "num_workers"= "_3_4_1_2_7_2_3",
+         "months"="_3_4_1_2_7_2_2",
+         "num_hours"="_3_4_1_2_7_2_4")%>%
   select(kobo_farmer_id,num_workers,group_workers)%>%
-  pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = num_workers,values_fill = 0)
+  pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = c(num_workers,num_hours),values_fill = 0)
+  
+
+
+names(y)
 
 
 
@@ -273,19 +328,8 @@ per_3_4_1_2_1_1_begin_repeat<-per_3_4_1_2_1_1_begin_repeat%>%
 
 
 
-per_3_4_1_1_7_2_begin_repeat<-per_3_4_1_1_7_2_begin_repeat%>%
-  rename("nonhired_seasonal_workers"="_3_4_1_1_7_2_calculate",
-         "num_hours"="_3_4_1_1_7_2_1")%>%
-  nhlabour_begin_group(.,.$nonhired_seasonal_workers,.$num_hours,"seasonal")
 
 
-
-
-
-per_3_4_1_2_1_2_begin_repeat<-per_3_4_1_2_1_2_begin_repeat%>%
-  rename("nonhired_permanent_workers"="_3_4_1_2_1_2_calculate",
-         "num_workers"= "_3_4_1_2_1_2_1")%>%
-  hlabour_begin_group(.,.$group_workers,.$num_workers,.$num_hours,"seasonal")
 
 per_3_3_3_2_begin_repeat<-per_3_3_3_2_begin_repeat%>%
   rename("cropland_practices"="_3_3_3_1_calculate_2",
