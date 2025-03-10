@@ -2,12 +2,13 @@ library(matrixStats)
 library(dplyr)
 library(readr)  # for parse_number()
 library(stringr)
+library(tidyr)
+
 
 per_data<- read.csv("per_data.csv",sep=",")
 global_survey<-read.csv("global_survey.csv",sep=",")
 per_global_choices<-read.csv("per_global_choices.csv",sep=",")
 
-names(per_data)
 #############################################################    
 ########## DATA TYPE CONVERSION #####-----
 #############################################################
@@ -34,7 +35,6 @@ per_data_clean<- per_data_clean%>%
 
 str(per_data_clean$marital_status)
 str(per_data_clean$gender)
-names(per_data_clean)
 
 #############################################################
 ########## OUTCOMES CALCULATION #####-----
@@ -185,13 +185,13 @@ per_data_clean<-per_data_clean%>%
     #Total number of people in household
     num_people = num_adults_total+num_children,
     #Total number of permanent hired labour
-    num_hlabour_permanent_total= rowSums(across(starts_with("num_hlabour_permanent_")), na.rm = TRUE),
+    num_hlabour_permanent_total= rowSums(across(starts_with("num_workers_hlabour_permanent_")), na.rm = TRUE),
     #Total number of seasonal hired labour
-    num_hlabour_seasonal_total= rowSums(across(starts_with("num_hlabour_seasonal_")), na.rm = TRUE),
+    num_hlabour_seasonal_total= rowSums(across(starts_with("num_workers_hlabour_seasonal_")), na.rm = TRUE),
     #Total number of permanent household labour
-    num_nhlabour_permanent_total=rowSums(across(starts_with("num_nhlabour_permanent_")), na.rm = TRUE),
+    num_nhlabour_permanent_total=rowSums(across(starts_with("num_workers_nhlabour_permanent_")), na.rm = TRUE),
     #Total number of seasonal household labour
-    num_nhlabour_seasonal_total=rowSums(across(starts_with("num_nhlabour_seasonal_")), na.rm = TRUE),
+    num_nhlabour_seasonal_total=rowSums(across(starts_with("num_workers_nhlabour_seasonal_")), na.rm = TRUE),
     #Farm has hired/free/exchange labour
     hlabour = num_hlabour_permanent_total+num_hlabour_seasonal_total,
     hlabour= ifelse(hlabour>0, "1","0"),
@@ -200,7 +200,35 @@ per_data_clean<-per_data_clean%>%
     num_occupation_secondary_list = rowSums(as.matrix(select(., starts_with("occupation_secondary_list"))), na.rm = TRUE),
     #Farmer as a primary occupation
     occupation_primary_farmer = ifelse(occupation_primary=="1", "1","0"))%>%
-  mutate(full_time_farmer= case_when(occupation_primary_farmer=="1"&occupation_secondary=="0"~"1",TRUE~"0"))
+  mutate(full_time_farmer= case_when(occupation_primary_farmer=="1"&occupation_secondary=="0"~"1",TRUE~"0"))%>%
+  select(starts_with("num_workers_nhlabour_permanent_"),starts_with("num_workers_nhlabour_seasonal_"),
+         starts_with("num_workers_hlabour_permanent_"), starts_with("num_workers_hlabour_seasonal_"))
+
+### NATURAL CAPITAL ----
+per_data_clean<-per_data_clean%>%
+  # Farm size
+  mutate(farm_size= land_tenure_own_area+land_tenure_lease_area+land_tenure_hold_area)
+
+per_data_clean<- per_data_clean %>%
+  #Years of farming land
+  mutate(years_farming_land = 2025-year_start_farming_land)%>%
+  #Livestock land area
+  mutate(livestockland_area= livestockland_area_owned+livestockland_area_shared,
+         livestockland_area= ifelse(is.na(livestockland_area), 0,livestockland_area))%>%
+  #Fishland area
+  mutate(fishland_area= ifelse(is.na(fishland_area), 0,fishland_area))%>%
+  #Total production area
+  mutate(total_production_area= cropland_area+livestockland_area+fishland_area)%>%
+  #Area under sustainable agricultural practices
+  mutate(sfp_total_area = rowSums(as.matrix(select(., dfs_total_area,starts_with("ecol_") & ends_with("_area"))), na.rm = TRUE))
+
+per_data_clean<-per_data_clean%>%
+  #Months of water shortage during a normal year
+  mutate(months_count_water_accessibility_difficulty_normal_year = rowSums(as.matrix(select(., starts_with("water_accessibility_difficulty_normal_year."))), na.rm = TRUE))%>%
+  #Months of water shortage during a flood year
+  mutate(months_count_water_accessibility_difficulty_flood_year = rowSums(as.matrix(select(., starts_with("water_accessibility_difficulty_flood_year."))), na.rm = TRUE))%>%
+  #Months of water shortage during a drought year
+  mutate(months_count_water_accessibility_difficulty_drought_year = rowSums(as.matrix(select(., starts_with("water_accessibility_difficulty_drought_year."))), na.rm = TRUE))
 
 ### PHYSICAL CAPITAL ----
 # Function to classify energy type dynamically
@@ -367,6 +395,141 @@ per_data_clean<-per_data_clean%>%
          access_water_harvest_system=ifelse(access_water_harvest_system>0, "1","0"))
 
 
+### POLITICAL AND INSTITUTIONAL CONTEXT: Financial risk management ----
+per_data_clean<-per_data_clean%>%
+  #Access to insurance against agricultural losses
+  mutate(insurance_agric_losses_access= case_when(insurance_agric_losses_level=="0" ~ "0",TRUE~ "1"))%>%
+  #Amount of subsidy received as income support
+  mutate(income_amount_subsidy= ifelse(is.na(income_amount_subsidy),0,income_amount_subsidy))%>%
+  #Access to subsidies as income support
+  mutate(income_access_subsidy= ifelse(income_amount_subsidy>0, "1","0"),
+         income_access_subsidy= ifelse(is.na(income_amount_subsidy), "0",income_access_subsidy))%>%
+  #Household with children attending school and receiving free meals
+  mutate(access_free_school_meals_perweek= case_when(
+    children_attend_school=="0" ~ "0",
+    is.na(children_attend_school) ~ "0",
+    children_attend_school=="1" & num_free_school_meals_perweek==0  ~ "2",
+    children_attend_school=="1" & num_free_school_meals_perweek>0  ~ "5",
+    TRUE~ NA))
+
+### POLITICAL AND INSTITUTIONAL CONTEXT: Knowledge ----
+per_data_clean<-per_data_clean%>%
+  mutate(
+    #Number of training topics
+    across(starts_with("training_"), ~ as.numeric(as.character(.))),
+    across(starts_with("training_"), ~ ifelse(. == 2, NA, .)), # REMOVE ANSWER I don't know
+    num_training_topics= rowSums(across(starts_with("training_")), na.rm = TRUE),
+    #Participation in training (training in innovative or best management agricultural practices, training in agribusiness management and value addition, or other)
+    training_participation= as.factor(ifelse(num_training_topics>0, "1","0")))%>%
+  mutate(
+    #Exchange information with: Extensionists
+    access_info_exchange_extension= ifelse(num_info_exchange_extension>0, "1","0"),
+    #Exchange information with: Researchers
+    access_info_exchange_researchers= ifelse(num_info_exchange_researchers>0, "1","0"),
+    #Exchange information with: Farmers
+    access_info_exchange_farmers= ifelse(num_info_exchange_farmers>0, "1","0"),
+    #Exchange information with: Government
+    access_info_exchange_government= ifelse(num_info_exchange_government>0, "1","0"),
+    #Exchange information with: NGOs
+    access_info_exchange_ngo= ifelse(num_info_exchange_ngo>0, "1","0"),
+    #Exchange information with: consumers
+    access_info_exchange_consumers= ifelse(num_info_exchange_consumers>0, "1","0"),
+    #Exchange information with: Food traders
+    access_info_exchange_traders= ifelse(num_info_exchange_traders>0, "1","0"),
+    #Number of information sources
+    across(starts_with("access_info_exchange_"), ~ as.numeric(as.character(.))),
+    num_info_exchange_sources= rowSums(across(starts_with("access_info_exchange_")), na.rm = TRUE))%>%
+  mutate(access_info_exchange=ifelse(num_info_exchange_sources>0, "1","0"))
+
+### POLITICAL AND INSTITUTIONAL CONTEXT: Land tenure ----
+per_data_clean<-per_data_clean%>%
+  mutate(
+    #Land tenure status of hosehold: Own
+    land_tenure_own_status= ifelse(per_data_clean$land_tenure_own_area>0, "1","0"),
+    #Land tenure status of hosehold: Lease
+    land_tenure_lease_status = ifelse(land_tenure_lease_area>0, "1","0"),
+    #Land tenure status of hosehold:  HOLDS USE RIGHTS, either alone or jointly with someone else
+    land_tenure_hold_status = ifelse(land_tenure_hold_area>0, "1","0"))%>%
+  #Land tenure status
+  mutate(land_tenure_status= case_when(
+    land_tenure_own_status=="1" ~ "1",
+    land_tenure_own_status=="0" & land_tenure_lease_status=="1"~ "2",
+    land_tenure_own_status=="0" & land_tenure_lease_status=="0"& land_tenure_hold_status=="1"~ "3",
+    TRUE~ NA))%>%
+  mutate(
+    #Proportion of land owns
+    land_tenure_own_proportion= (land_tenure_own_area/farm_size)*100,
+    #Proportion of land  leases
+    land_tenure_lease_proportion= (land_tenure_lease_area/farm_size)*100,
+    #Proportion of land hold use rights
+    land_tenure_hold_proportion= (land_tenure_hold_area/farm_size)*100)
+
+
+
+### POLITICAL AND INSTITUTIONAL CONTEXT: Value chain ----
+per_data_clean<-per_data_clean%>%
+  #Perception of price fairness: crops
+  mutate(fair_price_crops= case_when(
+    farm_products.Crops =="0"~ "6", #does not produce 
+    use_percentage_crops_sales=="0"~ "6", #does not produce 
+    TRUE~ fair_price_crops))%>%
+  #Perception of price fairness: livestock
+  mutate(fair_price_livestock= case_when(
+    farm_products.Livestock =="0"~ "6", #does not produce 
+    use_percentage_livestock_sales=="0"~ "6", #does not produce 
+    TRUE~ fair_price_livestock))%>%
+  #Perception of price fairness: fish
+  mutate(fair_price_fish= case_when(
+    farm_products.Fish =="0"~ "6", #does not produce 
+    use_percentage_fish_sales=="0"~ "6", #does not produce 
+    TRUE~ fair_price_fish))%>%
+  #Perception of price fairness: wood
+  mutate(fair_price_wood= case_when(
+    farm_products.Trees =="0"~ "6", #does not produce 
+    use_percentage_trees_sales=="0"~ "6", #does not produce 
+    TRUE~ fair_price_wood))%>%
+  #Perception of price fairness: honey
+  mutate(fair_price_honey= case_when(
+    farm_products.Honey =="0"~ "6", #does not produce 
+    use_percentage_honey_sales=="0"~ "6", #does not produce 
+    TRUE~ fair_price_honey))%>%
+  #Crop sales channel
+  mutate(across(starts_with("sales_channel_crops."), ~ as.numeric(as.character(.))))%>%
+  mutate(num_sales_channel_crops = rowSums(select(., starts_with("sales_channel_crops.")), na.rm = TRUE))%>%
+  #Livestock sales channel
+  mutate(across(starts_with("sales_channel_livestock."), ~ as.numeric(as.character(.))))%>%
+  mutate(num_sales_channel_livestock = rowSums(select(., starts_with("sales_channel_livestock.")), na.rm = TRUE))%>%
+  #Fish sales channel
+  mutate(across(starts_with("sales_channel_fish."), ~ as.numeric(as.character(.))))%>%
+  mutate(num_sales_channel_fish = rowSums(select(., starts_with("sales_channel_fish.")), na.rm = TRUE))%>%
+  #Wood sales channel
+  mutate(across(starts_with("sales_channel_trees."), ~ as.numeric(as.character(.))))%>%
+  mutate(num_sales_channel_trees = rowSums(select(., starts_with("sales_channel_trees.")), na.rm = TRUE))%>%
+  #Honey sales channel
+  mutate(across(starts_with("sales_channel_honey."), ~ as.numeric(as.character(.))))%>%
+  mutate(num_sales_channel_honey = rowSums(select(., starts_with("sales_channel_honey.")), na.rm = TRUE))
+
+y<-per_data_clean%>%
+  #Household sale on farm products
+  mutate(farm_products_sale= case_when(
+    num_sales_channel_crops>0~ "1",
+    num_sales_channel_livestock>0~ "1",
+    num_sales_channel_fish>0~ "1",
+    num_sales_channel_trees>0~ "1",
+    num_sales_channel_honey>0~ "1",
+    TRUE~"0"))%>%
+  select(starts_with("num_sales_channel_"))%>%
+  #Household sale produced crops
+  mutate(crops_sale= case_when(num_sales_channel_crops>0~ "1",    TRUE~"0"))%>%
+  #Household sale produced livestock
+  mutate(livestock_sale= case_when(num_sales_channel_livestock>0~ "1",  TRUE~"0"))%>%
+  #Household sale produced fish
+  mutate(fish_sale= case_when(num_sales_channel_fish>0~ "1",    TRUE~"0"))%>%
+  #Household sale produced trees
+  mutate(trees_sale= case_when(num_sales_channel_trees>0~ "1",    TRUE~"0"))%>%
+  #Household sale produced honey
+  mutate(honey_sale= case_when(num_sales_channel_honey>0~ "1",    TRUE~"0"))
+
 ### SOCIAL CAPITAL ----
 per_data_clean<-per_data_clean%>%
   #Number of association/organization memberships
@@ -406,37 +569,70 @@ per_data_clean<-per_data_clean%>%
 
 
 
-### NATURAL CAPITAL ----
+### FARM MANAGEMENT CHARACTERISTICS ----
 per_data_clean<-per_data_clean%>%
-  # Farm size
-  mutate(farm_size= land_tenure_own_area+land_tenure_lease_area+land_tenure_hold_area)
+  #Farmer use chemical fertilizers
+  rename("soil_fertility_management_chemical"="soil_fertility_management.1")%>%
+  #Farmer use organic fertilizers or manure
+  rename("soil_fertility_management_organic"="soil_fertility_management.2")%>%
+  #Farmer use ecological practices to improve soil fertility
+  rename("soil_fertility_management_ecol_practices"="soil_fertility_management.3")
 
-per_data_clean<- per_data_clean %>%
-  #Years of farming land
-  mutate(years_farming_land = 2025-year_start_farming_land)%>%
-  #Livestock land area
-  mutate(livestockland_area= livestockland_area_owned+livestockland_area_shared,
-         livestockland_area= ifelse(is.na(livestockland_area), 0,livestockland_area))%>%
-  #Fishland area
-  mutate(fishland_area= ifelse(is.na(fishland_area), 0,fishland_area))%>%
-  #Total production area
-  mutate(total_production_area= cropland_area+livestockland_area+fishland_area)%>%
-  #Area under sustainable agricultural practices
-  mutate(sfp_total_area = rowSums(as.matrix(select(., dfs_total_area,starts_with("ecol_") & ends_with("_area"))), na.rm = TRUE))
-  
-y<-per_data_clean%>%
-  #
-  mutate(months_count_water_accessibility_difficulty_normal_year = rowSums(as.matrix(select(., starts_with("water_accessibility_difficulty_normal_year."))), na.rm = TRUE))%>%
-  mutate(months_count_water_accessibility_difficulty_flood_year = rowSums(as.matrix(select(., starts_with("water_accessibility_difficulty_flood_year."))), na.rm = TRUE))%>%
-  select(starts_with("water_accessibility_difficulty_drought_year."))%>%
-  mutate(months_count_water_accessibility_difficulty_drought_year = rowSums(as.matrix(select(., starts_with("water_accessibility_difficulty_drought_year."))), na.rm = TRUE))
-  
+y <- per_data_clean %>%
+  #Number of on-farm products
+  mutate(across(starts_with("farm_products."), ~ as.numeric(as.character(.))),
+         num_farm_products = rowSums(across(starts_with("farm_products.")), na.rm = TRUE))%>%
+  #Number of ecological practices use on cropland to improve soil quality and health
+  mutate(across(starts_with("soil_fertility_ecol_practices."), ~ as.numeric(as.character(.))),
+         num_soil_fertility_ecol_practices = rowSums(across(starts_with("soil_fertility_ecol_practices.")), na.rm = TRUE))%>%
+  #Use Chemical fungicides/pesticides/herbicides.
+  rename("pest_management_chemical"="pest_management.1")%>%
+  #UseNon-chemical fungicides/pesticides/herbicides.
+  rename("pest_management_organic"="pest_management.2")%>%
+  #Use Ecological practices (e.g., crop rotation, planting repelling plants).
+  rename("pest_management_ecol_practices"="pest_management.3")%>%
+  #Number of ecological practices use on cropland to manage pests
+  mutate(across(starts_with("pest_management_ecol_practices."), ~ as.numeric(as.character(.))),
+         num_pest_management_ecol_practices = rowSums(across(starts_with("pest_management_ecol_practices.")), na.rm = TRUE))%>%
+  #monoculture perennial
+  mutate(sfs_monoculture_perennial_adoption= case_when(sfs_monoculture_perennial_area>0~ "1", TRUE~ "0"))%>%
+  #monoculture annual
+  mutate(sfs_monoculture_annual_adoption= case_when(sfs_monoculture_annual_area>0~ "1", TRUE~ "0"))%>%
+  #Land clearing
+  mutate(sfs_land_clearing_adoption= case_when(sfs_land_clearing_area>0~ "1", TRUE~ "0"))%>%
+  #burning residues
+  mutate(sfs_burning_residues_adoption= case_when(sfs_burning_residues_area>0~ "1", TRUE~ "0"))
 
   
+
+select(sfs_monoculture_perennial_area,
+       sfs_monoculture_annual_area,
+       sfs_land_clearing_area,
+       sfs_burning_residues_area)%>%
   
   
   
-  
+
+    #Number of practices implemented to keep animals on the farm healthy and happy?
+    across(starts_with("livestock_health_practice."), ~ as.numeric(as.character(.))),
+    num_livestock_health_practice = rowSums(across(starts_with("livestock_health_practice.")), na.rm = TRUE),
+    #Number of management practices used to manage livestock diseases in the last 12 months
+    across(starts_with("livestock_diseases_management."), ~ as.numeric(as.character(.))),
+    num_livestock_diseases_management= rowSums(across(starts_with("livestock_diseases_management.")), na.rm = TRUE),
+    #Number of ORGANIC management practices used to manage livestock diseases in the last 12 months
+    num_livestock_diseases_management_organic = rowSums(select(., c("livestock_diseases_management.3",
+                                                                    "livestock_diseases_management.4",
+                                                                    "livestock_diseases_management.5",
+                                                                    "livestock_diseases_management.6")),na.rm = TRUE),
+    #Number of CHEMICAL management practices used to manage livestock diseases in the last 12 months
+    num_livestock_diseases_management_organic = rowSums(select(., c("livestock_diseases_management.1",
+                                                                    "livestock_diseases_management.2")),na.rm = TRUE))
+
+
+
+
+
+
 
 
 ### FARMER BEHAVIOUR ----
@@ -534,152 +730,14 @@ per_data_clean<-per_data_clean%>%
   mutate(household_shock_strategy= case_when(household_shock_strategy_count>0~ "1", TRUE~"0")) 
   
   
-  
-  
-
-  
-
-
-
-
- 
-
-
-### FARM MANAGEMENT CHARACTERISTICS ----
-per_data_clean<-per_data_clean%>%
-    rename("soil_fertility_management_chemical"="soil_fertility_management.1")%>%
-    rename("soil_fertility_management_organic"="soil_fertility_management.2")%>%
-    rename("soil_fertility_management_ecol_practices"="soil_fertility_management.3")
-    
-x <- per_data_clean %>%
-  mutate(
-    #Number of ecological practices use on cropland to improve soil quality and health
-    across(starts_with("soil_fertility_ecol_practices."), ~ as.numeric(as.character(.))),
-    num_soil_fertility_ecol_practices = rowSums(across(starts_with("soil_fertility_ecol_practices.")), na.rm = TRUE),
-    #Number of farm products type in the last 12 months
-    across(starts_with("farm_products."), ~ as.numeric(as.character(.))),
-    num_farm_products = rowSums(across(starts_with("farm_products.")), na.rm = TRUE),
-    #Number of practices implemented to keep animals on the farm healthy and happy?
-    across(starts_with("livestock_health_practice."), ~ as.numeric(as.character(.))),
-    num_livestock_health_practice = rowSums(across(starts_with("livestock_health_practice.")), na.rm = TRUE),
-    #Number of management practices used to manage livestock diseases in the last 12 months
-    across(starts_with("livestock_diseases_management."), ~ as.numeric(as.character(.))),
-    num_livestock_diseases_management= rowSums(across(starts_with("livestock_diseases_management.")), na.rm = TRUE),
-    #Number of ORGANIC management practices used to manage livestock diseases in the last 12 months
-    num_livestock_diseases_management_organic = rowSums(select(., c("livestock_diseases_management.3",
-                                                                    "livestock_diseases_management.4",
-                                                                  "livestock_diseases_management.5",
-                                                                  "livestock_diseases_management.6")),na.rm = TRUE),
-    #Number of CHEMICAL management practices used to manage livestock diseases in the last 12 months
-    num_livestock_diseases_management_organic = rowSums(select(., c("livestock_diseases_management.1",
-                                                                  "livestock_diseases_management.2")),na.rm = TRUE))
-  
-  
-  
-  
-  
 
 
          
 
-### POLITICAL AND INSTITUTIONAL CONTEXT: Value chain ----
-per_data_clean<-per_data_clean%>%
-  #Perception of price fairness: crops
-    mutate(fair_price_crops= case_when(
-    farm_products.Crops =="0"~ "6", #does not produce 
-    use_percentage_crops_sales=="0"~ "6", #does not produce 
-    TRUE~ fair_price_crops))%>%
-  #Perception of price fairness: livestock
-    mutate(fair_price_livestock= case_when(
-    farm_products.Livestock =="0"~ "6", #does not produce 
-    use_percentage_livestock_sales=="0"~ "6", #does not produce 
-    TRUE~ fair_price_livestock))%>%
-  #Perception of price fairness: fish
-    mutate(fair_price_fish= case_when(
-    farm_products.Fish =="0"~ "6", #does not produce 
-    use_percentage_fish_sales=="0"~ "6", #does not produce 
-    TRUE~ fair_price_fish))%>%
-  #Perception of price fairness: wood
-  mutate(fair_price_wood= case_when(
-    farm_products.Trees =="0"~ "6", #does not produce 
-    use_percentage_trees_sales=="0"~ "6", #does not produce 
-    TRUE~ fair_price_wood))%>%
-  #Perception of price fairness: honey
-  mutate(fair_price_honey= case_when(
-    farm_products.Honey =="0"~ "6", #does not produce 
-    use_percentage_honey_sales=="0"~ "6", #does not produce 
-    TRUE~ fair_price_honey))
-
-### POLITICAL AND INSTITUTIONAL CONTEXT: Land tenure ----
-per_data_clean<-per_data_clean%>%
-  mutate(
-    #Land tenure status of hosehold: Own
-    land_tenure_own_status= ifelse(per_data_clean$land_tenure_own_area>0, "1","0"),
-    #Land tenure status of hosehold: Lease
-    land_tenure_lease_status = ifelse(land_tenure_lease_area>0, "1","0"),
-    #Land tenure status of hosehold:  HOLDS USE RIGHTS, either alone or jointly with someone else
-    land_tenure_hold_status = ifelse(land_tenure_hold_area>0, "1","0"))%>%
-  #Land tenure status
-  mutate(land_tenure_status= case_when(
-    land_tenure_own_status=="1" ~ "1",
-    land_tenure_own_status=="0" & land_tenure_lease_status=="1"~ "2",
-    land_tenure_own_status=="0" & land_tenure_lease_status=="0"& land_tenure_hold_status=="1"~ "3",
-    TRUE~ NA))%>%
-  mutate(
-    #Proportion of land owns
-    land_tenure_own_proportion= (land_tenure_own_area/farm_size)*100,
-    #Proportion of land  leases
-    land_tenure_lease_proportion= (land_tenure_lease_area/farm_size)*100,
-    #Proportion of land hold use rights
-    land_tenure_hold_proportion= (land_tenure_hold_area/farm_size)*100)
-  
-  
-
-### POLITICAL AND INSTITUTIONAL CONTEXT: Knowledge ----
-per_data_clean<-per_data_clean%>%
-  mutate(
-    #Number of training topics
-    across(starts_with("training_"), ~ as.numeric(as.character(.))),
-    across(starts_with("training_"), ~ ifelse(. == 2, NA, .)), # REMOVE ANSWER I don't know
-    num_training_topics= rowSums(across(starts_with("training_")), na.rm = TRUE),
-    #Participation in training (training in innovative or best management agricultural practices, training in agribusiness management and value addition, or other)
-    training_participation= as.factor(ifelse(num_training_topics>0, "1","0")))%>%
-  mutate(
-    #Exchange information with: Extensionists
-    access_info_exchange_extension= ifelse(num_info_exchange_extension>0, "1","0"),
-    #Exchange information with: Researchers
-    access_info_exchange_researchers= ifelse(num_info_exchange_researchers>0, "1","0"),
-    #Exchange information with: Farmers
-    access_info_exchange_farmers= ifelse(num_info_exchange_farmers>0, "1","0"),
-    #Exchange information with: Government
-    access_info_exchange_government= ifelse(num_info_exchange_government>0, "1","0"),
-    #Exchange information with: NGOs
-    access_info_exchange_ngo= ifelse(num_info_exchange_ngo>0, "1","0"),
-    #Exchange information with: consumers
-    access_info_exchange_consumers= ifelse(num_info_exchange_consumers>0, "1","0"),
-    #Exchange information with: Food traders
-    access_info_exchange_traders= ifelse(num_info_exchange_traders>0, "1","0"),
-    #Number of information sources
-    across(starts_with("access_info_exchange_"), ~ as.numeric(as.character(.))),
-    num_info_exchange_sources= rowSums(across(starts_with("access_info_exchange_")), na.rm = TRUE))%>%
-    mutate(access_info_exchange=ifelse(num_info_exchange_sources>0, "1","0"))
-    
-  
-  
-### POLITICAL AND INSTITUTIONAL CONTEXT: Financial risk management ----
-per_data_clean<-per_data_clean%>%
-  #Access to insurance against agricultural losses
-  mutate(insurance_agric_losses_access= case_when(insurance_agric_losses_level=="0" ~ "0",TRUE~ "1"))
 
 
-x<-per_data_clean%>%
-  select(income_amount_subsidy)%>%
-  mutate(income_access_subsidy= ifelse(income_amount_subsidy>0, "1","0"),
-         income_access_subsidy= ifelse(is.na(income_amount_subsidy), "0",income_access_subsidy))
-income_amount_subsidy
 
-x<-per_data_clean%>%
-  select(starts_with("income_sources."))
+
 
 
 

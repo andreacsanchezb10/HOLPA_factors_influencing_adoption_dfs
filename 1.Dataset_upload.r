@@ -23,42 +23,43 @@ process_survey_data <- function(sheet_name, country_name, column_id_rename) {
   return(survey_data)
 }
 
-nhlabour_begin_group <- function(data,workers,permanent_seasonal) {
+
+nhlabour_begin_group <- function(data,workers,hours,permanent_seasonal) {
   data%>%
     mutate(num_workers = str_extract(workers, "^\\d+"),
            group_workers= str_replace(workers, "^\\d+\\s+", ""),
            group_workers= as.character(group_workers),
-           num_workers= as.numeric(num_workers))%>%
+           num_workers= as.numeric(num_workers),
+           num_hours= as.numeric(hours))%>%
     mutate(group_workers= case_when(
-      group_workers %in% c("adultos varones mayores (>65 años)","adultos mayores varones (>65 años)")~ paste0("num_nhlabour_",permanent_seasonal,"_adults_old_male"),
-      group_workers%in%c("Adultos varones (≥18 y ≤65 años)","adultos varones (≥18 y ≤65)")~paste0("num_nhlabour_",permanent_seasonal,"_adults_wa_male"),
-      group_workers%in%c("Mujeres adultas (≥18 y ≤65 años)","mujeres adultas (≥18 y ≤65)")~paste0("num_nhlabour_",permanent_seasonal,"_adults_wa_female"),
-      group_workers=="mujeres adultas mayores (>65 años)"~paste0("num_nhlabour_",permanent_seasonal,"_adults_old_female"),
-      group_workers=="niñas (<18 años)"~ paste0("num_nhlabour_",permanent_seasonal,"_children_female"),
-      group_workers=="niños varones (<18 años)"~paste0("num_nhlabour_",permanent_seasonal,"_children_male"),
-      
-      TRUE ~ group_workers))%>%
-    select(kobo_farmer_id,num_workers,group_workers)%>%
-    pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = num_workers,values_fill = 0)
-  
+      group_workers %in% c("adultos varones mayores (>65 años)","adultos mayores varones (>65 años)")~ paste0("nhlabour_",permanent_seasonal,"_adults_old_male"),
+      group_workers%in%c("Adultos varones (≥18 y ≤65 años)","adultos varones (≥18 y ≤65)")~paste0("nhlabour_",permanent_seasonal,"_adults_wa_male"),
+      group_workers%in%c("Mujeres adultas (≥18 y ≤65 años)","mujeres adultas (≥18 y ≤65)")~paste0("nhlabour_",permanent_seasonal,"_adults_wa_female"),
+      group_workers=="mujeres adultas mayores (>65 años)"~paste0("nhlabour_",permanent_seasonal,"_adults_old_female"),
+      group_workers=="niñas (<18 años)"~ paste0("nhlabour_",permanent_seasonal,"_children_female"),
+      group_workers=="niños varones (<18 años)"~paste0("nhlabour_",permanent_seasonal,"_children_male"),
+      TRUE ~ group_workers))
 }
 
-hlabour_begin_group <- function(data,group_workers,num_workers,permanent_seasonal) {
+
+hlabour_begin_group <- function(data,group_workers,num_workers,hours, permanent_seasonal) {
   data%>%
     mutate(group_workers= as.character(group_workers),
-           num_workers= as.numeric(num_workers))%>%
+           num_workers= as.numeric(num_workers),
+           num_hours= as.numeric(hours))%>%
     mutate(group_workers= case_when(
-      group_workers %in% c("adultos varones mayores (>65 años)","adultos mayores varones (>65 años)")~ paste0("num_hlabour_",permanent_seasonal,"_adults_old_male"),
-      group_workers%in%c("Adultos varones (≥18 y ≤65 años)","adultos varones (≥18 y ≤65)")~paste0("num_hlabour_",permanent_seasonal,"_adults_wa_male"),
-      group_workers%in%c("Mujeres adultas (≥18 y ≤65 años)","mujeres adultas (≥18 y ≤65)")~paste0("num_hlabour_",permanent_seasonal,"_adults_wa_female"),
-      group_workers=="mujeres adultas mayores (>65 años)"~paste0("num_hlabour_",permanent_seasonal,"_adults_old_female"),
-      group_workers=="niñas (<18 años)"~ paste0("num_hlabour_",permanent_seasonal,"_children_female"),
-      group_workers=="niños varones (<18 años)"~paste0("num_hlabour_",permanent_seasonal,"_children_male"),
+      group_workers %in% c("adultos varones mayores (>65 años)","adultos mayores varones (>65 años)")~ paste0("hlabour_",permanent_seasonal,"_adults_old_male"),
+      group_workers%in%c("Adultos varones (≥18 y ≤65 años)","adultos varones (≥18 y ≤65)")~paste0("hlabour_",permanent_seasonal,"_adults_wa_male"),
+      group_workers%in%c("Mujeres adultas (≥18 y ≤65 años)","mujeres adultas (≥18 y ≤65)")~paste0("hlabour_",permanent_seasonal,"_adults_wa_female"),
+      group_workers=="mujeres adultas mayores (>65 años)"~paste0("hlabour_",permanent_seasonal,"_adults_old_female"),
+      group_workers=="niñas (<18 años)"~ paste0("hlabour_",permanent_seasonal,"_children_female"),
+      group_workers=="niños varones (<18 años)"~paste0("hlabour_",permanent_seasonal,"_children_male"),
       
-      TRUE ~ group_workers))%>%
-    select(kobo_farmer_id,num_workers,group_workers)%>%
-    pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = num_workers,values_fill = 0)
+      TRUE ~ group_workers))
+    
 }
+
+
 
 practices_begin_group <- function(data, cropland_practices,cropland_practices_area) {
   data%>%
@@ -67,6 +68,7 @@ practices_begin_group <- function(data, cropland_practices,cropland_practices_ar
       cropland_practices %in%c("Monoculture with perennial crops")~ "sfs_monoculture_perennial_area",
       cropland_practices %in%c("Monoculture with annual crops")~ "sfs_monoculture_annual_area",
       cropland_practices %in%c("Land clearing for agriculture")~ "sfs_land_clearing_area",
+      cropland_practices %in%c("Burning crop residues")~ "sfs_burning_residues_area",
       #diversified farming practices
       cropland_practices %in%c("Crop rotation")~ "dfs_crop_rotation_area",
       cropland_practices %in%c("Agroforestry")~ "dfs_agroforestry_area",
@@ -235,8 +237,6 @@ sheet_names
 country_name <- "peru"  # Replace with actual country name
 column_id_rename <- "hid"  # Adjust to your specific column
 
-
-
 # Process all sheets and create separate data frames in the environment
 walk(sheet_names, function(sheet) {
   df_name <- paste0("per", sheet)  # Create dynamic name
@@ -249,28 +249,50 @@ per_maintable$end_time <- as.numeric(per_maintable$end_time)
 per_maintable$end_time <- as.Date(per_maintable$end_time, origin = "1899-12-30")
 
 per_3_4_1_1_7_1_begin_repeat<-per_3_4_1_1_7_1_begin_repeat%>%
-  rename("nonhired_permanent_workers"="_3_4_1_1_7_1_calculate")%>%
-  nhlabour_begin_group(.,.$nonhired_permanent_workers,"permanent")
-
-per_3_4_1_1_7_2_begin_repeat<-per_3_4_1_1_7_2_begin_repeat%>%
-  rename("nonhired_seasonal_workers"="_3_4_1_1_7_2_calculate")%>%
-  nhlabour_begin_group(.,.$nonhired_seasonal_workers,"seasonal")
-
+  rename("workers"="_3_4_1_1_7_1_calculate",
+         "num_hours"="_3_4_1_1_7_1_1")%>%
+  nhlabour_begin_group(.,.$workers,.$num_hours ,"permanent")%>%
+  select(kobo_farmer_id,num_workers,group_workers,num_hours)%>%
+  pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = c(num_workers,num_hours),values_fill = 0)
+  
 per_3_4_1_2_1_1_begin_repeat<-per_3_4_1_2_1_1_begin_repeat%>%
   rename("group_workers"="_3_4_1_2_1_1_calculate",
-         "num_workers"= "_3_4_1_2_1_1_1")%>%
-  hlabour_begin_group(.,.$group_workers,.$num_workers,"permanent")
+         "num_workers"= "_3_4_1_2_1_1_1",
+         "num_hours"="_3_4_1_2_1_1_2")%>%
+  hlabour_begin_group(.,.$group_workers,.$num_workers,.$num_hours ,"permanent")
+
+  
+  select(kobo_farmer_id,num_workers,group_workers)%>%
+  pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = num_workers,values_fill = 0)
+
+
+
+
+
+
+
+
+
+per_3_4_1_1_7_2_begin_repeat<-per_3_4_1_1_7_2_begin_repeat%>%
+  rename("nonhired_seasonal_workers"="_3_4_1_1_7_2_calculate",
+         "num_hours"="_3_4_1_1_7_2_1")%>%
+  nhlabour_begin_group(.,.$nonhired_seasonal_workers,.$num_hours,"seasonal")
+
+
+
+
 
 per_3_4_1_2_1_2_begin_repeat<-per_3_4_1_2_1_2_begin_repeat%>%
-  rename("group_workers"="_3_4_1_2_1_2_calculate",
+  rename("nonhired_permanent_workers"="_3_4_1_2_1_2_calculate",
          "num_workers"= "_3_4_1_2_1_2_1")%>%
-  hlabour_begin_group(.,.$group_workers,.$num_workers,"seasonal")
+  hlabour_begin_group(.,.$group_workers,.$num_workers,.$num_hours,"seasonal")
 
 per_3_3_3_2_begin_repeat<-per_3_3_3_2_begin_repeat%>%
   rename("cropland_practices"="_3_3_3_1_calculate_2",
          "cropland_practices_area"="_3_3_3_2_2")%>%
   mutate(cropland_practices = str_extract(cropland_practices, "(?<=//).*"))%>%
-  practices_begin_group(.,.$cropland_practices,.$cropland_practices_area)
+  practices_begin_group(.,.$cropland_practices,.$cropland_practices_area)%>%
+  mutate(sfs_burning_residues_area=0)
 
 
 per_3_4_2_2_2_begin_repeat<-per_3_4_2_2_2_begin_repeat%>%
@@ -290,17 +312,62 @@ per_3_4_2_2_2_begin_repeat<-per_3_4_2_2_2_begin_repeat%>%
 per_3_3_4_1_3_begin_repeat<- per_3_3_4_1_3_begin_repeat%>%
   distinct(kobo_farmer_id, "_3_3_4_1_3_2", .keep_all = TRUE) 
  
+per_post_processing<- read.csv("HOLPA data post-processing_PER_inputs.csv")%>%
+  rename("main_crops"="crops_names",
+         "production_unit"="production.unit",
+         "production_unit_conversion_kg"=    "conversion.factor..to.convert.to.kilograms.")%>%
+  select(main_crops,production_unit,production_unit_conversion_kg)%>%
+  mutate(production_unit = ifelse(str_detect(production_unit, "//"),
+                                       str_extract(production_unit, "(?<=//).*"),production_unit))%>%
+  mutate(main_crops = str_replace(main_crops, "^(.)", ~str_to_upper(.x)))
+
 area_per_3_4_3_1_2_begin_repeat<-per_3_4_3_1_2_begin_repeat%>%
-  rename("main_crops_cropland_area"="_3_4_2_1_3")%>%
-  mutate(main_crops_cropland_area = as.numeric(main_crops_cropland_area))%>%
+  rename("main_crops_cropland_area"="_3_4_2_1_3",
+         "main_crops"="_3_4_3_1_3_calculate",
+         "production_unit"= "_3_4_2_1_5_1_calculate",
+         "main_crops_yield"= "_3_4_2_1_5_2")%>%
+  mutate(main_crops = str_extract(main_crops, "(?<=//).*"))%>%
+  mutate(production_unit = ifelse(str_detect(production_unit, "//"),
+                                       str_extract(production_unit, "(?<=//).*"),production_unit))%>%
+  mutate(main_crops_cropland_area = as.numeric(main_crops_cropland_area),
+         main_crops_yield = as.numeric(main_crops_yield))%>%
+  mutate(main_crops = str_replace(main_crops, "^(.)", ~str_to_upper(.x)))%>%
+  left_join(per_post_processing,by=c("main_crops","production_unit"))%>%
+  mutate(main_crops_perennial= case_when(
+    main_crops%in% c("Aguaje","Avocado","Banana","Caimito","Camu camu","Cassava","Cocoa" ,"Cocona","Coconut","Humari","Lemon",
+                     "Papaya","Oil palm","Orange","Pijuayo","Pineapple",  "Pink grapefruit","Tangerine" )~ 1,TRUE~0))%>%
+  mutate(main_crops_annual= case_when(
+    main_crops%in% c("Bean","Black eye bean","Chili pepper", "Coriander","Cucumber","Maize","Melon", "Rice","Sachapapa","Watermelon"  )~ 1,TRUE~0))%>%
+    mutate(main_crops_tree= case_when(
+      main_crops%in% c("Aguaje","Avocado","Caimito","Camu camu","Cocoa",
+                       "Coconut", "Humari","Lemon","Papaya","Oil palm","Orange","Pijuayo","Pink grapefruit","Tangerine")~ 1,TRUE~0))%>%
+    mutate(main_crops_shrub= case_when(main_crops%in% c("Camu camu", "Cassava" , "Cocona")~ 1,TRUE~0))%>%
+    mutate(main_crops_herb= case_when(
+      main_crops%in% c("Banana" ,"Bean" ,"Black eye bean","chili pepper","Coriander","Cucumber","Maize","Melon",
+                       "Pineapple","Rice","Sachapapa","Watermelon")~ 1,TRUE~0))%>%
+  mutate(main_crops_yield_kg_ha= (main_crops_yield*production_unit_conversion_kg)/main_crops_cropland_area)%>%
   #Area of three main crops grown
   group_by(kobo_farmer_id)%>%
-  mutate(total_main_crops_cropland_area= sum(main_crops_cropland_area))%>%
+  mutate(total_main_crops_cropland_area= sum(main_crops_cropland_area),
+         num_main_crops_perennial=sum(main_crops_perennial),
+         num_main_crops_annual=sum(main_crops_annual),
+         num_main_crops_tree=sum(main_crops_tree),
+         num_main_crops_shrub=sum(main_crops_shrub),
+         num_main_crops_herb= sum(main_crops_herb),
+         main_crops_yield_kg_ha= sum(main_crops_yield_kg_ha))%>%
   ungroup()%>%
-  select(kobo_farmer_id, total_main_crops_cropland_area)%>%
-  distinct(kobo_farmer_id, total_main_crops_cropland_area, .keep_all = TRUE) 
-
+  select(kobo_farmer_id, total_main_crops_cropland_area,num_main_crops_perennial,num_main_crops_annual,
+         num_main_crops_tree,num_main_crops_shrub,num_main_crops_herb,main_crops_yield_kg_ha)%>%
+  distinct(kobo_farmer_id, total_main_crops_cropland_area,num_main_crops_perennial,num_main_crops_annual,
+           num_main_crops_tree,num_main_crops_shrub,num_main_crops_herb,main_crops_yield_kg_ha, .keep_all = TRUE)%>%
+  mutate(main_crops_perennial=ifelse(num_main_crops_perennial>0,"1","0"))%>%
+  mutate(main_crops_annual=ifelse(num_main_crops_annual>0,"1","0"))%>%
+  mutate(main_crops_tree=ifelse(num_main_crops_tree>0,"1","0"))%>%
+  mutate(main_crops_shrub=ifelse(num_main_crops_shrub>0,"1","0"))%>%
+  mutate(main_crops_herb=ifelse(num_main_crops_herb>0,"1","0"))
   
+  
+
 
 
 [11]  "per_3_4_1_2_7_2_1_begin_repeat"
