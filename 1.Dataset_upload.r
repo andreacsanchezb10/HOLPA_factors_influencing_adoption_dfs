@@ -59,8 +59,6 @@ hlabour_begin_group <- function(data,group_workers,num_workers,hours, permanent_
     
 }
 
-
-
 practices_begin_group <- function(data, cropland_practices,cropland_practices_area) {
   data%>%
     mutate(cropland_practices= case_when(
@@ -232,7 +230,6 @@ per_soil_results <- read_excel(paste0(per_path,"per_soil_results_250924.xlsx"), 
 sheet_names <- excel_sheets(paste0(per_path,"per_holpa_household_survey_clean.xlsx"))
 sheet_names
 
-
 # Define country name and column to rename (adjust accordingly)
 country_name <- "peru"  # Replace with actual country name
 column_id_rename <- "hid"  # Adjust to your specific column
@@ -265,26 +262,29 @@ per_3_4_1_2_1_1_begin_repeat<-per_3_4_1_2_1_1_begin_repeat%>%
   mutate(labour_hours= num_workers*num_hours)%>% #total number of workers * average number of hours per day
   pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = c(num_workers,num_hours,labour_hours),values_fill = 0)
 
-num_labour_per_3_4_1_1_7_2_begin_repeat<-per_3_4_1_1_7_2_begin_repeat%>%
+per_3_4_1_1_7_2_begin_repeat<-per_3_4_1_1_7_2_begin_repeat%>%
   rename("workers"="_3_4_1_1_7_2_calculate",
          "num_seasons"="_3_4_1_1_7_2_1")%>%
-  nhlabour_begin_group(.,.$workers,.$num_seasons,"seasonal")%>%
-  select(kobo_farmer_id,group_workers,num_workers,num_seasons)%>%
-  pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = c(num_workers),values_fill = 0)%>%
-  rename_with(~ paste0("num_workers_", .), .cols = -kobo_farmer_id)
+  left_join(per_3_4_1_2_7_2_1_begin_repeat,by=c("kobo_farmer_id","_3_4_1_1_7_2_begin_repeat_rowid","country"))%>%
+  rename("num_workers_season"="_3_4_1_2_7_2_3",
+         "num_hours"="_3_4_1_2_7_2_4",
+         "months"="_3_4_1_2_7_2_2")%>%
+  select(kobo_farmer_id,workers,num_seasons,num_workers_season,num_hours,months)%>%
+  mutate(month_count = str_count(months, ",") + 1,
+         num_hours=as.numeric(num_hours),
+         num_workers_season=as.numeric(num_workers_season),
+         across(everything(), ~ ifelse(. == 9999, 0, .)),
+         total_labour_hours= num_hours*num_workers_season*month_count*21)%>%
+  group_by(kobo_farmer_id,workers)%>%
+  mutate(total_labour_hours=sum(total_labour_hours))%>%
+  ungroup()%>%
+  distinct(kobo_farmer_id, workers,total_labour_hours, .keep_all = TRUE)%>%
+  nhlabour_begin_group(.,.$workers,.$num_hours,"seasonal")%>%
+  pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = c(num_workers,total_labour_hours),values_fill = 0)
   
-num_labour_per_3_4_1_2_1_2_begin_repeat
-
-y<-per_3_4_1_2_1_2_begin_repeat%>%
+per_3_4_1_2_1_2_begin_repeat<-per_3_4_1_2_1_2_begin_repeat%>%
   rename("group_workers"="_3_4_1_2_1_2_calculate",
-         "num_seasons"= "_3_4_1_2_1_2_1")%>%
-  left_join(per_3_4_1_2_1_2_1_begin_repeat,by=c("kobo_farmer_id","_3_4_1_2_1_2_begin_repeat_rowid"))%>%
-  rename("num_workers"="_3_4_1_2_1_2_1_3")%>%
-  #select(kobo_farmer_id,group_workers,num_workers)%>%
-  group_by(kobo_farmer_id,group_workers)%>%
-  mutate(num_workers= sum(as.numeric(num_workers)))%>%
-  ungroup()
-  distinct(kobo_farmer_id, num_workers, .keep_all = TRUE)%>%
+          "num_seasons"= "_3_4_1_2_1_2_1")%>%
   mutate(group_workers= case_when(
     group_workers %in% c("adultos varones mayores (>65 años)","adultos mayores varones (>65 años)")~ paste0("hlabour_seasonal_adults_old_male"),
     group_workers%in%c("Adultos varones (≥18 y ≤65 años)","adultos varones (≥18 y ≤65)")~paste0("hlabour_seasonal_adults_wa_male"),
@@ -293,43 +293,22 @@ y<-per_3_4_1_2_1_2_begin_repeat%>%
     group_workers=="niñas (<18 años)"~ paste0("hlabour_seasonal_children_female"),
     group_workers=="niños varones (<18 años)"~paste0("hlabour_seasonal_children_male"),
     TRUE ~ group_workers))%>%
-  pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = c(num_workers),values_fill = 0)%>%
-  rename_with(~ paste0("num_workers_", .), .cols = -kobo_farmer_id)
-
-  
-  distinct(kobo_farmer_id, "_3_4_1_2_1_2_begin_repeat_rowid",num_workers, .keep_all = TRUE)  
-  _3_4_1_2_1_2_begin_repeat_rowid
-  _3_4_1_2_1_2_begin_repeat_rowid
-  
-  
-  distinct()
-  
-  hlabour_begin_group(.,.$group_workers,.$num_workers,.$num_hours ,"permanent")
-  
-
-
-left_join(per_3_4_1_2_7_2_1_begin_repeat,by=c("kobo_farmer_id","_3_4_1_1_7_2_begin_repeat_rowid"))%>%
-  rename("season"="_3_4_1_2_7_2_1_calculate",
-         "num_workers"= "_3_4_1_2_7_2_3",
-         "months"="_3_4_1_2_7_2_2",
-         "num_hours"="_3_4_1_2_7_2_4")%>%
-  select(kobo_farmer_id,num_workers,group_workers)%>%
-  pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = c(num_workers,num_hours),values_fill = 0)
-  
-
-
-names(y)
-
-
-
-
-
-
-
-
-
-
-
+  left_join(per_3_4_1_2_1_2_1_begin_repeat,by=c("kobo_farmer_id","_3_4_1_2_1_2_begin_repeat_rowid","country"))%>%
+  rename("num_workers"="_3_4_1_2_1_2_1_3",
+         "months"="_3_4_1_2_1_2_1_2",
+         "num_hours"="_3_4_1_2_1_2_1_4")%>%
+  select(kobo_farmer_id,group_workers,num_seasons,num_workers, months,num_hours)%>%
+  mutate(month_count = str_count(months, ",") + 1,
+         num_hours=as.numeric(num_hours),
+         num_workers=as.numeric(num_workers),
+         across(everything(), ~ ifelse(. == 9999, 0, .)),
+         total_labour_hours= num_hours*num_workers*month_count*21)%>% #~21working days per month
+  group_by(kobo_farmer_id,group_workers)%>%
+  mutate(num_workers= sum(as.numeric(num_workers)),
+         total_labour_hours=sum(total_labour_hours))%>%
+  ungroup()%>%
+  distinct(kobo_farmer_id, group_workers,num_workers,total_labour_hours, .keep_all = TRUE)%>%
+  pivot_wider(id_cols=kobo_farmer_id, names_from = group_workers, values_from = c(num_workers,total_labour_hours),values_fill = 0)
 
 per_3_3_3_2_begin_repeat<-per_3_3_3_2_begin_repeat%>%
   rename("cropland_practices"="_3_3_3_1_calculate_2",
@@ -337,7 +316,6 @@ per_3_3_3_2_begin_repeat<-per_3_3_3_2_begin_repeat%>%
   mutate(cropland_practices = str_extract(cropland_practices, "(?<=//).*"))%>%
   practices_begin_group(.,.$cropland_practices,.$cropland_practices_area)%>%
   mutate(sfs_burning_residues_area=0)
-
 
 per_3_4_2_2_2_begin_repeat<-per_3_4_2_2_2_begin_repeat%>%
   rename("livestock_name_main"="_3_4_2_2_2_calculate",
@@ -356,11 +334,11 @@ per_3_4_2_2_2_begin_repeat<-per_3_4_2_2_2_begin_repeat%>%
 per_3_3_4_1_3_begin_repeat<- per_3_3_4_1_3_begin_repeat%>%
   distinct(kobo_farmer_id, "_3_3_4_1_3_2", .keep_all = TRUE) 
  
+##TO CHECK NEED TO UPDATE IN CASE THE DATA WAS UPDATED
 per_post_processing<- read.csv("HOLPA data post-processing_PER_inputs.csv")%>%
   rename("main_crops"="crops_names",
-         "production_unit"="production.unit",
-         "production_unit_conversion_kg"=    "conversion.factor..to.convert.to.kilograms.")%>%
-  select(main_crops,production_unit,production_unit_conversion_kg)%>%
+         "production_unit"="production.unit")%>%
+  select(main_crops,production_unit,yield_conversion_unit_to_kg,yield_ref_rainfed_clean)%>%
   mutate(production_unit = ifelse(str_detect(production_unit, "//"),
                                        str_extract(production_unit, "(?<=//).*"),production_unit))%>%
   mutate(main_crops = str_replace(main_crops, "^(.)", ~str_to_upper(.x)))
@@ -383,13 +361,15 @@ area_per_3_4_3_1_2_begin_repeat<-per_3_4_3_1_2_begin_repeat%>%
   mutate(main_crops_annual= case_when(
     main_crops%in% c("Bean","Black eye bean","Chili pepper", "Coriander","Cucumber","Maize","Melon", "Rice","Sachapapa","Watermelon"  )~ 1,TRUE~0))%>%
     mutate(main_crops_tree= case_when(
-      main_crops%in% c("Aguaje","Avocado","Caimito","Camu camu","Cocoa",
-                       "Coconut", "Humari","Lemon","Papaya","Oil palm","Orange","Pijuayo","Pink grapefruit","Tangerine")~ 1,TRUE~0))%>%
+      main_crops%in% c("Aguaje","Avocado","Caimito","Camu camu","Cocoa","Coconut", "Humari","Lemon","Papaya","Oil palm","Orange","Pijuayo","Pink grapefruit","Tangerine")~ 1,TRUE~0))%>%
     mutate(main_crops_shrub= case_when(main_crops%in% c("Camu camu", "Cassava" , "Cocona")~ 1,TRUE~0))%>%
     mutate(main_crops_herb= case_when(
-      main_crops%in% c("Banana" ,"Bean" ,"Black eye bean","chili pepper","Coriander","Cucumber","Maize","Melon",
-                       "Pineapple","Rice","Sachapapa","Watermelon")~ 1,TRUE~0))%>%
-  mutate(main_crops_yield_kg_ha= (main_crops_yield*production_unit_conversion_kg)/main_crops_cropland_area)%>%
+      main_crops%in% c("Banana" ,"Bean" ,"Black eye bean","chili pepper","Coriander","Cucumber","Maize","Melon","Pineapple","Rice","Sachapapa","Watermelon")~ 1,TRUE~0))%>%
+  mutate(production_kg_ha = (main_crops_yield*yield_conversion_unit_to_kg)/main_crops_cropland_area)%>%
+  mutate(yield_ref_rainfed_clean = as.numeric(yield_ref_rainfed_clean)) %>%
+  mutate(yield_to_ref_ratio = production_kg_ha/yield_ref_rainfed_clean) %>%
+  mutate(yield_gap = ifelse(yield_to_ref_ratio>1 , 0, 
+                            ifelse(yield_to_ref_ratio == 0, NA, (1- yield_to_ref_ratio)*100))) %>%
   #Area of three main crops grown
   group_by(kobo_farmer_id)%>%
   mutate(total_main_crops_cropland_area= sum(main_crops_cropland_area),
@@ -398,12 +378,12 @@ area_per_3_4_3_1_2_begin_repeat<-per_3_4_3_1_2_begin_repeat%>%
          num_main_crops_tree=sum(main_crops_tree),
          num_main_crops_shrub=sum(main_crops_shrub),
          num_main_crops_herb= sum(main_crops_herb),
-         main_crops_yield_kg_ha= sum(main_crops_yield_kg_ha))%>%
+         yield_gap_median = ifelse(all(is.na(yield_gap)), NA, median(yield_gap, na.rm = TRUE)))%>%
   ungroup()%>%
   select(kobo_farmer_id, total_main_crops_cropland_area,num_main_crops_perennial,num_main_crops_annual,
-         num_main_crops_tree,num_main_crops_shrub,num_main_crops_herb,main_crops_yield_kg_ha)%>%
+         num_main_crops_tree,num_main_crops_shrub,num_main_crops_herb,yield_gap_median)%>%
   distinct(kobo_farmer_id, total_main_crops_cropland_area,num_main_crops_perennial,num_main_crops_annual,
-           num_main_crops_tree,num_main_crops_shrub,num_main_crops_herb,main_crops_yield_kg_ha, .keep_all = TRUE)%>%
+           num_main_crops_tree,num_main_crops_shrub,num_main_crops_herb,yield_gap_median, .keep_all = TRUE)%>%
   mutate(main_crops_perennial=ifelse(num_main_crops_perennial>0,"1","0"))%>%
   mutate(main_crops_annual=ifelse(num_main_crops_annual>0,"1","0"))%>%
   mutate(main_crops_tree=ifelse(num_main_crops_tree>0,"1","0"))%>%
@@ -411,16 +391,8 @@ area_per_3_4_3_1_2_begin_repeat<-per_3_4_3_1_2_begin_repeat%>%
   mutate(main_crops_herb=ifelse(num_main_crops_herb>0,"1","0"))
   
   
-
-
-
-[11]  "per_3_4_1_2_7_2_1_begin_repeat"
-[16] "per_3_4_1_2_1_2_1_begin_repeat" ""            
 [21]       "per_3_4_3_1_2_begin_repeat"    
-
-
 [26]      "per_3_4_2_2_6_begin_repeat"     "per_3_4_2_3_2_begin_repeat"     "per_3_4_2_3_2_4_begin_repeat"          
-[31]                     ""             
 [36]                        "per_3_4_3_1_1_Corregido"        "per_3_4_3_4_2_begin_repeat"    
 [41] "per_3_4_3_3_1_1_Corregido"  
 
@@ -462,16 +434,12 @@ per_data<- per_maintable%>%
   left_join(area_per_3_4_3_1_2_begin_repeat, by=c("kobo_farmer_id"))
   
   
-
-  
-  
 # Process all select_multiple columns
 select_multiple<-h_global_survey%>%
   filter(type_question=="select_multiple")
 
 per_select_multiple_cols <- intersect(colnames(per_data), unique(select_multiple$name_question))
 per_select_multiple_cols
-
 
 per_select_multiple <- per_data %>%
   select(kobo_farmer_id,all_of(per_select_multiple_cols)) %>%
@@ -483,7 +451,7 @@ per_select_multiple <- per_data %>%
   pivot_wider(id_cols=kobo_farmer_id,names_from = c(column_name_new, name_choice), values_from = value,
               names_sep = "/", values_fill = 0) %>%
   dplyr::select(-matches("/NA$"))
-names(per_select_multiple)
+
 # add select_multiple responses
 per_data<-per_data%>%
   select(!all_of(per_select_multiple_cols)) 

@@ -77,8 +77,13 @@ per_data_clean<-per_data_clean%>%
     rainfall_timing_change_perception.unpredictable=="1"~"1",
     rainfall_timing_change_perception.stopearlier=="1"~"1",
     rainfall_timing_change_perception.stoplater=="1"~"1",
-    TRUE~"0"))
-
+    TRUE~"0"))%>%
+  #Drought experience
+  mutate(drought_experience= as.factor(drought_experience))%>%
+  mutate(drought_experience=case_when(drought_experience=="notsure"~"0",TRUE~drought_experience))%>%
+  #Flood experience
+  mutate(flood_experience= as.factor(flood_experience))%>%
+  mutate(flood_experience=case_when(flood_experience=="notsure"~"0",TRUE~flood_experience))
 
 ### FINANCIAL CAPITAL ----
 per_data_clean<-per_data_clean%>%
@@ -200,9 +205,7 @@ per_data_clean<-per_data_clean%>%
     num_occupation_secondary_list = rowSums(as.matrix(select(., starts_with("occupation_secondary_list"))), na.rm = TRUE),
     #Farmer as a primary occupation
     occupation_primary_farmer = ifelse(occupation_primary=="1", "1","0"))%>%
-  mutate(full_time_farmer= case_when(occupation_primary_farmer=="1"&occupation_secondary=="0"~"1",TRUE~"0"))%>%
-  select(starts_with("num_workers_nhlabour_permanent_"),starts_with("num_workers_nhlabour_seasonal_"),
-         starts_with("num_workers_hlabour_permanent_"), starts_with("num_workers_hlabour_seasonal_"))
+  mutate(full_time_farmer= case_when(occupation_primary_farmer=="1"&occupation_secondary=="0"~"1",TRUE~"0"))
 
 ### NATURAL CAPITAL ----
 per_data_clean<-per_data_clean%>%
@@ -507,9 +510,7 @@ per_data_clean<-per_data_clean%>%
   mutate(num_sales_channel_trees = rowSums(select(., starts_with("sales_channel_trees.")), na.rm = TRUE))%>%
   #Honey sales channel
   mutate(across(starts_with("sales_channel_honey."), ~ as.numeric(as.character(.))))%>%
-  mutate(num_sales_channel_honey = rowSums(select(., starts_with("sales_channel_honey.")), na.rm = TRUE))
-
-y<-per_data_clean%>%
+  mutate(num_sales_channel_honey = rowSums(select(., starts_with("sales_channel_honey.")), na.rm = TRUE))%>%
   #Household sale on farm products
   mutate(farm_products_sale= case_when(
     num_sales_channel_crops>0~ "1",
@@ -518,7 +519,6 @@ y<-per_data_clean%>%
     num_sales_channel_trees>0~ "1",
     num_sales_channel_honey>0~ "1",
     TRUE~"0"))%>%
-  select(starts_with("num_sales_channel_"))%>%
   #Household sale produced crops
   mutate(crops_sale= case_when(num_sales_channel_crops>0~ "1",    TRUE~"0"))%>%
   #Household sale produced livestock
@@ -565,10 +565,6 @@ per_data_clean<-per_data_clean%>%
   mutate(across(starts_with("support_provider."), ~ as.numeric(as.character(.))),
          support_provider_count= rowSums(select(., starts_with("support_provider.")) %>% mutate(across(everything(), as.numeric)), na.rm = TRUE))
 
-
-
-
-
 ### FARM MANAGEMENT CHARACTERISTICS ----
 per_data_clean<-per_data_clean%>%
   #Farmer use chemical fertilizers
@@ -576,9 +572,7 @@ per_data_clean<-per_data_clean%>%
   #Farmer use organic fertilizers or manure
   rename("soil_fertility_management_organic"="soil_fertility_management.2")%>%
   #Farmer use ecological practices to improve soil fertility
-  rename("soil_fertility_management_ecol_practices"="soil_fertility_management.3")
-
-y <- per_data_clean %>%
+  rename("soil_fertility_management_ecol_practices"="soil_fertility_management.3")%>%
   #Number of on-farm products
   mutate(across(starts_with("farm_products."), ~ as.numeric(as.character(.))),
          num_farm_products = rowSums(across(starts_with("farm_products.")), na.rm = TRUE))%>%
@@ -587,7 +581,7 @@ y <- per_data_clean %>%
          num_soil_fertility_ecol_practices = rowSums(across(starts_with("soil_fertility_ecol_practices.")), na.rm = TRUE))%>%
   #Use Chemical fungicides/pesticides/herbicides.
   rename("pest_management_chemical"="pest_management.1")%>%
-  #UseNon-chemical fungicides/pesticides/herbicides.
+  #Use Non-chemical fungicides/pesticides/herbicides.
   rename("pest_management_organic"="pest_management.2")%>%
   #Use Ecological practices (e.g., crop rotation, planting repelling plants).
   rename("pest_management_ecol_practices"="pest_management.3")%>%
@@ -601,15 +595,52 @@ y <- per_data_clean %>%
   #Land clearing
   mutate(sfs_land_clearing_adoption= case_when(sfs_land_clearing_area>0~ "1", TRUE~ "0"))%>%
   #burning residues
-  mutate(sfs_burning_residues_adoption= case_when(sfs_burning_residues_area>0~ "1", TRUE~ "0"))
+  mutate(sfs_burning_residues_adoption= case_when(sfs_burning_residues_area>0~ "1", TRUE~ "0"))%>%
+  #PERMANENT HOUSEHOLD LABOUR: total labour hours per year
+  mutate(across(starts_with("num_workers_nhlabour_permanent_"), ~ ifelse(is.na(.) |. == 9999, 0, .)),
+        across(starts_with("num_hours_nhlabour_permanent_"), ~ ifelse(is.na(.) |. == 9999, 0, .)))%>%
+  mutate(total_labour_hours_nhlabour_permanent_adults_wa_female= num_hours_nhlabour_permanent_adults_wa_female*num_workers_nhlabour_permanent_adults_wa_female*12*21)%>%
+  mutate(total_labour_hours_nhlabour_permanent_adults_wa_male= num_hours_nhlabour_permanent_adults_wa_male*num_workers_nhlabour_permanent_adults_wa_male*12*21)%>%
+  mutate(total_labour_hours_nhlabour_permanent_adults_old_male= num_hours_nhlabour_permanent_adults_old_male*num_workers_nhlabour_permanent_adults_old_male*12*21)%>%
+  mutate(total_labour_hours_nhlabour_permanent_adults_old_female= num_hours_nhlabour_permanent_adults_old_female*num_workers_nhlabour_permanent_adults_old_female*12*21)%>%
+  mutate(total_labour_hours_nhlabour_permanent_children_male= num_hours_nhlabour_permanent_children_male*num_workers_nhlabour_permanent_children_male*12*21)%>%
+  mutate(total_labour_hours_nhlabour_permanent_children_female= num_hours_nhlabour_permanent_children_female*num_workers_nhlabour_permanent_children_female*12*21)%>%
+  mutate(total_labour_hours_nhlabour_permanent= rowSums(across(starts_with("total_labour_hours_nhlabour_permanent_")), na.rm = TRUE))%>%
+  #SEASONAL HOUSEHOLD LABOUR: total labour hours per year
+  mutate(across(starts_with("total_labour_hours_nhlabour_seasonal_"), ~ ifelse(is.na(.) |. == 9999, 0, .)))%>%
+  mutate(total_labour_hours_nhlabour_seasonal = rowSums(across(starts_with("total_labour_hours_nhlabour_seasonal_")), na.rm = TRUE))%>%
+  #PERMANENT HIRED LABOUR: total labour hours per year
+  mutate(across(starts_with("num_workers_hlabour_permanent_"), ~ ifelse(is.na(.) |. == 9999, 0, .)),
+     across(starts_with("num_hours_hlabour_permanent_"), ~ ifelse(is.na(.) |. == 9999, 0, .)))%>%
+  mutate(total_labour_hours_hlabour_permanent_adults_wa_male= num_hours_hlabour_permanent_adults_wa_male*num_workers_hlabour_permanent_adults_wa_male*12*21)%>%
+  mutate(total_labour_hours_hlabour_permanent_adults_wa_female= num_hours_hlabour_permanent_adults_wa_female*num_workers_hlabour_permanent_adults_wa_female*12*21)%>%
+  mutate(total_labour_hours_hlabour_permanent = rowSums(across(starts_with("total_labour_hours_hlabour_permanent_")), na.rm = TRUE))%>%
+    #SEASONAL HIRED LABOUR: total labour hours per year
+  mutate(across(starts_with("total_labour_hours_hlabour_seasonal_"), ~ ifelse(is.na(.) |. == 9999, 0, .)))%>%
+  mutate(total_labour_hours_hlabour_seasonal = rowSums(across(starts_with("total_labour_hours_hlabour_seasonal_")), na.rm = TRUE))%>%
+  #LABOUR PRODUCTIVITY
+  mutate(total_labour_hours= rowSums(across(starts_with("total_labour_hours_")), na.rm = TRUE),
+         labour_productivity= total_labour_hours/farm_size)%>%
+  #Chemical fertilizer per ha
+  mutate(chemical_fertilizer_amount_ha= case_when(chemical_fertilizer_unit=="Kilograms"~chemical_fertilizer_amount/chemical_fertilizer_area_affected,TRUE~0))%>%
+  #Organic fertilizer and manure per ha
+ 
+  mutate(organic_fertilizer_onfarm_amount_ha= case_when(organic_fertilizer_onfarm_unit=="Kilograms"~organic_fertilizer_onfarm_amount/organic_fertilizer_onfarm_area_affected,TRUE~0))%>%
+  mutate(organic_fertilizer_offfarm_amount_ha= case_when(organic_fertilizer_offfarm_unit=="Kilograms"~organic_fertilizer_offfarm_amount/organic_fertilizer_offfarm_area_affected,TRUE~0))%>%
+  mutate(organic_fertilizer_amount_ha=organic_fertilizer_onfarm_amount_ha+organic_fertilizer_offfarm_amount_ha)%>%
+  #Are the livestock you keep exotic or local?
+  mutate(livestock_exotic_local1= case_when(
+    livestock_exotic_local %in%c("6","7")| #No exotic or local breeds are kept. | I don't know.
+    is.na(livestock_exotic_local)~"0", #Does not produce livestock
+    TRUE~livestock_exotic_local))
 
   
 
-select(sfs_monoculture_perennial_area,
-       sfs_monoculture_annual_area,
-       sfs_land_clearing_area,
-       sfs_burning_residues_area)%>%
-  
+
+
+names(y)
+
+
   
   
 
@@ -637,10 +668,21 @@ select(sfs_monoculture_perennial_area,
 
 ### FARMER BEHAVIOUR ----
 per_data_clean<- per_data_clean %>%
-  #Human well being score
-  mutate(across(starts_with("human_wellbeing_"), ~ as.numeric(as.factor(.))))%>%
-  mutate(human_wellbeing = rowMedians(as.matrix(select(., starts_with("human_wellbeing_"))), na.rm = TRUE))%>%
-  mutate(human_wellbeing= round(human_wellbeing, digits=0))%>%
+  #Perceived climatic conditions as risk/shock
+  mutate(perceived_shock_climate= case_when(
+    str_detect(crop_damage_cause, "climate_change")~ "1",
+    str_detect(crop_damage_cause,"drought")~ "1",
+    str_detect(crop_damage_cause,"flood")~ "1",
+    str_detect(crop_damage_cause,"temperature" )~ "1",
+    str_detect(crop_damage_cause,"rain")~ "1",
+    household_shock.1 =="1"~ "1", #Extreme weather events (e.g. cyclones, dust storm, excess rainfall, insuficient rainfall, frost, high temperatures, high winds)
+    TRUE~"0"))%>%
+  #Perceived pests as risk/shock
+  mutate(crop_damage_cause = str_extract(crop_damage_cause, "(?<=//).*"))%>%
+  mutate(perceived_shock_pest= case_when(
+    str_detect(crop_damage_cause, "pest")~ "1",
+    household_shock.8=="1"~ "1", #Pest or disease outbreaks
+    TRUE~"0"))%>%
   #Household decision-making agency
   mutate(across(c(farmer_agency_1, farmer_agency_3), ~ replace_na(as.numeric(as.character(.)), 0)))%>%
   mutate(farmer_agency_1_3 = case_when(
@@ -648,7 +690,13 @@ per_data_clean<- per_data_clean %>%
     farmer_agency_1!=0 &farmer_agency_3==0 ~ farmer_agency_1,
     farmer_agency_1!=0 &farmer_agency_3!=0 ~ rowMedians(as.matrix(select(., c(farmer_agency_1, farmer_agency_3))), na.rm = TRUE),
     TRUE~ NA))%>%
-  mutate(farmer_agency_1_3= round(farmer_agency_1_3, digits=0))%>%
+  mutate(farmer_agency_1_3= round(farmer_agency_1_3, digits=0))
+  
+  #Human well being score
+  mutate(across(starts_with("human_wellbeing_"), ~ as.numeric(as.factor(.))))%>%
+  mutate(human_wellbeing = rowMedians(as.matrix(select(., starts_with("human_wellbeing_"))), na.rm = TRUE))%>%
+  mutate(human_wellbeing= round(human_wellbeing, digits=0))%>%
+  
   #Perceived credit repayment confidence
   mutate(credit_payment_hability= case_when(
     credit_payment_full== "1"~ "5",
@@ -662,21 +710,8 @@ mutate(across(starts_with("agroecol_perspective_"), ~ as.numeric(as.factor(.))))
 
 ### VULNERABILITY CONTEXT ----
 per_data_clean<-per_data_clean%>%
-  #Perceived pests as risk/shock
-  mutate(crop_damage_cause = str_extract(crop_damage_cause, "(?<=//).*"))%>%
-  mutate(perceived_shock_pest= case_when(
-    str_detect(crop_damage_cause, "pest")~ "1",
-    household_shock.8=="1"~ "1", #Pest or disease outbreaks
-    TRUE~"0"))%>%
-  #Perceived climatic conditions as risk/shock
-  mutate(perceived_shock_climate= case_when(
-    str_detect(crop_damage_cause, "climate_change")~ "1",
-    str_detect(crop_damage_cause,"drought")~ "1",
-    str_detect(crop_damage_cause,"flood")~ "1",
-    str_detect(crop_damage_cause,"temperature" )~ "1",
-    str_detect(crop_damage_cause,"rain")~ "1",
-    household_shock.1 =="1"~ "1", #Extreme weather events (e.g. cyclones, dust storm, excess rainfall, insuficient rainfall, frost, high temperatures, high winds)
-    TRUE~"0"))%>%
+ 
+  
   #Perceived market characteristics as risk/shock
   mutate(perceived_shock_market= case_when(
     str_detect(crop_damage_cause, "lack of market")~ "1",
