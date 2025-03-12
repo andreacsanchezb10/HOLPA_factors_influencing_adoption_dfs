@@ -528,7 +528,14 @@ per_data_clean<-per_data_clean%>%
   #Household sale produced trees
   mutate(trees_sale= case_when(num_sales_channel_trees>0~ "1",    TRUE~"0"))%>%
   #Household sale produced honey
-  mutate(honey_sale= case_when(num_sales_channel_honey>0~ "1",    TRUE~"0"))
+  mutate(honey_sale= case_when(num_sales_channel_honey>0~ "1",    TRUE~"0"))%>%
+  #Perceived market characteristics as risk/shock
+  mutate(perceived_shock_market= case_when(
+    str_detect(crop_damage_cause, "lack of market")~ "1",
+    str_detect(crop_damage_cause,"low prices")~ "1",
+    household_shock.5 =="1"~ "1", #Market disruptions
+    household_shock.10 =="1"~ "1", #Price fluctuations in market
+    TRUE~"0"))
 
 ### SOCIAL CAPITAL ----
 per_data_clean<-per_data_clean%>%
@@ -624,22 +631,19 @@ per_data_clean<-per_data_clean%>%
   #Chemical fertilizer per ha
   mutate(chemical_fertilizer_amount_ha= case_when(chemical_fertilizer_unit=="Kilograms"~chemical_fertilizer_amount/chemical_fertilizer_area_affected,TRUE~0))%>%
   #Organic fertilizer and manure per ha
- 
   mutate(organic_fertilizer_onfarm_amount_ha= case_when(organic_fertilizer_onfarm_unit=="Kilograms"~organic_fertilizer_onfarm_amount/organic_fertilizer_onfarm_area_affected,TRUE~0))%>%
   mutate(organic_fertilizer_offfarm_amount_ha= case_when(organic_fertilizer_offfarm_unit=="Kilograms"~organic_fertilizer_offfarm_amount/organic_fertilizer_offfarm_area_affected,TRUE~0))%>%
   mutate(organic_fertilizer_amount_ha=organic_fertilizer_onfarm_amount_ha+organic_fertilizer_offfarm_amount_ha)%>%
+  #Type of crop seeds
+  mutate(seeds_certified_local= case_when(
+    seeds_certified_local %in%c("5")| # I don't know, or seeds are neither certified or locally adapted..
+      is.na(seeds_certified_local)~"0", #Does not produce crops
+    TRUE~seeds_certified_local))%>%
   #Are the livestock you keep exotic or local?
-  mutate(livestock_exotic_local1= case_when(
+  mutate(livestock_exotic_local= case_when(
     livestock_exotic_local %in%c("6","7")| #No exotic or local breeds are kept. | I don't know.
     is.na(livestock_exotic_local)~"0", #Does not produce livestock
     TRUE~livestock_exotic_local))
-
-  
-
-
-
-names(y)
-
 
   
   
@@ -658,13 +662,6 @@ names(y)
     #Number of CHEMICAL management practices used to manage livestock diseases in the last 12 months
     num_livestock_diseases_management_organic = rowSums(select(., c("livestock_diseases_management.1",
                                                                     "livestock_diseases_management.2")),na.rm = TRUE))
-
-
-
-
-
-
-
 
 ### FARMER BEHAVIOUR ----
 per_data_clean<- per_data_clean %>%
@@ -692,33 +689,23 @@ per_data_clean<- per_data_clean %>%
     TRUE~ NA))%>%
   mutate(farmer_agency_1_3= round(farmer_agency_1_3, digits=0))
   
+
   #Human well being score
   mutate(across(starts_with("human_wellbeing_"), ~ as.numeric(as.factor(.))))%>%
   mutate(human_wellbeing = rowMedians(as.matrix(select(., starts_with("human_wellbeing_"))), na.rm = TRUE))%>%
   mutate(human_wellbeing= round(human_wellbeing, digits=0))%>%
-  
-  #Perceived credit repayment confidence
-  mutate(credit_payment_hability= case_when(
-    credit_payment_full== "1"~ "5",
-    is.na(credit_payment_full)~ "0",
-    TRUE~credit_payment_hability))
-
-#Perspective on agroecology score
+  #Perspective on agroecology score
 mutate(across(starts_with("agroecol_perspective_"), ~ as.numeric(as.factor(.))))%>%
   mutate(agroecol_perspective_median = rowMedians(as.matrix(select(., starts_with("agroecol_perspective_"))), na.rm = TRUE))
 
 
 ### VULNERABILITY CONTEXT ----
 per_data_clean<-per_data_clean%>%
- 
-  
-  #Perceived market characteristics as risk/shock
-  mutate(perceived_shock_market= case_when(
-    str_detect(crop_damage_cause, "lack of market")~ "1",
-    str_detect(crop_damage_cause,"low prices")~ "1",
-    household_shock.5 =="1"~ "1", #Market disruptions
-    household_shock.10 =="1"~ "1", #Price fluctuations in market
-    TRUE~"0"))%>%
+    #Perceived credit repayment confidence
+    mutate(credit_payment_hability= case_when(
+      credit_payment_full== "1"~ "5",
+      is.na(credit_payment_full)~ "0",
+      TRUE~credit_payment_hability))%>%
   #Perceived indebtedness as risk/shock
   mutate(household_shock.9= NA)%>%
   mutate(perceived_shock_indebtedness= case_when(
@@ -768,27 +755,6 @@ per_data_clean<-per_data_clean%>%
 
 
          
-
-
-
-
-
-
-
-
-
-sort(unique(per_data_clean$insurance_agric_losses_access))
-
-
-
-
-
-
-
-
-    
-    
-    
 write.csv(per_data_clean,"per_data_clean.csv",row.names=FALSE)
 
     

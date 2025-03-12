@@ -147,10 +147,7 @@ f_global_survey <- read_excel("factors_list.xlsx",sheet = "fieldwork_survey")%>%
 # Define file path
 per_path <- "C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Peru/peru_data_clean/" #household form
 
-per_f_survey_path<-"C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Peru/peru_data_clean/per/per_fieldwork_format.csv" #fieldwork survey
-
-
-per_choices <- read_excel(paste0(per_path,"per_holpa_household_form_clean.xlsx"), sheet = "choices")%>%
+per_h_choices <- read_excel(paste0(per_path,"per_holpa_household_form_clean.xlsx"), sheet = "choices")%>%
   mutate(country= "peru",
          name_new=NA)%>%
   select("list_name","name","label::English (en)","country",name_new)%>%
@@ -160,7 +157,7 @@ per_choices <- read_excel(paste0(per_path,"per_holpa_household_form_clean.xlsx")
 
 #Add country choices to global choices
 per_global_choices<-global_choices%>%
-  rbind(per_choices)%>%
+  rbind(per_h_choices)%>%
   arrange(desc(country == "global")) %>%
   #Removing duplicates
   distinct(list_name,name_choice, .keep_all = TRUE) %>%
@@ -192,7 +189,7 @@ f_column_mapping <- f_global_survey %>%
   select(name_question,column_name_new )  # Select only the relevant columns
 print(f_column_mapping)
 
-per_f_survey<- read.csv(per_f_survey_path)
+per_f_survey<- read.csv(paste0(per_path,"per/per_fieldwork_format.csv"))
 colnames(per_f_survey) <- gsub("^X", "", colnames(per_f_survey))
 per_f_survey<-per_f_survey%>%
   select(all_of(unique(f_column_mapping$name_question)),kobo_farmer_id,country)
@@ -200,13 +197,13 @@ per_f_survey<-per_f_survey%>%
 #Soil results
 per_soil_results <- read_excel(paste0(per_path,"per_soil_results_250924.xlsx"), sheet = "Resultados suelos")%>%
   rename("soil_main_crop"="NUEVA CLASIFICACION",
-         "kobo_farmer_id"="Código del \r\nencuestado" ,
+         "kobo_farmer_id_fieldwork"="Código del \r\nencuestado" ,
          "MO_percentage"="MO %",
          "sand_percentage"="% Arena",
          "clay_percentage"="% Arciclla",
          "silt_percentage"=  "% Limo",
          "soil_class_tx"="Clase Tx")%>%
-  filter(!is.na(kobo_farmer_id))%>%
+  filter(!is.na(kobo_farmer_id_fieldwork))%>%
   mutate(soil_class_tx=case_when(
     soil_class_tx=="Arcillo Arenoso"~ "Clayey Sandy",
     soil_class_tx=="Arcillo Limoso"~ "Clayey Silty",
@@ -219,12 +216,15 @@ per_soil_results <- read_excel(paste0(per_path,"per_soil_results_250924.xlsx"), 
     soil_class_tx%in%c("Franco arcilloso","Franco Arcilloso")~ "Clay Loam",
     soil_class_tx=="Franco Limoso"~ "Silty Loam",
     TRUE~ NA)) %>%
-  group_by(kobo_farmer_id)%>%
+  group_by(kobo_farmer_id_fieldwork)%>%
   mutate(soil_pH_mean= mean(pH),
          soil_MO_percentage_mean= mean(MO_percentage))%>%
   ungroup()%>%
-  distinct(kobo_farmer_id, soil_pH_mean,soil_MO_percentage_mean, .keep_all = TRUE) %>%
-  select(kobo_farmer_id, soil_pH_mean,soil_MO_percentage_mean)
+  distinct(kobo_farmer_id_fieldwork, soil_pH_mean,soil_MO_percentage_mean, .keep_all = TRUE) %>%
+  select(kobo_farmer_id_fieldwork, soil_pH_mean,soil_MO_percentage_mean)%>%
+  left_join(read_excel(paste0(per_path,"farmer_id_houshold_fieldwork.xlsx"),sheet = "Cod campo_hogar")%>%
+              select("id_CAMPO", "id_HOGAR"),by=c("kobo_farmer_id_fieldwork"="id_CAMPO"))%>%
+  rename("kobo_farmer_id"="id_HOGAR")%>%select(-kobo_farmer_id_fieldwork)
   
 # Read all sheet names from per_household survey
 sheet_names <- excel_sheets(paste0(per_path,"per_holpa_household_survey_clean.xlsx"))
@@ -432,7 +432,7 @@ per_data<- per_maintable%>%
   left_join(per_soil_results, by=c("kobo_farmer_id"))%>%
   left_join(per_3_3_4_1_3_begin_repeat, by=c("kobo_farmer_id","country"))%>%
   left_join(area_per_3_4_3_1_2_begin_repeat, by=c("kobo_farmer_id"))
-  
+
   
 # Process all select_multiple columns
 select_multiple<-h_global_survey%>%
