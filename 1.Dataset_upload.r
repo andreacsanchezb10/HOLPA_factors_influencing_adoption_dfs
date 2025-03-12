@@ -432,6 +432,8 @@ per_data<- per_maintable%>%
   left_join(per_soil_results, by=c("kobo_farmer_id"))%>%
   left_join(per_3_3_4_1_3_begin_repeat, by=c("kobo_farmer_id","country"))%>%
   left_join(area_per_3_4_3_1_2_begin_repeat, by=c("kobo_farmer_id"))
+  select(kobo_farmer_id,"_1_4_3_5")
+
 
   
 # Process all select_multiple columns
@@ -483,10 +485,6 @@ colnames(per_data) <- ifelse(existing_cols %in% names(rename_vector), rename_vec
 # Check the updated column names
 print(colnames(per_data))
 
-per_data<- per_data%>%
-  rename("farm_elevation"="_elevation")
-
-
 #####################################
 ########## DATA SELECTION ----
 per_data<-per_data %>% 
@@ -510,12 +508,12 @@ sort(unique(per_data$ethnicity))
 sort(unique(per_data$education_level))
 
 
-### To check for inconsistencies between "soil_fertility_ecol_practices/5" (which indicates whether mulching was implemented) and 
+### To check for inconsistencies between "soil_fertility_management_ecol_practices/5" (which indicates whether mulching was implemented) and 
 #"ecol_practices_mulching_area" (which records the area where mulching was applied)
-per_data$"soil_fertility_ecol_practices/5" <-as.character(per_data$"soil_fertility_ecol_practices/5" )
+per_data$"soil_fertility_management_ecol_practices/5" <-as.character(per_data$"soil_fertility_management_ecol_practices/5" )
 
-per_data$"soil_fertility_ecol_practices/5" <- ifelse(per_data$ecol_practices_mulching_area == "0", "0",
-                                      ifelse(per_data$ecol_practices_mulching_area != "0", "1", per_data$"soil_fertility_ecol_practices/5"))
+per_data$"soil_fertility_management_ecol_practices/5" <- ifelse(per_data$ecol_practices_mulching_area == "0", "0",
+                                      ifelse(per_data$ecol_practices_mulching_area != "0", "1", per_data$"soil_fertility_management_ecol_practices/5"))
 
 
 

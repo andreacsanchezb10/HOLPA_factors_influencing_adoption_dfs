@@ -41,7 +41,7 @@ summary_stats_num <- function(df,numeric_valid_columns) {
       TRUE ~ str_extract(full_name, "[^_]+$"))) %>% # Extract everything after last "_"
   select(column_name_new, statistic, value)%>%  # Reorder columns for clarity
   pivot_wider(names_from = "statistic", values_from = "value")%>%
-    left_join(factors_list%>%select(category_1,category_2,category_3,factor, metric, metric_type,column_name_new),by="column_name_new")
+    left_join(factors_list%>%select(category_1,category_2,category_3,factor, metric, metric_type,column_name_new,description),by="column_name_new")
 }
 
 
@@ -62,8 +62,7 @@ summary_stats_factor <- function(df,factor_valid_columns,categorical_choices,fac
     mutate(variable_category = case_when( type_question == "select_one" ~ paste0(column_name_new2, "_", name_choice), TRUE ~ column_name_new2))%>%
     select(-type_question)%>%
     left_join(categorical_choices%>%select(-name_choice),by= c("variable_category","column_name_new2"))%>%
-    mutate(column_name_new = case_when(
-      is.na(column_name_new) ~ sub("\\..*", "", column_name_new2),  TRUE ~ column_name_new))%>%
+    mutate(column_name_new = case_when(is.na(column_name_new) ~ column_name_new2,  TRUE ~ column_name_new))%>%
     select(-variable_category,-type_question)%>%
     mutate(label_choice= case_when(
       is.na(label_choice) & name_choice=="0" ~ "No",
@@ -73,8 +72,9 @@ summary_stats_factor <- function(df,factor_valid_columns,categorical_choices,fac
       column_name_new %in%c("fair_price_crops") &is.na(name_choice)~ "Farmers without crop production",
       column_name_new2=="ethnicity"~name_choice,
       TRUE ~ label_choice))%>%
-    left_join(factors_list%>%select(category_1,category_2,category_3,factor, metric, metric_type,categorical_type,column_name_new),by="column_name_new")%>%
-    filter(!is.na(metric_type))
+    left_join(factors_list%>%select(category_1,category_2,category_3,factor, metric, metric_type,categorical_type,column_name_new,description),by="column_name_new")%>%
+    filter(!is.na(metric_type))%>%
+    distinct(column_name_new2, name_choice, Count, .keep_all = TRUE)
 }
     
 #############################################################    
@@ -85,11 +85,11 @@ summary_stats_factor <- function(df,factor_valid_columns,categorical_choices,fac
 ### Summary statistics
 columns_numeric <- intersect(factors_list$column_name_new[factors_list$metric_type == "continuous"], colnames(per_data_clean))
 print(columns_numeric)  # Check if it holds expected values
-per_summary_numerical <- summary_stats_num(per_data_clean,columns_numeric)
-per_summary_numerical
+per_summary_numerical <- summary_stats_num(per_data_clean,columns_numeric)%>%
+  filter(str_detect(category_1, "vulnerability context"))
+sort(unique(per_summary_numerical$factor))
 
 write.csv(per_summary_numerical,"per_summary_numerical.csv",row.names=FALSE)
-
 
 ### Histogram plots for each numerical variable
 plot_list <- lapply(columns_numeric, function(col) {
@@ -110,7 +110,7 @@ ggplot(long_data, aes(x = dfs_adoption_binary, y =  value, color = dfs_adoption_
   facet_wrap(~variable, scales = "free") +
   theme_minimal()
 
-### Boxplot Matrix
+### Boxplot Matrix 
 featurePlot(x = per_data_clean[,columns_numeric], 
             y = as.factor(per_data_clean$dfs_adoption_binary), 
             plot = "box", 
@@ -142,14 +142,13 @@ print(columns_factor_sm)  # Check if it holds expected values
 columns_factor<-c(columns_factor_so, columns_factor_sm)
 print(columns_factor)  # Check if it holds expected values
 
-per_summary_categorical <- summary_stats_factor(per_data_clean,columns_factor,per_categorical_choices,factors_list)
-per_summary_categorical
+per_summary_categorical <- summary_stats_factor(per_data_clean,columns_factor,per_categorical_choices,factors_list)%>%
+  filter(str_detect(category_1, "vulnerability context"))
+sort(unique(per_summary_categorical$column_name_new2))
+
 print(per_summary_categorical)  # Check if it holds expected values
 sort(unique(per_summary_categorical$factor))
 write.csv(per_summary_categorical,"per_summary_categorical.csv",row.names=FALSE)
-
-
-
 
 ### Boxplot Matrix
 # Define the number of variables per plot

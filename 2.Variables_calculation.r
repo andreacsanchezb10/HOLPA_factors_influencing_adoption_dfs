@@ -3,6 +3,7 @@ library(dplyr)
 library(readr)  # for parse_number()
 library(stringr)
 library(tidyr)
+library(geosphere)
 
 
 per_data<- read.csv("per_data.csv",sep=",")
@@ -33,8 +34,6 @@ print(per_columns_factor)  # Check if it holds expected values
 per_data_clean<- per_data_clean%>%
   mutate(across(all_of(per_columns_factor), as.factor))
 
-str(per_data_clean$marital_status)
-str(per_data_clean$gender)
 
 #############################################################
 ########## OUTCOMES CALCULATION #####-----
@@ -50,7 +49,7 @@ per_data_clean <- per_data_clean %>%
     dfs_crop_rotation_adoption= as.factor(ifelse(dfs_crop_rotation_area > 0, "1","0")),
     
     dfs_agroforestry_adoption= as.factor(ifelse(dfs_agroforestry_area > 0, "1","0")),
-    dfs_cover_crops_adoption= as.factor(ifelse(dfs_cover_crops_area > 0, "1","0")),
+    dfs_cover_crops_adoption= as.factor(ifelse(dfs_cover_crops_area > 0, "1","0")), ### TO CHECK, PEST MANAGEMENT ALSO PROVIDES COVER CROPS
     dfs_homegarden_adoption= as.factor(ifelse(dfs_homegarden_area > 0, "1","0")),
     dfs_intercropping_adoption= as.factor(ifelse(dfs_intercropping_area > 0, "1","0")),
     dfs_fallow_adoption= as.factor(ifelse(dfs_fallow_area > 0, "1","0")),
@@ -90,11 +89,6 @@ per_data_clean<-per_data_clean%>%
   #Income sources
   mutate(across(starts_with("income_sources."), ~ as.numeric(as.character(.))))%>%
   mutate(num_income_sources = rowSums(as.matrix(select(., starts_with("income_sources."))), na.rm = TRUE))%>%
-  mutate(income_sources= case_when(
-    num_income_sources>2~ "5",
-    num_income_sources==2~ "2",
-    num_income_sources==1~ "0",
-    TRUE~ NA))%>%
   #Availability of non-farm income
   mutate(income_access_nonfarm = rowSums(as.matrix(select(., c(income_sources.casual_labour,
                                                                income_sources.transfers,
@@ -121,19 +115,25 @@ per_data_clean<-per_data_clean%>%
   mutate(credit_access= ifelse(credit=="2", "1","0"))%>%
   #Access to credit is a constraint
   mutate(credit_access_constraint= ifelse(credit=="1", "1","0"))%>%
-  mutate(across(starts_with("assets_"), ~ ifelse(. == "9999"|is.na(.),"0", .))) %>%  # Replace 9999 with 0
-  mutate(across(starts_with("assets_"), ~ as.numeric(as.character(.))))%>%
   #Number of assets
-  mutate(assets_count =rowSums(across(starts_with("assets_"), ~ .>0)))%>%
+  mutate(assets_other=case_when(
+    assets_other==9999~ 1,
+    is.na(assets_other)~ 0,
+    TRUE~assets_other))%>%
+  mutate(across(setdiff(names(.), "assets_other_name")[startsWith(setdiff(names(.), "assets_other_name"), "assets_")],
+                ~ as.numeric(as.character(.))))%>%
+    mutate(assets_count =rowSums(across(setdiff(names(.), "assets_other_name")[startsWith(setdiff(names(.), "assets_other_name"), "assets_")])))%>%
   #Livestock count
   #Reference: Marc BENOIT, Patrick VEYSSET Livestock unit calculation: a method based on energy requirements to refine the study of livestock farming systems
-  mutate(livestock_count_tlu= (livestock_main_animal_number_Cattle*1)+ #Cattle TLU=1
+  mutate(livestock_count_tlu= 
+           (livestock_main_animal_number_Cattle*1)+ #Cattle TLU=1
            (livestock_main_animal_number_Pigs*0.2)+ #Pigs 0.2
            (livestock_main_animal_number_Chickens*0.01)+ #Poultry 0.01
            (livestock_main_animal_number_Ducks*0.01)+ #Poultry 0.01
            (livestock_main_animal_number_Turkeys*0.01)+ #Poultry 0.01
            (livestock_main_animal_number_Cuyes*0.01)+ #Cuyes 0.01
-           (livestock_main_animal_number_rabbits*0.02))%>% #Rabbits 0.01
+           (livestock_main_animal_number_rabbits*0.02),
+         livestock_count_tlu=ifelse(is.na(livestock_count_tlu),0,livestock_count_tlu))%>% #Rabbits 0.01
   #Household held a debt
   mutate(household_held_debt=case_when(credit_payment_full=="0"~ "1",TRUE~"0"))%>%
   #High-cost roof materials
@@ -148,8 +148,11 @@ per_data_clean<-per_data_clean%>%
     walls_material.Bricks=="1"~"1",
     walls_material.Stones=="1"~"1",
     walls_material.Iron_sheet=="1"~"1",
-    TRUE~"0"))
-  
+    TRUE~"0"))%>%
+  #Farm is not profitable
+  mutate(financial_deficit= case_when(financial_deficit=="2"~"0",TRUE~financial_deficit))
+
+
 ### HUMAN CAPITAL ----
 per_data_clean<-per_data_clean%>%
     #Household head age
@@ -205,14 +208,13 @@ per_data_clean<-per_data_clean%>%
     num_occupation_secondary_list = rowSums(as.matrix(select(., starts_with("occupation_secondary_list"))), na.rm = TRUE),
     #Farmer as a primary occupation
     occupation_primary_farmer = ifelse(occupation_primary=="1", "1","0"))%>%
+  #Full-time farmer
   mutate(full_time_farmer= case_when(occupation_primary_farmer=="1"&occupation_secondary=="0"~"1",TRUE~"0"))
 
 ### NATURAL CAPITAL ----
 per_data_clean<-per_data_clean%>%
   # Farm size
-  mutate(farm_size= land_tenure_own_area+land_tenure_lease_area+land_tenure_hold_area)
-
-per_data_clean<- per_data_clean %>%
+  mutate(farm_size= land_tenure_own_area+land_tenure_lease_area+land_tenure_hold_area)%>%
   #Years of farming land
   mutate(years_farming_land = 2025-year_start_farming_land)%>%
   #Livestock land area
@@ -223,22 +225,22 @@ per_data_clean<- per_data_clean %>%
   #Total production area
   mutate(total_production_area= cropland_area+livestockland_area+fishland_area)%>%
   #Area under sustainable agricultural practices
-  mutate(sfp_total_area = rowSums(as.matrix(select(., dfs_total_area,starts_with("ecol_") & ends_with("_area"))), na.rm = TRUE))
-
-per_data_clean<-per_data_clean%>%
+  mutate(sfp_total_area = rowSums(as.matrix(select(., dfs_total_area,starts_with("ecol_") & ends_with("_area"))), na.rm = TRUE))%>%
   #Months of water shortage during a normal year
   mutate(months_count_water_accessibility_difficulty_normal_year = rowSums(as.matrix(select(., starts_with("water_accessibility_difficulty_normal_year."))), na.rm = TRUE))%>%
   #Months of water shortage during a flood year
   mutate(months_count_water_accessibility_difficulty_flood_year = rowSums(as.matrix(select(., starts_with("water_accessibility_difficulty_flood_year."))), na.rm = TRUE))%>%
   #Months of water shortage during a drought year
-  mutate(months_count_water_accessibility_difficulty_drought_year = rowSums(as.matrix(select(., starts_with("water_accessibility_difficulty_drought_year."))), na.rm = TRUE))
+  mutate(months_count_water_accessibility_difficulty_drought_year = rowSums(as.matrix(select(., starts_with("water_accessibility_difficulty_drought_year."))), na.rm = TRUE))%>%
+  #Vegetation cover
+  mutate(across(starts_with("vegetation_diversity_"), ~as.numeric(replace_na(as.numeric(as.character(.)), 0))))
+
 
 ### PHYSICAL CAPITAL ----
 # Function to classify energy type dynamically
 classify_energy_type <- function(df, prefix, renewable_keywords, nonrenewable_keywords, new_col_name) {
   renewable_sources <- grep(paste0("^", prefix, ".*(", paste(renewable_keywords, collapse = "|"), ")$"), colnames(df), value = TRUE)
   nonrenewable_sources <- grep(paste0("^", prefix, ".*(", paste(nonrenewable_keywords, collapse = "|"), ")$"), colnames(df), value = TRUE)
-  
   df %>%
     rowwise() %>%
     mutate(
@@ -265,7 +267,8 @@ per_data_clean <- classify_energy_type(per_data_clean, "energy_irrigation", rene
 #Type of energy used for: Tillage, sowing or harvesting
 per_data_clean <- classify_energy_type(per_data_clean, "energy_tillage_haverst", renewable_keywords, nonrenewable_keywords, "energy_tillage_haverst_type")
 #Type of energy used for: Cooking
-per_data_clean <- classify_energy_type(per_data_clean, "energy_cooking", renewable_keywords, nonrenewable_keywords, "energy_cooking_type")
+per_data_clean <- classify_energy_type(per_data_clean, "energy_cooking", renewable_keywords, nonrenewable_keywords, "energy_cooking_type")%>%
+  mutate(energy_cooking_type=ifelse(is.na(energy_cooking_type),5,energy_cooking_type))
 #Type of energy used for: Cleaning, processing or transporting harvested food
 per_data_clean <- classify_energy_type(per_data_clean, "energy_cleaning_transporting", renewable_keywords, nonrenewable_keywords, "energy_cleaning_transporting_type")
 #Type of energy used for: General
@@ -308,7 +311,7 @@ per_data_clean<-per_data_clean%>%
          metric_distance_publich_transport=case_when(country=="peru"~ "minutes",TRUE~"NA"),
          metric_distance_main_road=case_when(country=="peru"~ "minutes",TRUE~"NA"))%>%
   #Distance to the closest farmland
-  mutate(distance_closest_farmland=across(starts_with("distance_"), ~ as.numeric(as.character(.))))%>%
+  mutate(across(starts_with("distance_"), ~ as.numeric(as.character(.))))%>%
   mutate(distance_closest_farmland = case_when(
     mode_distance_closest_farmland %in% c("walking")& metric_distance_closest_farmland %in% c("minutes")~distance_closest_farmland,
     mode_distance_closest_farmland %in% c("motobike","motorbike", "car")& metric_distance_closest_farmland %in% c("minutes")~distance_closest_farmland*10, # assumes car speed of 50km/h and walking speed of 5 km/h  
@@ -404,9 +407,6 @@ per_data_clean<-per_data_clean%>%
   mutate(insurance_agric_losses_access= case_when(insurance_agric_losses_level=="0" ~ "0",TRUE~ "1"))%>%
   #Amount of subsidy received as income support
   mutate(income_amount_subsidy= ifelse(is.na(income_amount_subsidy),0,income_amount_subsidy))%>%
-  #Access to subsidies as income support
-  mutate(income_access_subsidy= ifelse(income_amount_subsidy>0, "1","0"),
-         income_access_subsidy= ifelse(is.na(income_amount_subsidy), "0",income_access_subsidy))%>%
   #Household with children attending school and receiving free meals
   mutate(access_free_school_meals_perweek= case_when(
     children_attend_school=="0" ~ "0",
@@ -468,7 +468,6 @@ per_data_clean<-per_data_clean%>%
     land_tenure_hold_proportion= (land_tenure_hold_area/farm_size)*100)
 
 
-
 ### POLITICAL AND INSTITUTIONAL CONTEXT: Value chain ----
 per_data_clean<-per_data_clean%>%
   #Perception of price fairness: crops
@@ -519,16 +518,6 @@ per_data_clean<-per_data_clean%>%
     num_sales_channel_trees>0~ "1",
     num_sales_channel_honey>0~ "1",
     TRUE~"0"))%>%
-  #Household sale produced crops
-  mutate(crops_sale= case_when(num_sales_channel_crops>0~ "1",    TRUE~"0"))%>%
-  #Household sale produced livestock
-  mutate(livestock_sale= case_when(num_sales_channel_livestock>0~ "1",  TRUE~"0"))%>%
-  #Household sale produced fish
-  mutate(fish_sale= case_when(num_sales_channel_fish>0~ "1",    TRUE~"0"))%>%
-  #Household sale produced trees
-  mutate(trees_sale= case_when(num_sales_channel_trees>0~ "1",    TRUE~"0"))%>%
-  #Household sale produced honey
-  mutate(honey_sale= case_when(num_sales_channel_honey>0~ "1",    TRUE~"0"))%>%
   #Perceived market characteristics as risk/shock
   mutate(perceived_shock_market= case_when(
     str_detect(crop_damage_cause, "lack of market")~ "1",
@@ -584,8 +573,8 @@ per_data_clean<-per_data_clean%>%
   mutate(across(starts_with("farm_products."), ~ as.numeric(as.character(.))),
          num_farm_products = rowSums(across(starts_with("farm_products.")), na.rm = TRUE))%>%
   #Number of ecological practices use on cropland to improve soil quality and health
-  mutate(across(starts_with("soil_fertility_ecol_practices."), ~ as.numeric(as.character(.))),
-         num_soil_fertility_ecol_practices = rowSums(across(starts_with("soil_fertility_ecol_practices.")), na.rm = TRUE))%>%
+  mutate(across(starts_with("soil_fertility_management_ecol_practices."), ~ as.numeric(as.character(.))),
+         num_soil_fertility_ecol_practices = rowSums(across(starts_with("soil_fertility_management_ecol_practices.")), na.rm = TRUE))%>%
   #Use Chemical fungicides/pesticides/herbicides.
   rename("pest_management_chemical"="pest_management.1")%>%
   #Use Non-chemical fungicides/pesticides/herbicides.
@@ -631,9 +620,11 @@ per_data_clean<-per_data_clean%>%
   #Chemical fertilizer per ha
   mutate(chemical_fertilizer_amount_ha= case_when(chemical_fertilizer_unit=="Kilograms"~chemical_fertilizer_amount/chemical_fertilizer_area_affected,TRUE~0))%>%
   #Organic fertilizer and manure per ha
-  mutate(organic_fertilizer_onfarm_amount_ha= case_when(organic_fertilizer_onfarm_unit=="Kilograms"~organic_fertilizer_onfarm_amount/organic_fertilizer_onfarm_area_affected,TRUE~0))%>%
-  mutate(organic_fertilizer_offfarm_amount_ha= case_when(organic_fertilizer_offfarm_unit=="Kilograms"~organic_fertilizer_offfarm_amount/organic_fertilizer_offfarm_area_affected,TRUE~0))%>%
-  mutate(organic_fertilizer_amount_ha=organic_fertilizer_onfarm_amount_ha+organic_fertilizer_offfarm_amount_ha)%>%
+  mutate(organic_fertilizer_onfarm_amount_ha= case_when(organic_fertilizer_onfarm_unit=="Kilograms"~organic_fertilizer_onfarm_amount/organic_fertilizer_onfarm_area_affected,TRUE~0)%>% 
+           replace(is.infinite(.), 0),
+         organic_fertilizer_offfarm_amount_ha= case_when(organic_fertilizer_offfarm_unit=="Kilograms"~organic_fertilizer_offfarm_amount/organic_fertilizer_offfarm_area_affected,TRUE~0)%>%
+           replace(is.infinite(.), 0),
+         organic_fertilizer_amount_ha=organic_fertilizer_onfarm_amount_ha+organic_fertilizer_offfarm_amount_ha)%>%
   #Type of crop seeds
   mutate(seeds_certified_local= case_when(
     seeds_certified_local %in%c("5")| # I don't know, or seeds are neither certified or locally adapted..
@@ -643,10 +634,24 @@ per_data_clean<-per_data_clean%>%
   mutate(livestock_exotic_local= case_when(
     livestock_exotic_local %in%c("6","7")| #No exotic or local breeds are kept. | I don't know.
     is.na(livestock_exotic_local)~"0", #Does not produce livestock
-    TRUE~livestock_exotic_local))
+    TRUE~livestock_exotic_local))%>%
+  #Use percentage
+  mutate(across(starts_with("use_percentage_"), ~replace_na(as.character(.), "0")))%>%
+  #Household sale produced crops
+  mutate(crops_sale= case_when(use_percentage_crops_sales!="0"~ "1",    TRUE~"0"))%>%
+  #Household sale produced livestock
+  mutate(livestock_sale= case_when(use_percentage_livestock_sales!="0"~ "1",  TRUE~"0"))%>%
+  #Household sale produced fish
+  mutate(fish_sale= case_when(use_percentage_fish_sales!="0"~ "1",    TRUE~"0"))%>%
+  #Household sale produced trees
+  mutate(trees_sale= case_when(use_percentage_trees_sales!="0"~ "1",    TRUE~"0"))%>%
+  #Household sale produced honey
+  mutate(honey_sale= case_when(use_percentage_honey_sales!="0"~ "1",    TRUE~"0"))
 
-  
-  
+
+
+
+
 
     #Number of practices implemented to keep animals on the farm healthy and happy?
     across(starts_with("livestock_health_practice."), ~ as.numeric(as.character(.))),
@@ -662,6 +667,7 @@ per_data_clean<-per_data_clean%>%
     #Number of CHEMICAL management practices used to manage livestock diseases in the last 12 months
     num_livestock_diseases_management_organic = rowSums(select(., c("livestock_diseases_management.1",
                                                                     "livestock_diseases_management.2")),na.rm = TRUE))
+
 
 ### FARMER BEHAVIOUR ----
 per_data_clean<- per_data_clean %>%
@@ -689,6 +695,28 @@ per_data_clean<- per_data_clean %>%
     TRUE~ NA))%>%
   mutate(farmer_agency_1_3= round(farmer_agency_1_3, digits=0))
   
+  #Distance to the nearest farmer adopting DFS
+  per_data_clean<-per_data_clean%>%
+    rowwise() %>%
+    mutate(
+      nearest_distance_dfs_km = tryCatch(
+        min(
+          distGeo(
+            cbind(longitude, latitude),
+            cbind(
+              (per_data_clean$longitude[
+                per_data_clean$dfs_adoption_binary == "1" & per_data_clean$longitude != longitude & per_data_clean$latitude != latitude]),
+              (per_data_clean$latitude[
+                per_data_clean$dfs_adoption_binary == "1" & per_data_clean$longitude != longitude & per_data_clean$latitude != latitude]))),
+          na.rm = TRUE) / 1000,  # Convert meters to kilometers
+        error = function(e) NA_real_)) %>%
+    ungroup()
+  select(dfs_adoption_binary,nearest_distance)
+  
+  # View results
+  print(per_data_clean)
+  
+
 
   #Human well being score
   mutate(across(starts_with("human_wellbeing_"), ~ as.numeric(as.factor(.))))%>%
@@ -752,19 +780,11 @@ per_data_clean<-per_data_clean%>%
   mutate(household_shock_strategy= case_when(household_shock_strategy_count>0~ "1", TRUE~"0")) 
   
   
-
-
-         
 write.csv(per_data_clean,"per_data_clean.csv",row.names=FALSE)
 
-    
-    
-    
-    
-    
-    
-    
 
+    
+    
 ## to check: controlar si hay otras preguntas donde se citen dfs, ver las practicas de livestock
 
 
