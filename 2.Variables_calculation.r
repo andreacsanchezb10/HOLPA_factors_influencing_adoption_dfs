@@ -182,6 +182,13 @@ per_data_clean<-per_data_clean%>%
       TRUE~NA))%>%
   #Level of education of most household members
   mutate(education_level_household_finished= pmax(education_level_finished, education_level_male_finished, education_level_female_finished, na.rm = TRUE))%>%
+  #Level of education of most household male
+  mutate(education_level_female_finished= case_when(
+    education_level_female%in%c("1","4")~"1",
+    education_level_female%in%c("2","11")~"0",
+    education_level_female%in%c("3","6","8")~"2",
+    education_level_female%in%c("5","7","9","10")  ~"3",
+    TRUE~NA))%>%
     #Total adults (18-65 years old) in household
   mutate(num_adults_wa = num_adults_wa_male+num_adults_wa_female,
     #Total adults (>65 years old) in household
@@ -459,13 +466,50 @@ per_data_clean<-per_data_clean%>%
     land_tenure_own_status=="0" & land_tenure_lease_status=="1"~ "2",
     land_tenure_own_status=="0" & land_tenure_lease_status=="0"& land_tenure_hold_status=="1"~ "3",
     TRUE~ NA))%>%
-  mutate(
     #Proportion of land owns
-    land_tenure_own_proportion= (land_tenure_own_area/farm_size)*100,
-    #Proportion of land  leases
-    land_tenure_lease_proportion= (land_tenure_lease_area/farm_size)*100,
-    #Proportion of land hold use rights
-    land_tenure_hold_proportion= (land_tenure_hold_area/farm_size)*100)
+  mutate(land_tenure_own_proportion= (land_tenure_own_area/farm_size)*100,
+         #Proportion of land  leases
+         land_tenure_lease_proportion= (land_tenure_lease_area/farm_size)*100,
+         #Proportion of land hold use rights
+         land_tenure_hold_proportion= (land_tenure_hold_area/farm_size)*100)%>%
+  #Proportion of land owns by a male member
+  mutate(male_land_tenure_own_proportion= (male_land_tenure_own_area/land_tenure_own_area)*100,
+         #Proportion of land owns by a female member
+         female_land_tenure_own_proportion= (female_land_tenure_own_area/land_tenure_own_area)*100,
+         #Proportion of land leases by a male member
+         male_land_tenure_lease_proportion=(male_land_tenure_lease_area/land_tenure_lease_area)*100,
+         #Proportion of land leases by a female member
+         female_land_tenure_lease_proportion=(female_land_tenure_lease_area/land_tenure_lease_area)*100,
+         #Proportion of land hold use rights by a male member
+         male_land_tenure_hold_proportion=(male_land_tenure_hold_area/land_tenure_hold_area)*100,
+         #Proportion of land hold use rights by a female member
+         female_land_tenure_hold_proportion=(female_land_tenure_hold_area/land_tenure_hold_area)*100)%>%
+  # Gender of land tenure
+  mutate(gender_land_tenure_own=case_when(
+    male_land_tenure_own_area>0 & female_land_tenure_own_area>0~"shared",
+    male_land_tenure_own_area>0 & female_land_tenure_own_area==0~"male",
+    male_land_tenure_own_area==0 & female_land_tenure_own_area>0~"female",
+    TRUE~NA))%>%
+  mutate(gender_land_tenure_lease=case_when(
+    male_land_tenure_lease_area>0 & female_land_tenure_lease_area>0~"shared",
+    male_land_tenure_lease_area>0 & female_land_tenure_lease_area==0~"male",
+    male_land_tenure_lease_area==0 & female_land_tenure_lease_area>0~"female",
+    TRUE~NA))%>%
+  mutate(gender_land_tenure_hold=case_when(
+    male_land_tenure_hold_area>0 & female_land_tenure_hold_area>0~"shared",
+    male_land_tenure_hold_area>0 & female_land_tenure_hold_area==0~"male",
+    male_land_tenure_hold_area==0 & female_land_tenure_hold_area>0~"female",
+    TRUE~NA))%>%
+    mutate(gender_land_tenure = case_when(
+      if_any(c(gender_land_tenure_own, gender_land_tenure_lease, gender_land_tenure_hold), ~ . == "shared") ~ "shared",
+      if_all(c(gender_land_tenure_own, gender_land_tenure_lease, gender_land_tenure_hold), ~ . == "female") ~ "female",
+      if_all(c(gender_land_tenure_own, gender_land_tenure_lease, gender_land_tenure_hold), ~ . == "male") ~ "male",
+      if_any(c(gender_land_tenure_own, gender_land_tenure_lease, gender_land_tenure_hold), ~ . == "male")&
+        if_any(c(gender_land_tenure_own, gender_land_tenure_lease, gender_land_tenure_hold), ~ . == "female")~ "shared",
+      if_any(c(gender_land_tenure_own, gender_land_tenure_lease, gender_land_tenure_hold), ~ . != "male") ~ "female",
+      if_any(c(gender_land_tenure_own, gender_land_tenure_lease, gender_land_tenure_hold), ~ . != "female") ~ "male",
+      TRUE ~ NA))
+
 
 
 ### POLITICAL AND INSTITUTIONAL CONTEXT: Value chain ----
@@ -696,7 +740,7 @@ per_data_clean<- per_data_clean %>%
   mutate(farmer_agency_1_3= round(farmer_agency_1_3, digits=0))
   
   #Distance to the nearest farmer adopting DFS
-  per_data_clean<-per_data_clean%>%
+per_data_clean<-per_data_clean%>%
     rowwise() %>%
     mutate(
       nearest_distance_dfs_km = tryCatch(
@@ -713,9 +757,30 @@ per_data_clean<- per_data_clean %>%
     ungroup()
   select(dfs_adoption_binary,nearest_distance)
   
-  # View results
-  print(per_data_clean)
-  
+
+# Nearest farmer has adoption of DFS
+  per_data_clean <- per_data_clean %>%
+    rowwise() %>%
+    mutate(
+      nearest_farmer_adopted = tryCatch(
+        {
+          # Get distances to all other farmers
+          distances <- distGeo(
+            cbind(longitude, latitude),
+            cbind(
+              (per_data_clean$longitude[per_data_clean$kobo_farmer_id != kobo_farmer_id]),
+              (per_data_clean$latitude[per_data_clean$kobo_farmer_id != kobo_farmer_id])))
+          # Find the index of the nearest farmer
+          nearest_index <- which.min(distances)
+          # Check if the nearest farmer has adoption == "1"
+          if (length(nearest_index) > 0) {
+            as.numeric(per_data_clean$dfs_adoption_binary[per_data_clean$kobo_farmer_id != kobo_farmer_id][nearest_index] == "1")
+          } else {
+            NA_real_  # No valid neighbors found
+          }},
+        error = function(e) NA_real_)) %>%
+    ungroup()
+  select(dfs_adoption_binary,nearest_farmer_adopted)
 
 
   #Human well being score
@@ -778,11 +843,12 @@ per_data_clean<-per_data_clean%>%
   mutate(household_shock_strategy_count=case_when(household_shock_recover_activities.none==1~ household_shock_strategy_count-1,TRUE~household_shock_strategy_count))%>%
   #Household applied shock coping strategy
   mutate(household_shock_strategy= case_when(household_shock_strategy_count>0~ "1", TRUE~"0")) 
-  
+
   
 write.csv(per_data_clean,"per_data_clean.csv",row.names=FALSE)
 
-
+y<-per_data_clean%>%
+  select("farmer_agency_1", "farmer_agency_3")
     
     
 ## to check: controlar si hay otras preguntas donde se citen dfs, ver las practicas de livestock

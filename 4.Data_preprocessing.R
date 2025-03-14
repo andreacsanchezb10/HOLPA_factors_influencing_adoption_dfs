@@ -2,6 +2,7 @@ library(dplyr)
 library(readxl)
 library(caret)
 library(reshape2)
+library(summarytools)
 
 
 factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")
@@ -9,20 +10,21 @@ per_data_clean<- read.csv("per_data_clean.csv",sep=",")
 per_summary_categorical<-read.csv("per_summary_categorical.csv",sep=",")
 per_summary_numerical<-read.csv("per_summary_numerical.csv",sep=",")
 
-sort(unique(per_data_clean$temperature_change_perception))
 
 
 #### Select the factors that were listed as important for adoption according to:
 # - data availability
 # - systematic evidence map
+# - meta-analysis
+# - Context document (Peru)
 
-per_variables_list<-c(unique(per_summary_categorical$column_name_new2))#,unique(per_summary_numerical$column_name_new))
+per_variables_list<-c(unique(per_summary_categorical$column_name_new2),unique(per_summary_numerical$column_name_new))
 per_variables_list
 
 per_data_analysis<- per_data_clean%>%
   dplyr::select(all_of(per_variables_list))
 
-dim(per_data_analysis) #[1] 200 109 #200 farmers; 109 variables evaluated
+dim(per_data_analysis) #[1] 200 339 #200 farmers; 339 variables evaluated
 
 
 #############################################################    
@@ -38,6 +40,9 @@ print(columns_categorical_nominal)  # Check if it holds expected values
 per_data_analysis<- per_data_analysis%>%
   mutate(across(all_of(columns_categorical_nominal), as.factor))
 sort(unique(per_data_analysis$dfs_adoption_binary))
+
+y<-per_data_analysis%>%
+  select("farmer_agency_1", "farmer_agency_3")
 
 ###### --- NUMERICAL VARIABLES -----
 #### Convert continuous variables to numeric
@@ -78,12 +83,14 @@ ggplot(long_data, aes(x = value, fill = dfs_adoption_binary)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-problems<- per_data_analysis[, nzv_list]
+nzv_factors<- per_data_analysis[, nzv_list]
+print(nzv_factors)
+view(dfSummary(nzv_factors))
 
 #### Remove nzv variables from data
 per_data_analysis_Filterednzv<- per_data_analysis[, -nzv_list]
 
-dim(per_data_analysis_Filterednzv) #[1] 200 75 #200 farmers; 75 variables retained
+dim(per_data_analysis_Filterednzv) #[1] 200 236 #200 farmers; 236 variables retained
 
 ###### only for continuous variables...
 ###### --- CORRRELATED PREDICTORS -----
@@ -98,10 +105,14 @@ x<-findLinearCombos(per_data_analysis_Filterednzv)
 na_columns <- colnames(per_data_analysis_Filterednzv)[colSums(is.na(per_data_analysis_Filterednzv)) > 0]
 print(na_columns)
 
-#[1] "energy_cooking_type" FIRST CHECH WHAT IS THE PROBLEM HERE
-
 problems2<- per_data_analysis_Filterednzv%>%
   select(all_of(na_columns))
+
+
+###### --- SES and MMPC -----
+
+
+
 
 ###### --- FBED -----
 library(MXM)
@@ -112,11 +123,9 @@ bc_target <- as.factor(per_data_analysis_Filterednzv$dfs_adoption_binary)
 alphas <- c(0.05, 0.1) #significance level α of the conditional independence test
 test<- "testIndLogistic" # conditional independence test for outcome = binary, predictors= mixed
 
+MXM::fbed.reg(target = bc_target, dataset = bc_dataset, test = "testIndLogistic")
 
-
-
-
-cv.fbed.reg(bc_target, bc_dataset, #id, kfolds = 10, 
+fbed.reg(bc_target, bc_dataset, #id, kfolds = 10, 
                   folds = NULL, alphas = c(0.01, 0.05), ks = 0:2) 
 
 help(cv.fbed.lmm.reg)
@@ -135,7 +144,6 @@ results <- lapply(alphas, function(thresh) {
 results$[[1]]$res
 
 num_selected<-length(results$selectedVars)
-
 
 fbed.reg<- fbed.reg(target= bc_target,
                     dataset= bc_dataset,
@@ -185,7 +193,7 @@ rfctrl <- rfeControl(
   functions = rfFuncs,     # Use Random Forest for feature selection
   method = "repeatedcv",   # Use repeated k-fold cross-validation
   number = 4,             # 10-fold cross-validation
-  repeats = 1,             # Repeat X times for stability
+  repeats = 10,             # Repeat X times for stability
   verbose = TRUE
 )
 
@@ -196,7 +204,7 @@ set.seed(123)  # Ensure reproducibility
 rfe_result <- rfe(
   x = predictors, 
   y = target, 
-  sizes = c(1:ncolPredictors ),  # Number of features to evaluate
+  sizes = c(1:50 ),  # Number of features to evaluate
   rfeControl = rfctrl
 )
 

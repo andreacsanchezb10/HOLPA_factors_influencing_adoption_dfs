@@ -85,8 +85,7 @@ summary_stats_factor <- function(df,factor_valid_columns,categorical_choices,fac
 ### Summary statistics
 columns_numeric <- intersect(factors_list$column_name_new[factors_list$metric_type == "continuous"], colnames(per_data_clean))
 print(columns_numeric)  # Check if it holds expected values
-per_summary_numerical <- summary_stats_num(per_data_clean,columns_numeric)%>%
-  filter(str_detect(category_1, "vulnerability context"))
+per_summary_numerical <- summary_stats_num(per_data_clean,columns_numeric)
 sort(unique(per_summary_numerical$factor))
 
 write.csv(per_summary_numerical,"per_summary_numerical.csv",row.names=FALSE)
@@ -142,8 +141,7 @@ print(columns_factor_sm)  # Check if it holds expected values
 columns_factor<-c(columns_factor_so, columns_factor_sm)
 print(columns_factor)  # Check if it holds expected values
 
-per_summary_categorical <- summary_stats_factor(per_data_clean,columns_factor,per_categorical_choices,factors_list)%>%
-  filter(str_detect(category_1, "vulnerability context"))
+per_summary_categorical <- summary_stats_factor(per_data_clean,columns_factor,per_categorical_choices,factors_list)
 sort(unique(per_summary_categorical$column_name_new2))
 
 print(per_summary_categorical)  # Check if it holds expected values
