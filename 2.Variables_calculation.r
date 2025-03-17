@@ -66,7 +66,7 @@ per_data_clean<-per_data_clean%>%
   mutate(across(starts_with("soil_depth_"), ~ as.numeric(as.character(.))))%>%
   mutate(soil_depth = rowSums(as.matrix(select(., starts_with("soil_depth_"))), na.rm = TRUE)/3)%>%
   mutate(soil_depth= round(soil_depth, digits=0))%>%
-  mutate(soil_depth=paste0("depth_",soil_depth))%>%
+  #mutate(soil_depth=paste0("depth_",soil_depth))%>%
   #Year of assessment
   mutate(year_assessment= str_extract(end_time, "^\\d{4}"))%>%
   #Rainfall timing change
@@ -168,6 +168,7 @@ per_data_clean<-per_data_clean%>%
     TRUE~NA))%>%
   #Level of education of most male household members
   mutate(education_level_male_finished= case_when(
+    is.na(education_level_male)~"0",
     education_level_male%in%c("1","4")~"1",
     education_level_male%in%c("2","11")~"0",
     education_level_male%in%c("3","6","8")~"2",
@@ -175,20 +176,14 @@ per_data_clean<-per_data_clean%>%
     TRUE~NA))%>%
   #Level of education of most female household members
   mutate(education_level_female_finished= case_when(
-      education_level_female%in%c("1","4")~"1",
-      education_level_female%in%c("2","11")~"0",
+    is.na(education_level_female)~"0",
+    education_level_female%in%c("1","4")~"1",
+    education_level_female%in%c("2","11")~"0",
       education_level_female%in%c("3","6","8")~"2",
       education_level_female%in%c("5","7","9","10")  ~"3",
       TRUE~NA))%>%
   #Level of education of most household members
   mutate(education_level_household_finished= pmax(education_level_finished, education_level_male_finished, education_level_female_finished, na.rm = TRUE))%>%
-  #Level of education of most household male
-  mutate(education_level_female_finished= case_when(
-    education_level_female%in%c("1","4")~"1",
-    education_level_female%in%c("2","11")~"0",
-    education_level_female%in%c("3","6","8")~"2",
-    education_level_female%in%c("5","7","9","10")  ~"3",
-    TRUE~NA))%>%
     #Total adults (18-65 years old) in household
   mutate(num_adults_wa = num_adults_wa_male+num_adults_wa_female,
     #Total adults (>65 years old) in household
@@ -217,6 +212,7 @@ per_data_clean<-per_data_clean%>%
     occupation_primary_farmer = ifelse(occupation_primary=="1", "1","0"))%>%
   #Full-time farmer
   mutate(full_time_farmer= case_when(occupation_primary_farmer=="1"&occupation_secondary=="0"~"1",TRUE~"0"))
+
 
 ### NATURAL CAPITAL ----
 per_data_clean<-per_data_clean%>%
@@ -315,7 +311,7 @@ per_data_clean<-per_data_clean%>%
          metric_distance_hospital=case_when(country=="peru"~ "minutes",TRUE~"NA"),
          metric_distance_livestock_market=case_when(country=="peru"~ "minutes",TRUE~"NA"),
          metric_distance_crop_market=case_when(country=="peru"~ "minutes",TRUE~"NA"),
-         metric_distance_publich_transport=case_when(country=="peru"~ "minutes",TRUE~"NA"),
+         metric_distance_public_transport=case_when(country=="peru"~ "minutes",TRUE~"NA"),
          metric_distance_main_road=case_when(country=="peru"~ "minutes",TRUE~"NA"))%>%
   #Distance to the closest farmland
   mutate(across(starts_with("distance_"), ~ as.numeric(as.character(.))))%>%
@@ -361,12 +357,12 @@ per_data_clean<-per_data_clean%>%
     mode_distance_crop_market %in% c("horse","donkey")& metric_distance_crop_market %in% c("minutes")~distance_crop_market*2, # assumes horse speed of 10km/h and walking speed of 5 km/h
     TRUE~distance_crop_market))%>%
   #Distance to public transport
-  mutate(distance_publich_transport = case_when(
-    mode_distance_publich_transport%in% c("walking")& metric_distance_publich_transport %in% c("minutes")~distance_publich_transport,
-    mode_distance_publich_transport%in% c("motobike","motorbike", "car")& metric_distance_publich_transport %in% c("minutes")~distance_publich_transport*10, # assumes car speed of 50km/h and walking speed of 5 km/h  
-    mode_distance_publich_transport %in% c("cycling")& metric_distance_publich_transport %in% c("minutes")~distance_publich_transport*3, # assumes bike speed of 15km/h and walking speed of 5 km/h
-    mode_distance_publich_transport %in% c("horse","donkey")& metric_distance_publich_transport %in% c("minutes")~distance_publich_transport*2, # assumes horse speed of 10km/h and walking speed of 5 km/h
-    TRUE~distance_publich_transport))%>%
+  mutate(distance_public_transport = case_when(
+    mode_distance_public_transport%in% c("walking")& metric_distance_public_transport %in% c("minutes")~distance_public_transport,
+    mode_distance_public_transport%in% c("motobike","motorbike", "car")& metric_distance_public_transport %in% c("minutes")~distance_public_transport*10, # assumes car speed of 50km/h and walking speed of 5 km/h  
+    mode_distance_public_transport %in% c("cycling")& metric_distance_public_transport %in% c("minutes")~distance_public_transport*3, # assumes bike speed of 15km/h and walking speed of 5 km/h
+    mode_distance_public_transport %in% c("horse","donkey")& metric_distance_public_transport %in% c("minutes")~distance_public_transport*2, # assumes horse speed of 10km/h and walking speed of 5 km/h
+    TRUE~distance_public_transport))%>%
   #Distance to main road
   mutate(distance_main_road = case_when(
     mode_distance_main_road%in% c("walking")& metric_distance_main_road %in% c("minutes")~distance_main_road,
@@ -474,16 +470,22 @@ per_data_clean<-per_data_clean%>%
          land_tenure_hold_proportion= (land_tenure_hold_area/farm_size)*100)%>%
   #Proportion of land owns by a male member
   mutate(male_land_tenure_own_proportion= (male_land_tenure_own_area/land_tenure_own_area)*100,
+         male_land_tenure_own_proportion= ifelse(is.na(male_land_tenure_own_proportion),0,male_land_tenure_own_proportion),
          #Proportion of land owns by a female member
          female_land_tenure_own_proportion= (female_land_tenure_own_area/land_tenure_own_area)*100,
+         female_land_tenure_own_proportion= ifelse(is.na(female_land_tenure_own_proportion),0,female_land_tenure_own_proportion),
          #Proportion of land leases by a male member
          male_land_tenure_lease_proportion=(male_land_tenure_lease_area/land_tenure_lease_area)*100,
+         male_land_tenure_lease_proportion= ifelse(is.na(male_land_tenure_lease_proportion),0,male_land_tenure_lease_proportion),
          #Proportion of land leases by a female member
          female_land_tenure_lease_proportion=(female_land_tenure_lease_area/land_tenure_lease_area)*100,
+         female_land_tenure_lease_proportion= ifelse(is.na(female_land_tenure_lease_proportion),0,female_land_tenure_lease_proportion),
          #Proportion of land hold use rights by a male member
          male_land_tenure_hold_proportion=(male_land_tenure_hold_area/land_tenure_hold_area)*100,
+         male_land_tenure_hold_proportion= ifelse(is.na(male_land_tenure_hold_proportion),0,male_land_tenure_hold_proportion),
          #Proportion of land hold use rights by a female member
-         female_land_tenure_hold_proportion=(female_land_tenure_hold_area/land_tenure_hold_area)*100)%>%
+         female_land_tenure_hold_proportion=(female_land_tenure_hold_area/land_tenure_hold_area)*100,
+         female_land_tenure_hold_proportion= ifelse(is.na(female_land_tenure_hold_proportion),0,female_land_tenure_hold_proportion))%>%
   # Gender of land tenure
   mutate(gender_land_tenure_own=case_when(
     male_land_tenure_own_area>0 & female_land_tenure_own_area>0~"shared",
