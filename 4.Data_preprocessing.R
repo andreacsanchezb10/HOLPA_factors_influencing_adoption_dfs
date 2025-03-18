@@ -27,7 +27,7 @@ per_variables_list
 per_data_analysis<- per_data_clean%>%
   dplyr::select(all_of(per_variables_list))
 
-dim(per_data_analysis) #[1] 200 342 #200 farmers; 342 variables evaluated
+dim(per_data_analysis) #[1] 200 323 #200 farmers; 323 variables evaluated
 
 #############################################################    
 ########## DATA TYPE CONVERSION #####-----
@@ -124,7 +124,7 @@ per_data_Binary <- per_data_Binary %>%
   select(-all_of(cols_to_remove))
 
 
-dim(per_data_Binary) #[1] 200 358 #200 farmers; 358 variables evaluated
+dim(per_data_Binary) #[1] 200 337 #200 farmers; 337 variables evaluated
 
 #############################################################    
 #############################################################
@@ -144,7 +144,7 @@ ggplot(data=a, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_Binary) #[1] 200 358 #200 farmers; 358 variables retained
+dim(per_data_Binary) #[1] 200 337 #200 farmers; 337 variables retained
 
 
 #############################################################    
@@ -187,7 +187,7 @@ ggplot(data=b, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_analysis_Filterednzv) #[1] 200 248 #200 farmers; 248 variables retained
+dim(per_data_analysis_Filterednzv) #[1] 200 235 #200 farmers; 235 variables retained
 
 #############################################################    
 ############# IDENTIFYING CORRELATED FACTORS -----
@@ -198,10 +198,9 @@ columns_continuous <- intersect(per_summary_numerical$column_name_new, colnames(
 print(columns_continuous)
 per_data_analysis_cont<- per_data_analysis_Filterednzv%>%
   select(all_of(columns_continuous))
+per_data_analysis_cont
 
-pearson.cor<- dedup(per_data_analysis_cont,
-            threshold= 0.8,
-            debug = TRUE)
+pearson.cor<- dedup(per_data_analysis_cont, threshold= 0.8,    debug = TRUE)
 pearson.cor
 #income_amount_onfarm is collinear with income_amount_total, dropping income_amount_total with COR = 0.9924
 #sfp_total_area is collinear with dfs_total_area, dropping dfs_total_area with COR = 0.9922
@@ -214,17 +213,22 @@ pearson.cor
 #male_land_tenure_own_proportion is collinear with female_land_tenure_own_proportion, dropping female_land_tenure_own_proportion with COR = -0.8777
 pearson.highCor_factors <- setdiff(colnames(per_data_analysis_cont), colnames(pearson.cor))
 pearson.highCor_factors 
+
+colnames(pearson.cor)
 #9 removed factors
 #[1] "income_amount_total"               "num_adults_wa"                     "total_main_crops_cropland_area"    "cropland_area"                    
 #[5] "dfs_total_area"                    "male_land_tenure_own_area"         "female_land_tenure_own_area"       "female_land_tenure_own_proportion"
 #[9] "distance_public_transport"        
 
 pearson.cor_matrix <- cor(per_data_analysis_cont, method = "pearson", use = "pairwise.complete.obs")
-person.highCor_matrix <- pearson.cor_matrix[pearson.highCor_factors, pearson.highCor_factors]
+pearson.cor_matrix[abs(pearson.cor_matrix) < 0.8] <- NA
+diag(pearson.cor_matrix) <- NA
+person.highCor_matrix <- pearson.cor_matrix[rowSums(!is.na(pearson.cor_matrix)) > 0, 
+                                            colSums(!is.na(pearson.cor_matrix)) > 0]
+diag(person.highCor_matrix) <- 1
+person.highCor_matrix
 
-# Plot the correlation matrix
-corrplot(person.highCor_matrix, method = "color", type = "upper", tl.cex = 0.7, tl.col = "black")
-
+corrplot(person.highCor_matrix, method = "color", type = "upper", tl.cex = 0.7, tl.col = "black", na.label = " ")
 
 str(pearson.highCor_factors)
 per_data_analysis_FilteredPerCor <- per_data_analysis_Filterednzv[, setdiff(names(per_data_analysis_Filterednzv), pearson.highCor_factors)]
@@ -258,14 +262,22 @@ high_corr_ord <- findCorrelation(spearman.cor, cutoff = 0.8)
 
 spearman.highCor_factors <- colnames(per_data_analysis_numeric)[high_corr_ord]
 print(spearman.highCor_factors)
-#46 Factors with high Spearman correlation
+#39 Factors with high Spearman correlation
 
 spearman.highCor_matrix <- spearman.cor[spearman.highCor_factors, spearman.highCor_factors]
+spearman.highCor_matrix
+spearman.highCor_matrix[abs(spearman.highCor_matrix) >= 0.8] <- NA
+diag(spearman.highCor_matrix) <- NA
+spearman.highCor_matrix <- spearman.highCor_matrix[rowSums(!is.na(spearman.highCor_matrix)) > 0, 
+                                            colSums(!is.na(spearman.highCor_matrix)) > 0]
+diag(spearman.highCor_matrix) <- 1
+spearman.highCor_matrix
+
 
 corrplot(spearman.highCor_matrix, method = "color", type = "upper", tl.cex = 0.7, tl.col = "black")
 
 # Find row and column indices of high correlation pairs
-spearman.highCor_factors_pairs <- as.data.frame(which(abs(spearman.cor) > 0.8, arr.ind = TRUE))%>%
+spearman.highCor_factors_pairs <- as.data.frame(which(abs(spearman.cor) >= 0.8, arr.ind = TRUE))%>%
   filter(row != col) %>%
   mutate(factor1 = rownames(spearman.cor)[row],
          factor2 = rownames(spearman.cor)[col]) %>%
@@ -281,12 +293,41 @@ spearman.highCor_factors_pairs <- as.data.frame(which(abs(spearman.cor) > 0.8, a
   left_join(factors_list%>%select(category_1,column_name_new),by=c("factor2"="column_name_new"))%>%
   mutate(correlated= ifelse(category_1.x==category_1.y,"yes","no"))
 
-
 sort(unique(spearman.highCor_factors_pairs$factor1))
 sort(unique(spearman.highCor_factors_pairs$factor2))
-#REMOVE
-"district.dist_1"
+#REMOVE 1
+remove1<-data.frame(data1=c(
+  "cropland_area", #"sfs_monoculture_perennial_area"
+  "income_amount_onfarm", #"income_amount_total"
+  "sfp_total_area"
+))
 
+highCor1<-read_excel("factors_list.xlsx",sheet="high_correlated")%>%
+  select(data1)%>%
+  rbind(remove1)
+
+#not remove 1
+#"income_sources.livestock"         
+#"influence_nr_frequency"            "land_tenure_hold_status"           "livestock_count_tlu"               "livestock_exotic_local"           
+# "livestockland_area"                                                               
+# "num_sales_channel_livestock"             "sfs_monoculture_annual_adoption"  
+#"accessibility_waste_collection"
+#"credit_access"
+#"crop_type.cacao"                   "crop_type.camucamu"                "crop_type.frutales"     
+#"dfs_adoption_binary" "dfs_total_area" 
+#"district.dist_1"                   "district.dist_3" 
+#"fair_price_livestock"              "farm_products.Livestock"           "farm_size"                         "full_time_farmer"  
+
+#REMOVE 2
+remove2<-data.frame(data2=c(
+   "sfs_monoculture_perennial_area", #"cropland_area",
+   "income_amount_total",#"income_amount_onfarm"
+   "sfp_total_area"
+))
+
+highCor2<-read_excel("factors_list.xlsx",sheet="high_correlated")%>%
+  select(data2)%>%
+  rbind(remove2)
 
 #############################################################    
 ############# CENTERING AND SCALING -----
@@ -316,28 +357,28 @@ per_data_analysis_CenteredScaled <- per_data_analysis_Filterednzv[, setdiff(name
 
 dim(per_data_analysis_CenteredScaled) #[1] 200 248 #200 farmers; 248 variables retained
 names(per_data_analysis_CenteredScaled)
-#############################################################    
+############################################################# 
+adoption_binary <- per_data_analysis_CenteredScaled$dfs_adoption_binary
+
+factors_binary <- per_data_analysis_CenteredScaled[ , !(names(per_data_analysis_CenteredScaled) %in% c("dfs_adoption_binary"))] # Remove target from feature matrix
+factors_binary <- as.matrix(do.call(cbind, factors_binary))
+factors_binary <- as.data.frame(factors_binary)%>%
+  select(-dfs_total_area)%>%
+  select(-all_of(unique(highCor1$data1)))%>%
+  select(-"dfs_agroforestry_adoption",
+         -"dfs_homegarden_adoption"  ,       
+          -"dfs_intercropping_adoption")
+
+# Create a data frame with target and predictors
+data <- data.frame(target = adoption_binary, factors_binary)
+
+############################################################# 
 library(BayesSubsets)
 library(rstanarm)
 
-str(factors)
-factors <- per_data_analysis_CenteredScaled[ , !(names(per_data_analysis_CenteredScaled) %in% c("dfs_adoption_binary"))] # Remove target from feature matrix
-
-target <- per_data_analysis_CenteredScaled$dfs_adoption_binary
-
-
-factors <- as.matrix(do.call(cbind, factors))
-
-factors <- as.data.frame(factors)
-
-data <- data.frame(target = target, factors)
 # Convert to matrix or data frame (depending on the structure of 'factors')
-factors <- as.matrix(do.call(cbind, factors)) # If all numeric
-# OR
-factors <- as.data.frame(factors) # If mixed types
+#factors <- as.matrix(do.call(cbind, factors)) # If all numeric
 
-# Create a data frame with target and predictors
-data <- data.frame(target = target, factors)
 
 # Fit Bayesian logistic model with horseshoe prior
 set.seed(123) 
@@ -345,13 +386,16 @@ fit <- stan_glm(target ~ .,
                 data = data, 
                 family = binomial(link = "logit"), 
                 prior = hs(),
-                chains = 1,
-                QR=TRUE) 
+                chains = 4,
+                iter = 4000,
+                adapt_delta = 0.99)
+                
+                #QR=TRUE)
 
-                chains = 4) 
-                iter = 15000, # Total number of MCMC iterations
+                 # Total number of MCMC iterations
                 warmup = 5000) 
-                QR = TRUE)
+
+
 
 summarySingleLevelModel <- summary(fit) 
 print(summarySingleLevelModel)
@@ -398,76 +442,303 @@ final_data <- per_data_analysis_FilteredCorr[,
 dim(final_data) #[1] 200 241 #200 farmers; 241 variables retained
 
 
-###### --- LINEAR DEPENDENCIES -----
-### Only for continuous variables...
-
-columns_continuous <- intersect(per_summary_numerical$column_name_new, colnames(per_data_analysis_FilteredCorr))
-print(columns_continuous)
-per_data_analysis_cont<- per_data_analysis_FilteredCorr%>%
-  select(all_of(columns_continuous))
-
-dependencies<- findLinearCombos(per_data_analysis_cont)
-dependencies$remove
-
-dependent_factors <- per_data_analysis_cont[, unlist(dependencies$linearCombos), drop = FALSE]
-print(dependent_factors)
-view(dfSummary(dependent_factors))
-per_data_analysis_cont[, unlist(dependencies$remove), drop = FALSE]
-#REMOVE
-#num_people
-
-per_data_analysis_FilteredDepend <- per_data_analysis_FilteredCorr[, -unlist(dependencies$remove), drop = FALSE]
-
-d<-as.data.frame(c(colnames(per_data_analysis_FilteredDepend)))%>%
-  rename("column_name_new"="c(colnames(per_data_analysis_FilteredDepend))")%>%
-  left_join(factors_list%>%select(category_1,column_name_new), by="column_name_new")%>%
-  group_by(category_1) %>%
-  mutate(column_name_new_count = n()) %>%
-  tally()%>%filter(category_1!="xxx")
-
-ggplot(data=d, aes(x=n, y=category_1, fill= category_1)) +
-  geom_bar(stat="identity")+
-  geom_text(aes(label = n), 
-            hjust = -0.2, # Adjust position of the label to the right of the bar
-            size = 4) +
-  theme_minimal() +
-  labs(x = "Number of factors", y = "Category") +
-  theme(legend.position = "none")
-
-dim(per_data_analysis_FilteredDepend) #[1] 200 240 #200 farmers; 240 variables retained
-
-###### --- IMPUTING MISSING DATA ----
-na_columns <- colnames(per_data_analysis_FilteredCorr)[colSums(is.na(per_data_analysis_FilteredCorr)) > 0]
-print(na_columns)
-na_columns
-
-problems2<- per_data_analysis_Filterednzv%>%
-  select(all_of(na_columns))
-y<-per_data_analysis%>%
-  select(    "male_land_tenure_own_proportion" ,   "female_land_tenure_own_proportion", 
-         "male_land_tenure_hold_proportion",   "female_land_tenure_hold_proportion")
-
-per_data_analysis_Filterednzv<- per_data_analysis_Filterednzv%>%
-  select(-all_of(na_columns))
-
-colnames(problems2)
-
-
 ###### --- SES and MMPC -----
 library(MXM)
+library("glmnet")
+library("hash")
+library("MASS")
+library("VGAM")
+library("stats")
+library("ROCR")
+library("Hmisc")
+library("TunePareto")
+library("methods")
+library("utils")
+library("parallel")
+library("survival")
 
-bc_dataset <- per_data_analysis_Filterednzv[ , !(names(per_data_analysis_Filterednzv) %in% c("dfs_adoption_binary"))] # Remove target from feature matrix
-bc_target <- as.factor(per_data_analysis_Filterednzv$dfs_adoption_binary)
 
-ses.testIndLogistic <- SES(
-  target = per_data_analysis_Filterednzv$dfs_adoption_binary,  # Reference as column in the data
-  dataset = per_data_analysis_Filterednzv[, -which(names(per_data_analysis_Filterednzv) == "dfs_adoption_binary")], 
-  max_k = 3, 
-  threshold = 0.05, 
-  test = "testIndLogistic"
+
+
+bc_dataset <- data[, -which(names(data) == "target")] # Remove target from feature matrix
+bc_target <- as.factor(data$target)
+
+ses <- SES(
+  target = bc_target,  # Reference as column in the data
+  dataset = bc_dataset, 
+  max_k = 5, 
+  threshold = 0.2, 
+  test = "testIndLogistic",
+  hash = TRUE,
+  hashObject = NULL
 )
-ses.testIndLogistic
+ses@selectedVars
+ses@signatures
+z<- data[, ses@selectedVars]
+names(z)
+#[1] "sfs_monoculture_annual_adoption"           "support_provider.community_leaders"        "support_provider_governmental_institution" "vegetation_diversity_wetland"             
+#[5] "soil_pH_mean"                              "num_main_crops_herb"                       "num_nhlabour_permanent_total"              "household_shock_strategy_count" 
 
+hashObj <- ses@hashObject
+hashObj
+
+ses2 <- SES(bc_target, bc_dataset, max_k = 2, threshold = 0.01, 
+            test = "testIndLogistic",
+            hash = TRUE, hashObject = hashObj) 
+ses2
+ses2@selectedVars
+ses2@signatures
+
+z2<- data[, ses2@selectedVars]
+names(z2)
+plot(ses2, mode = "all")
+
+cv.ses.object <- cv.ses(bc_target, bc_dataset, kfolds = 10, task = "C",
+                        alphas = c(0.1, 0.05, 0.01),
+                        max_ks = c(2:5))
+
+
+
+glm.mxm(train_target, sign_data, sign_test, wei = NULL)
+ 
+ 
+res <- EXP("dataset_name", bc_dataset, bc_target, test = "testIndLogistic", task = "C")
+res
+
+############
+EXP <- function(dataset_name, dataset, target, test = NULL, task = "C", metric = NULL, modeler = NULL, lasso_metric = NULL, lasso_modeler = NULL) {
+  
+  ## task = "C" for classification, "R" for regresion, "S" for Survival
+  ## Choose model and metric functions due to task for SES and LASSO
+  if (task == "C") {
+    
+    ## Classification task (logistic regression)
+    if (is.null(metric)) {
+      metricFunction <- auc.mxm
+    } else {
+      metricFunction <- metric
+    }
+    
+    if (is.null(modeler)) {
+      modelerFunction <- glm.mxm
+    } else {
+      modelerFunction <- modeler
+    }
+    
+    if (is.null(test)) {
+      test <- "testIndLogistic"
+    } else {
+      test <- test
+    }
+    
+    if (is.null(lasso_metric)) {
+      lassometricFunction <- lasso.auc.mxm
+    } else {
+      lassometricFunction <- lasso_metric
+    }
+    
+    if (is.null(lasso_modeler)) {
+      lassomodelerFunction <- lasso.binomial.auc.mxm
+    } else {
+      lassomodelerFunction <- lasso_modeler
+    }
+    
+  } else if (task == "R") {
+    
+    ## Regression task (linear regression)
+    if (is.null(metric)) {
+      metricFunction <- mse.mxm
+    } else {
+      metricFunction <- metric
+    }
+    
+    if (is.null(modeler)) {
+      modelerFunction <- lm.mxm
+    } else {
+      modelerFunction <- modeler
+    }
+    
+    if (is.null(test)) {
+      test <- "testIndFisher"
+    } else {
+      test <- test
+    }
+    
+    if (is.null(lasso_metric)) {
+      lassometricFunction <- lasso.mse.mxm
+    } else {
+      lassometricFunction <- lasso_metric
+    }
+    
+    if (is.null(lasso_modeler)) {
+      lassomodelerFunction <- lasso.gaussian.mxm
+    } else {
+      lassomodelerFunction <- lasso_modeler
+    }
+    
+  } else if (task == "S") {
+    
+    #cox survival analysis (cox regression)
+    if (is.null(metric)) {
+      metricFunction <- ci.mxm
+    } else {
+      metricFunction <- metric
+    }
+    
+    if (is.null(modeler)) {
+      modelerFunction <- coxph.mxm
+    } else {
+      modelerFunction <- modeler
+    }
+    
+    if (is.null(test)) {
+      test <- "censIndLR"
+    } else {
+      test <- test
+    }
+    
+    if (is.null(lasso_metric)) {
+      lassometricFunction <- lasso.ci.mxm
+    } else {
+      lassometricFunction <- lasso_metric
+    }
+    
+    if (is.null(lasso_modeler)) {
+      lassomodelerFunction <- lasso.cox.mxm
+    } else {
+      lassomodelerFunction <- lasso_modeler
+    }
+    
+  } else {
+    stop("Please provide a valid task argument 'C'-classification, 'R'-regression, 'S'-survival.")
+  }
+  
+  ## SES configurations
+  alphas <- c(0.1, 0.05, 0.01) 
+  max_ks <- c(3, 2) 
+  
+  ##############################################################
+  # 1. partition the dataset to 50% training and 50% hold-out. #
+  ##############################################################
+  
+  k <- 2
+  
+  ## stratified cross validation
+  if (survival::is.Surv(target)) {
+    folds <- TunePareto::generateCVRuns(target[,2], ntimes = 1, nfold = k, leaveOneOut = FALSE, stratified = TRUE)
+  } else {
+    folds <- TunePareto::generateCVRuns(target, ntimes = 1, nfold = k, leaveOneOut = FALSE, stratified = TRUE)
+  }
+  #create train instances vector
+  train_samples <- c()
+  for (i in which(c(1:k) != k)) {
+    train_samples <- c(train_samples, folds[[1]][[i]])
+  }
+  train_set <- dataset[train_samples,]
+  train_target <- target[train_samples]
+  hold_out <- dataset[folds[[1]][[k]],]
+  hold_out_target <- target[folds[[1]][[k]]]
+  
+  #create the 10 folds on the training set for the cross validation run
+  if (survival::is.Surv(target))
+  {
+    cv_folds <- TunePareto::generateCVRuns(train_target[,2], ntimes = 1, nfold = 10, leaveOneOut = FALSE, stratified = TRUE)
+  }else
+  {
+    cv_folds <- TunePareto::generateCVRuns(train_target, ntimes = 1, nfold = 10, leaveOneOut = FALSE, stratified = TRUE)
+  }
+  
+  ########################################################################
+  # 2. Cross validation on the training to get the best hyper-parameters #
+  # for SES and LASSO with the cv.ses function                           #
+  ########################################################################
+  
+  cv_time <- system.time({
+    best_model <- cv.ses(target = train_target, dataset = train_set, kfolds = 10, folds = cv_folds[[1]], alphas = alphas, max_ks = max_ks, task = task,
+                         metric = metric, modeler = modeler, ses_test = test)
+  })
+  best_a <- best_model$best_configuration$a
+  best_max_k <- best_model$best_configuration$max_k
+  
+  ## save(best_model, file = "safety.RData")
+  
+  ## get the set of multiple signatures on the training set
+  SES_res <- SES(train_target, train_set, max_k = best_max_k, threshold=best_a, test = test)
+  summary(SES_res)
+  ref_signature <- SES_res@selectedVars
+  signatures <- as.matrix(SES_res@signatures)
+  
+  ## save(SES_res, file = "safety.RData")
+  
+  ############################################################################
+  # 3. Train a model for each signature on the training data using the best  #
+  # hyper-parameters from step 2.                                            #
+  ############################################################################
+  
+  SES_performance <- vector("numeric", dim(signatures)[1])
+  SES_preds <- vector("list", dim(signatures)[1])
+  
+  for (i in 1:dim(signatures)[1])
+  {
+    #if (any(is.na(signatures[i,])) == TRUE)
+    cur_sign = signatures[i,]
+    sign_data = matrix(nrow = dim(train_set)[1] , ncol = dim(signatures)[2])
+    sign_test = matrix(nrow = dim(hold_out)[1] , ncol = dim(signatures)[2])
+    for (j in 1:length(cur_sign))
+    {
+      sign_data[,j] = train_set[,cur_sign[j]]
+      sign_test[,j] = hold_out[,cur_sign[j]]
+    }
+    
+    #regression task (linear model)
+    preds<-modelerFunction(train_target, sign_data, sign_test, wei = NULL)
+    performance = metricFunction(preds, hold_out_target)
+    
+    SES_performance[i] = performance
+    SES_preds[[i]] = preds
+  }
+  
+  #LASSO
+  #lasso_results <- lassomodelerFunction(nfolds = 10, cv_folds, as.matrix(train_set), train_target, as.matrix(hold_out))
+  #lasso_preds<-lasso_results$lasso_preds
+  #lasso_vars<-lasso_results$lasso_vars
+  #lasso_cv = lasso_results$lasso_cv
+  #lasso_cv_time = lasso_results$lasso_cv_time
+  #lasso_performance = lassometricFunction(lasso_preds, hold_out_target)
+  
+  #the result list to be returned
+  RES <- NULL
+  #RES$dataset_name = dataset_name
+  RES$task = task
+  RES$test = test
+  RES$folds = folds
+  RES$cv_folds = cv_folds
+  RES$best_model = best_model
+  RES$cv_time = cv_time
+  
+  RES$SES_res = SES_res
+  RES$signatures = signatures
+  RES$SES_performance = SES_performance #all the signature perfs on the holdout
+  RES$SES_preds = SES_preds #all the predictions for each signature
+  
+  #RES$lasso_cv = lasso_cv
+  #RES$lasso_cv_time = lasso_cv_time
+  #RES$lasso_vars = lasso_vars
+  #RES$lasso_preds = lasso_preds
+  #RES$lasso_performance = lasso_performance
+  
+  return(RES)
+}
+
+
+#######################
+cv.ses.object
+
+
+
+summary(sesObject2)
+
+summary(ses2)
 
 bc_dataset <- per_data_analysis_Filterednzv[ , !(names(per_data_analysis_Filterednzv) %in% c("dfs_adoption_binary"))] # Remove target from feature matrix
 bc_target <- as.factor(per_data_analysis_Filterednzv$dfs_adoption_binary)
@@ -489,55 +760,7 @@ system.time({sesObject <- SES(bc_target, bc_dataset, max_k = 5,
                               hashObject = NULL)})
 
 
-###### --- FBED -----
-library(MXM)
-dataset_name<-per_data_analysis_Filterednzv
-bc_dataset <- per_data_analysis_Filterednzv[ , !(names(per_data_analysis_Filterednzv) %in% c("dfs_adoption_binary"))] # Remove target from feature matrix
-bc_target <- as.factor(per_data_analysis_Filterednzv$dfs_adoption_binary)
 
-alphas <- c(0.05, 0.1) #significance level α of the conditional independence test
-test<- "testIndLogistic" # conditional independence test for outcome = binary, predictors= mixed
-
-MXM::fbed.reg(target = bc_target, dataset = bc_dataset, test = "testIndLogistic")
-
-fbed.reg(bc_target, bc_dataset, #id, kfolds = 10, 
-                  folds = NULL, alphas = c(0.01, 0.05), ks = 0:2) 
-
-help(cv.fbed.lmm.reg)
-
-results <- lapply(alphas, function(thresh) {
-  fbed.reg(
-    target = bc_target,
-    dataset = bc_dataset,
-    test =test, # 
-    K = 1:10,
-    threshold = thresh,  # Setting alpha as the significance threshold
-    backward= TRUE
-  )
-})
-
-results$[[1]]$res
-
-num_selected<-length(results$selectedVars)
-
-fbed.reg<- fbed.reg(target= bc_target,
-                    dataset= bc_dataset,
-                    test= "testIndLogistic",
-                    K=0:10,
-                    threshold= 0.05,
-                    )
-         #, wei,  method, gam, )
-fbed.reg
-fbed.reg$res$univ
-fbed.reg$mod
-fbed.reg$res
-cv.fbed.reg
-fbed.reg$best_performance
-fbed.reg$best_configuration
-
-plot(fbed.reg, mode = "all")
-fbed.reg
-fbed.reg$res$info
 ###### --- RECURSIVE FEATURE SELECTION -----
 library(caret)
 library(mlbench)
@@ -556,8 +779,8 @@ dataset_name<-per_data_analysis_Filterednzv%>%
   select(-energy_cooking_type,-farmer_agency_1,-farmer_agency_3 ,
          -dfs_agroforestry_adoption, -dfs_homegarden_adoption, -dfs_intercropping_adoption)
 
-predictors <- dataset_name[ , !(names(dataset_name) %in% c("dfs_adoption_binary"))] # Remove target from feature matrix
-target <- as.factor(dataset_name$dfs_adoption_binary)
+predictors <- data[ , !(names(data) %in% c("target"))] # Remove target from feature matrix
+target <- as.factor(data$target)
 ncolPredictors<-ncol(predictors)
 
 
@@ -586,6 +809,11 @@ rfe_result <- rfe(
 # View the results
 print(rfe_result)
 predictors(rfe_result)
+#[1] "crop_type.cacao"                            "district.dist_1"                            "agroecol_perspective_13"                   
+#[4] "household_shock_recover_capacity"           "energy_tillage_haverst_type"                "nearest_farmer_adopted"                    
+#[7] "influence_nr_frequency"                     "support_provider_cooperative_organizations" "num_crops_grown"                           
+#[10] "sfs_monoculture_perennial_area"             "nearest_distance_dfs_km"                    "distance_main_road"                        
+#[13] "num_info_exchange_extension"          
 rfe_result$fit
 head(rfe_result$resample)
 print(rfe_result$metric) #Accuracy if target is categorical
@@ -599,9 +827,3 @@ plot(rfe_result, type = c("g", "o"))
 # Extract the best set of features selected by RFE
 best_features <- predictors(rfe_result)
 best_features
-
-
-
-
-
-
