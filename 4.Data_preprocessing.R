@@ -7,7 +7,8 @@ library(bnlearn)
 library(corrplot)
 
 
-factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")
+factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
+  filter(is.na(remove))
 per_data_clean<- read.csv("per_data_clean.csv",sep=",")
 per_summary_categorical<-read.csv("per_summary_categorical.csv",sep=",")
 per_summary_numerical<-read.csv("per_summary_numerical.csv",sep=",")
@@ -257,7 +258,7 @@ high_corr_ord <- findCorrelation(spearman.cor, cutoff = 0.8)
 
 spearman.highCor_factors <- colnames(per_data_analysis_numeric)[high_corr_ord]
 print(spearman.highCor_factors)
-#47 Factors with high Spearman correlation
+#46 Factors with high Spearman correlation
 
 spearman.highCor_matrix <- spearman.cor[spearman.highCor_factors, spearman.highCor_factors]
 
@@ -283,6 +284,8 @@ spearman.highCor_factors_pairs <- as.data.frame(which(abs(spearman.cor) > 0.8, a
 
 sort(unique(spearman.highCor_factors_pairs$factor1))
 sort(unique(spearman.highCor_factors_pairs$factor2))
+#REMOVE
+"district.dist_1"
 
 
 #############################################################    
@@ -315,6 +318,7 @@ dim(per_data_analysis_CenteredScaled) #[1] 200 248 #200 farmers; 248 variables r
 names(per_data_analysis_CenteredScaled)
 #############################################################    
 library(BayesSubsets)
+library(rstanarm)
 
 str(factors)
 factors <- per_data_analysis_CenteredScaled[ , !(names(per_data_analysis_CenteredScaled) %in% c("dfs_adoption_binary"))] # Remove target from feature matrix
