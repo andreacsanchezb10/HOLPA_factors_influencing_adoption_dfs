@@ -502,8 +502,7 @@ cv.ses.object <- cv.ses(bc_target, bc_dataset, kfolds = 10, task = "C",
 glm.mxm(train_target, sign_data, sign_test, wei = NULL)
  
  
-res <- EXP("dataset_name", bc_dataset, bc_target, test = "testIndLogistic", task = "C")
-res
+
 
 ############
 EXP <- function(dataset_name, dataset, target, test = NULL, task = "C", metric = NULL, modeler = NULL, lasso_metric = NULL, lasso_modeler = NULL) {
@@ -531,18 +530,6 @@ EXP <- function(dataset_name, dataset, target, test = NULL, task = "C", metric =
       test <- test
     }
     
-    if (is.null(lasso_metric)) {
-      lassometricFunction <- lasso.auc.mxm
-    } else {
-      lassometricFunction <- lasso_metric
-    }
-    
-    if (is.null(lasso_modeler)) {
-      lassomodelerFunction <- lasso.binomial.auc.mxm
-    } else {
-      lassomodelerFunction <- lasso_modeler
-    }
-    
   } else if (task == "R") {
     
     ## Regression task (linear regression)
@@ -562,18 +549,6 @@ EXP <- function(dataset_name, dataset, target, test = NULL, task = "C", metric =
       test <- "testIndFisher"
     } else {
       test <- test
-    }
-    
-    if (is.null(lasso_metric)) {
-      lassometricFunction <- lasso.mse.mxm
-    } else {
-      lassometricFunction <- lasso_metric
-    }
-    
-    if (is.null(lasso_modeler)) {
-      lassomodelerFunction <- lasso.gaussian.mxm
-    } else {
-      lassomodelerFunction <- lasso_modeler
     }
     
   } else if (task == "S") {
@@ -597,31 +572,19 @@ EXP <- function(dataset_name, dataset, target, test = NULL, task = "C", metric =
       test <- test
     }
     
-    if (is.null(lasso_metric)) {
-      lassometricFunction <- lasso.ci.mxm
-    } else {
-      lassometricFunction <- lasso_metric
-    }
-    
-    if (is.null(lasso_modeler)) {
-      lassomodelerFunction <- lasso.cox.mxm
-    } else {
-      lassomodelerFunction <- lasso_modeler
-    }
-    
   } else {
     stop("Please provide a valid task argument 'C'-classification, 'R'-regression, 'S'-survival.")
   }
   
   ## SES configurations
   alphas <- c(0.1, 0.05, 0.01) 
-  max_ks <- c(3, 2) 
+  max_ks <- c(2:5) 
   
   ##############################################################
   # 1. partition the dataset to 50% training and 50% hold-out. #
   ##############################################################
   
-  k <- 2
+  k <- 10
   
   ## stratified cross validation
   if (survival::is.Surv(target)) {
@@ -692,19 +655,14 @@ EXP <- function(dataset_name, dataset, target, test = NULL, task = "C", metric =
     
     #regression task (linear model)
     preds<-modelerFunction(train_target, sign_data, sign_test, wei = NULL)
-    performance = metricFunction(preds, hold_out_target)
+    print(class(preds)) 
+    str(preds)
+    
+    performance = metricFunction(preds$preds, hold_out_target)
     
     SES_performance[i] = performance
     SES_preds[[i]] = preds
   }
-  
-  #LASSO
-  #lasso_results <- lassomodelerFunction(nfolds = 10, cv_folds, as.matrix(train_set), train_target, as.matrix(hold_out))
-  #lasso_preds<-lasso_results$lasso_preds
-  #lasso_vars<-lasso_results$lasso_vars
-  #lasso_cv = lasso_results$lasso_cv
-  #lasso_cv_time = lasso_results$lasso_cv_time
-  #lasso_performance = lassometricFunction(lasso_preds, hold_out_target)
   
   #the result list to be returned
   RES <- NULL
@@ -719,16 +677,19 @@ EXP <- function(dataset_name, dataset, target, test = NULL, task = "C", metric =
   RES$SES_res = SES_res
   RES$signatures = signatures
   RES$SES_performance = SES_performance #all the signature perfs on the holdout
-  RES$SES_preds = SES_preds #all the predictions for each signature
-  
-  #RES$lasso_cv = lasso_cv
-  #RES$lasso_cv_time = lasso_cv_time
-  #RES$lasso_vars = lasso_vars
-  #RES$lasso_preds = lasso_preds
-  #RES$lasso_performance = lasso_performance
+  #RES$SES_preds = SES_preds #all the predictions for each signature
   
   return(RES)
 }
+
+res <- EXP("dataset_name", bc_dataset, bc_target, test = "testIndLogistic", task = "C")
+res
+
+# set up
+rm(list = ls())
+time <- proc.time()
+repetitions <- 500
+nCores <- 3
 
 
 #######################
