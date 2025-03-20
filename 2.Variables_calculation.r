@@ -843,7 +843,10 @@ per_data_clean<-per_data_clean%>%
 write.csv(per_data_clean,"per_data_clean.csv",row.names=FALSE)
 
 y<-per_data_clean%>%
-  select("farmer_agency_1", "farmer_agency_3")
+  select("farmer_agency_1", "farmer_agency_3",sales_channel_crops.direct_to_consumer,
+         starts_with("sales_channel_crops.")
+         
+  )
     
     
 ## to check: controlar si hay otras preguntas donde se citen dfs, ver las practicas de livestock
