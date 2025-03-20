@@ -290,13 +290,6 @@ per_data_clean<-per_data_clean%>%
     num_accessibility_basic_services>0 & num_accessibility_basic_services<3~ "2",
     num_accessibility_basic_services>2 ~ "5",
     TRUE~ NA))%>%
-  #Access to communication services
-  mutate(accessibility_communication= case_when(
-    accessibility_phone_reception==1 &accessibility_internet==1~ "5",
-    accessibility_phone_reception==0 &accessibility_internet==1~ "2",
-    accessibility_phone_reception==1 &accessibility_internet==0~ "2",
-    accessibility_phone_reception==0 &accessibility_internet==0~ "0",
-    TRUE~ NA))%>%
   #Access to sanitation services
   mutate(accessibility_sanitation= case_when(
     accessibility_piped_sewer==1 &accessibility_waste_collection==1~ "5",
