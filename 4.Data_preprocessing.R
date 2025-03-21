@@ -130,6 +130,9 @@ dim(per_data_Binary) #[1] 200 309 #200 farmers; 305 variables evaluated
 a<-as.data.frame(c(colnames(per_data_Binary)))%>%
   rename("column_name_new"="c(colnames(per_data_Binary))")%>%
   left_join(factors_list%>%select(category_1,column_name_new), by="column_name_new")%>%
+  mutate(category_1= case_when(
+    column_name_new== "year_assessment.2023"~"Biophysical context",
+    TRUE~category_1))%>%
   group_by(category_1) %>%
   mutate(column_name_new_count = n()) %>%
   tally()%>%filter(category_1!="xxx")
@@ -195,6 +198,7 @@ dim(per_data_analysis_Filterednzv) #[1] 200 225 #200 farmers; 225 variables reta
 #cor2 The correlation metric between one categorical feature and one cont feature: Defaults to biserial
 #cor3 The correlation metric between two categorical features: Defaults to Cramers-V
 library("TangledFeatures")
+library(tibble)
 
 per_cor_matrix<- GeneralCor(per_data_analysis_Filterednzv, cor1 = "pearson", cor2 = "polychoric", cor3 = "spearman")
 per_cor_df<-as.data.frame(per_cor_matrix)
@@ -212,7 +216,9 @@ per_highCor_df <- data.frame(
          metric_type.y= ifelse(is.na(metric_type.y),"binary",metric_type.y))
          
 # === Pearson Correlation ===
-per_pearson_highCor_matrix <- per_highCor_df %>%
+pearson_highCor_matrix <- function(highCor_df) {
+  
+pearson_highCor_matrix <- highCor_df %>%
   filter(metric_type.x == "continuous" & metric_type.y == "continuous") %>%
   select(factor1, factor2, correlation) %>%
   pivot_wider(names_from = factor2, values_from = correlation) %>%
@@ -220,18 +226,19 @@ per_pearson_highCor_matrix <- per_highCor_df %>%
   as.matrix()
 
 # Get all row and column names to make the matrix square
-per_pearson_all_names <- union(rownames(per_pearson_highCor_matrix), colnames(per_pearson_highCor_matrix))
+pearson_all_names <- union(rownames(pearson_highCor_matrix), colnames(pearson_highCor_matrix))
 
 # Create a full square matrix filled with NA
-per_pearson_full_square_matrix <- matrix(NA, nrow = length(per_pearson_all_names), ncol = length(per_pearson_all_names),dimnames = list(per_pearson_all_names, per_pearson_all_names))
-per_pearson_full_square_matrix[rownames(per_pearson_highCor_matrix), colnames(per_pearson_highCor_matrix)] <- per_pearson_highCor_matrix
-
-per_pearson_full_square_matrix[lower.tri(per_pearson_full_square_matrix)] <- t(per_pearson_full_square_matrix)[lower.tri(per_pearson_full_square_matrix)]
-diag(per_pearson_full_square_matrix) <- 1
-per_pearson_full_square_matrix
+pearson_full_square_matrix <- matrix(NA, nrow = length(pearson_all_names), ncol = length(pearson_all_names),dimnames = list(pearson_all_names, pearson_all_names))
+pearson_full_square_matrix[rownames(pearson_highCor_matrix), colnames(pearson_highCor_matrix)] <- pearson_highCor_matrix
+pearson_full_square_matrix[lower.tri(pearson_full_square_matrix)] <- t(pearson_full_square_matrix)[lower.tri(pearson_full_square_matrix)]
+diag(pearson_full_square_matrix) <- 1
+return(pearson_full_square_matrix)
+}
 
 # === Polychoric Correlation ===
-per_polychoric_highCor_matrix <- per_highCor_df %>%
+polychoric_highCor_matrix <- function(highCor_df) {
+polychoric_highCor_matrix <- highCor_df %>%
   filter(metric_type.x == "categorical" & metric_type.y == "continuous"|
            metric_type.x == "continuous" & metric_type.y == "categorical"|
            metric_type.x == "binary" & metric_type.y == "continuous"|
@@ -242,18 +249,21 @@ per_polychoric_highCor_matrix <- per_highCor_df %>%
   as.matrix()
 
 # Get all row and column names to make the matrix square
-per_polychoric_all_names <- union(rownames(per_polychoric_highCor_matrix), colnames(per_polychoric_highCor_matrix))
-per_polychoric_all_names
+polychoric_all_names <- union(rownames(polychoric_highCor_matrix), colnames(polychoric_highCor_matrix))
+polychoric_all_names
 # Create a full square matrix filled with NA
-per_polychoric_full_square_matrix <- matrix(NA, nrow = length(per_polychoric_all_names), ncol = length(per_polychoric_all_names),dimnames = list(per_polychoric_all_names, per_polychoric_all_names))
-per_polychoric_full_square_matrix[rownames(per_polychoric_highCor_matrix), colnames(per_polychoric_highCor_matrix)] <- per_polychoric_highCor_matrix
+polychoric_full_square_matrix <- matrix(NA, nrow = length(polychoric_all_names), ncol = length(polychoric_all_names),dimnames = list(polychoric_all_names, polychoric_all_names))
+polychoric_full_square_matrix[rownames(polychoric_highCor_matrix), colnames(polychoric_highCor_matrix)] <- polychoric_highCor_matrix
 
-per_polychoric_full_square_matrix[lower.tri(per_polychoric_full_square_matrix)] <- t(per_polychoric_full_square_matrix)[lower.tri(per_polychoric_full_square_matrix)]
-diag(per_polychoric_full_square_matrix) <- 1
-per_polychoric_full_square_matrix
+polychoric_full_square_matrix[lower.tri(polychoric_full_square_matrix)] <- t(polychoric_full_square_matrix)[lower.tri(polychoric_full_square_matrix)]
+diag(polychoric_full_square_matrix) <- 1
+return(polychoric_full_square_matrix)
+}
 
 # === Spearman Correlation ===
-per_spearman_highCor_matrix <- per_highCor_df %>%
+spearman_highCor_matrix <- function(highCor_df) {
+  
+spearman_highCor_matrix <- highCor_df %>%
   filter(metric_type.x == "categorical" & metric_type.y == "binary"|
            metric_type.x == "binary" & metric_type.y == "categorical"|
            metric_type.x == "categorical" & metric_type.y == "categorical"|
@@ -264,33 +274,36 @@ per_spearman_highCor_matrix <- per_highCor_df %>%
   as.matrix()
 
 # Get all row and column names to make the matrix square
-per_spearman_all_names <- union(rownames(per_spearman_highCor_matrix), colnames(per_spearman_highCor_matrix))
-per_spearman_all_names
+spearman_all_names <- union(rownames(spearman_highCor_matrix), colnames(spearman_highCor_matrix))
+spearman_all_names
 # Create a full square matrix filled with NA
-per_spearman_full_square_matrix <- matrix(NA, nrow = length(per_spearman_all_names), ncol = length(per_spearman_all_names),dimnames = list(per_spearman_all_names, per_spearman_all_names))
-per_spearman_full_square_matrix[rownames(per_spearman_highCor_matrix), colnames(per_spearman_highCor_matrix)] <- per_spearman_highCor_matrix
+spearman_full_square_matrix <- matrix(NA, nrow = length(spearman_all_names), ncol = length(spearman_all_names),dimnames = list(spearman_all_names, spearman_all_names))
+spearman_full_square_matrix[rownames(spearman_highCor_matrix), colnames(spearman_highCor_matrix)] <- spearman_highCor_matrix
 
-per_spearman_full_square_matrix[lower.tri(per_spearman_full_square_matrix)] <- t(per_spearman_full_square_matrix)[lower.tri(per_spearman_full_square_matrix)]
-diag(per_spearman_full_square_matrix) <- 1
-per_spearman_full_square_matrix
+spearman_full_square_matrix[lower.tri(spearman_full_square_matrix)] <- t(spearman_full_square_matrix)[lower.tri(spearman_full_square_matrix)]
+diag(spearman_full_square_matrix) <- 1
 
+return(spearman_full_square_matrix)
+}
 
 # Plot using corrplot
+per_pearson_full_square_matrix<-pearson_highCor_matrix(per_highCor_df)
 jpeg("plots/per_pearson_highCor.jpg", width = 1000, height = 900, units = "px", res = 150)
 corrplot(per_pearson_full_square_matrix, addCoef.col = 'black',method = "circle",type = "upper", 
          tl.cex = 0.7, tl.col = "black",na.label = "NA",order = 'alphabet')
 dev.off()
 
+per_polychoric_full_square_matrix<-polychoric_highCor_matrix(per_highCor_df)
 jpeg("plots/per_polychoric_highCor.jpg", width = 2500, height = 2500, units = "px", res = 150)
 corrplot(per_polychoric_full_square_matrix,method = "circle",type = "upper", 
          tl.cex = 1.1, tl.col = "black",na.label = " ",order = 'alphabet')
 dev.off()
 
+per_spearman_full_square_matrix<-spearman_highCor_matrix(per_highCor_df)
 jpeg("plots/per_spearman_highCor.jpg", width = 2500, height = 2500, units = "px", res = 150)
 corrplot(per_spearman_full_square_matrix,method = "circle",type = "upper", 
          tl.cex = 1.1, tl.col = "black",na.label = " ",order = 'alphabet')
 dev.off()
-
 
 #REMOVE REDUNDANT/HIGHLY CORRELATED FACTORS:
 per_data_analysis_FilteredCor<-per_data_analysis_Filterednzv%>%
