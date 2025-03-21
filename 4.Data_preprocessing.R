@@ -191,36 +191,105 @@ dim(per_data_analysis_Filterednzv) #[1] 200 225 #200 farmers; 225 variables reta
 #############################################################    
 ############# IDENTIFYING CORRELATED FACTORS -----
 #############################################################
-library("TangledFeatures")
-
 #cor1 The correlation metric between two continuous features: Defaults to pearson
 #cor2 The correlation metric between one categorical feature and one cont feature: Defaults to biserial
 #cor3 The correlation metric between two categorical features: Defaults to Cramers-V
+library("TangledFeatures")
 
 per_cor_matrix<- GeneralCor(per_data_analysis_Filterednzv, cor1 = "pearson", cor2 = "polychoric", cor3 = "spearman")
 per_cor_df<-as.data.frame(per_cor_matrix)
-
-per_highCor_pairs <- which(per_cor_matrix >= 0.8 & lower.tri(per_cor_matrix), arr.ind = TRUE)
+per_highCor_pairs <- which(abs(per_cor_matrix) >= 0.8 & lower.tri(per_cor_matrix), arr.ind = TRUE)
 
 
 # Create a readable data frame with factor names and correlation values
-per_high_cor_df <- data.frame(
-  Factor1 = rownames(per_cor_matrix)[per_highCor_pairs[, 1]],
-  Factor2 = colnames(per_cor_matrix)[per_highCor_pairs[, 2]],
-  Correlation = per_cor_matrix[per_highCor_pairs]
-)
+per_highCor_df <- data.frame(
+  factor1 = rownames(per_cor_matrix)[per_highCor_pairs[, 1]],
+  factor2 = colnames(per_cor_matrix)[per_highCor_pairs[, 2]],
+  correlation = per_cor_matrix[per_highCor_pairs])%>%
+  left_join(factors_list%>%select(metric_type,column_name_new), by=c("factor1"="column_name_new"))%>%
+  left_join(factors_list%>%select(metric_type,column_name_new), by=c("factor2"="column_name_new"))%>%
+  mutate(metric_type.x= ifelse(is.na(metric_type.x),"binary",metric_type.x),
+         metric_type.y= ifelse(is.na(metric_type.y),"binary",metric_type.y))
+         
+# === Pearson Correlation ===
+per_pearson_highCor_matrix <- per_highCor_df %>%
+  filter(metric_type.x == "continuous" & metric_type.y == "continuous") %>%
+  select(factor1, factor2, correlation) %>%
+  pivot_wider(names_from = factor2, values_from = correlation) %>%
+  column_to_rownames(var = "factor1") %>%
+  as.matrix()
 
-per_highCor <- per_cor_matrix
-diag(per_highCor) <- NA
+# Get all row and column names to make the matrix square
+per_pearson_all_names <- union(rownames(per_pearson_highCor_matrix), colnames(per_pearson_highCor_matrix))
 
-per_highCor[abs(per_highCor) < 0.8] <- NA
+# Create a full square matrix filled with NA
+per_pearson_full_square_matrix <- matrix(NA, nrow = length(per_pearson_all_names), ncol = length(per_pearson_all_names),dimnames = list(per_pearson_all_names, per_pearson_all_names))
+per_pearson_full_square_matrix[rownames(per_pearson_highCor_matrix), colnames(per_pearson_highCor_matrix)] <- per_pearson_highCor_matrix
 
-# Filter out rows and columns where all values are NA
-non_empty_rows <- rowSums(!is.na(per_highCor)) > 0
-per_highCor <- per_highCor[non_empty_rows, non_empty_rows]
+per_pearson_full_square_matrix[lower.tri(per_pearson_full_square_matrix)] <- t(per_pearson_full_square_matrix)[lower.tri(per_pearson_full_square_matrix)]
+diag(per_pearson_full_square_matrix) <- 1
+per_pearson_full_square_matrix
 
-# Plot Cramér's V matrix
-corrplot(per_highCor, method = "color",type = "upper", tl.cex = 0.7, tl.col = "black",na.label = " ", order = 'alphabet')
+# === Polychoric Correlation ===
+per_polychoric_highCor_matrix <- per_highCor_df %>%
+  filter(metric_type.x == "categorical" & metric_type.y == "continuous"|
+           metric_type.x == "continuous" & metric_type.y == "categorical"|
+           metric_type.x == "binary" & metric_type.y == "continuous"|
+           metric_type.x == "continuous" & metric_type.y == "binary") %>%
+  select(factor1, factor2, correlation) %>%
+  pivot_wider(names_from = factor2, values_from = correlation) %>%
+  column_to_rownames(var = "factor1") %>%
+  as.matrix()
+
+# Get all row and column names to make the matrix square
+per_polychoric_all_names <- union(rownames(per_polychoric_highCor_matrix), colnames(per_polychoric_highCor_matrix))
+per_polychoric_all_names
+# Create a full square matrix filled with NA
+per_polychoric_full_square_matrix <- matrix(NA, nrow = length(per_polychoric_all_names), ncol = length(per_polychoric_all_names),dimnames = list(per_polychoric_all_names, per_polychoric_all_names))
+per_polychoric_full_square_matrix[rownames(per_polychoric_highCor_matrix), colnames(per_polychoric_highCor_matrix)] <- per_polychoric_highCor_matrix
+
+per_polychoric_full_square_matrix[lower.tri(per_polychoric_full_square_matrix)] <- t(per_polychoric_full_square_matrix)[lower.tri(per_polychoric_full_square_matrix)]
+diag(per_polychoric_full_square_matrix) <- 1
+per_polychoric_full_square_matrix
+
+# === Spearman Correlation ===
+per_spearman_highCor_matrix <- per_highCor_df %>%
+  filter(metric_type.x == "categorical" & metric_type.y == "binary"|
+           metric_type.x == "binary" & metric_type.y == "categorical"|
+           metric_type.x == "categorical" & metric_type.y == "categorical"|
+           metric_type.x == "binary" & metric_type.y == "binary") %>%
+  select(factor1, factor2, correlation) %>%
+  pivot_wider(names_from = factor2, values_from = correlation) %>%
+  column_to_rownames(var = "factor1") %>%
+  as.matrix()
+
+# Get all row and column names to make the matrix square
+per_spearman_all_names <- union(rownames(per_spearman_highCor_matrix), colnames(per_spearman_highCor_matrix))
+per_spearman_all_names
+# Create a full square matrix filled with NA
+per_spearman_full_square_matrix <- matrix(NA, nrow = length(per_spearman_all_names), ncol = length(per_spearman_all_names),dimnames = list(per_spearman_all_names, per_spearman_all_names))
+per_spearman_full_square_matrix[rownames(per_spearman_highCor_matrix), colnames(per_spearman_highCor_matrix)] <- per_spearman_highCor_matrix
+
+per_spearman_full_square_matrix[lower.tri(per_spearman_full_square_matrix)] <- t(per_spearman_full_square_matrix)[lower.tri(per_spearman_full_square_matrix)]
+diag(per_spearman_full_square_matrix) <- 1
+per_spearman_full_square_matrix
+
+
+# Plot using corrplot
+jpeg("plots/per_pearson_highCor.jpg", width = 1000, height = 900, units = "px", res = 150)
+corrplot(per_pearson_full_square_matrix, addCoef.col = 'black',method = "circle",type = "upper", 
+         tl.cex = 0.7, tl.col = "black",na.label = "NA",order = 'alphabet')
+dev.off()
+
+jpeg("plots/per_polychoric_highCor.jpg", width = 2500, height = 2500, units = "px", res = 150)
+corrplot(per_polychoric_full_square_matrix,method = "circle",type = "upper", 
+         tl.cex = 1.1, tl.col = "black",na.label = " ",order = 'alphabet')
+dev.off()
+
+jpeg("plots/per_spearman_highCor.jpg", width = 2500, height = 2500, units = "px", res = 150)
+corrplot(per_spearman_full_square_matrix,method = "circle",type = "upper", 
+         tl.cex = 1.1, tl.col = "black",na.label = " ",order = 'alphabet')
+dev.off()
 
 
 #REMOVE REDUNDANT/HIGHLY CORRELATED FACTORS:
@@ -231,6 +300,7 @@ per_data_analysis_FilteredCor<-per_data_analysis_Filterednzv%>%
     "district.dist_3", #keep accessibility_waste_collection and months_count_water_accessibility_difficulty_flood_year
     "sfp_total_area", ##TO CHECK IF I INCLUDE OR NOT THIS FACTOR keep dfs_adoption_binary
     "dfs_total_area",
+    "distance_public_transport",#keep distance_main_road
     "income_amount_total", # keep income_amount_onfarm COR=0.9924182
     "land_tenure_hold_status"#keep male_land_tenure_hold_proportion
   ))
@@ -296,24 +366,6 @@ install.packages("TangledFeatures")
 library("TangledFeatures")
 
 DataCleaning(Data = TangledFeatures::Housing_Prices_dataset, Y_var = 'SalePrice')
-
-#cor1 The correlation metric between two continuous features: Defaults to pearson
-#cor2 The correlation metric between one categorical feature and one cont feature: Defaults to biserial
-#cor3 The correlation metric between two categorical features: Defaults to Cramers-V
-
-per_cor<- GeneralCor(per_data_analysis_Filterednzv, cor1 = "pearson", cor2 = "polychoric", cor3 = "spearman")
-per_cor_df<-as.data.frame(per_cor)
-
-
-predictors <- per_data_analysis_Filterednzv[ , !(names(per_data_analysis_Filterednzv) %in% c("dfs_adoption_binary"))] # Remove target from feature matrix
-predictors<-predictors%>%select(-1:56)
-target <- per_data_analysis_Filterednzv$dfs_adoption_binary
-
-names(predictors)[57]
-sort(unique(per_data_analysis_Filterednzv$fair_price_crops))
-sum(is.na(predictors[[57]]))
-
-
 
 prueba<-TangledFeatures(
   Data= predictors,
@@ -407,12 +459,12 @@ text(sft$fitIndices[, 1],
 picked_power = 8
 
 # Number of simulations
-sim_number <- 15
-rf_mat <- matrix(NA, sim_number, 30)
-ff_mat <- matrix(NA, sim_number, 30)
-cif_mat <- matrix(NA, sim_number, 30)
-ff_matWGCNA<- matrix(NA, sim_number, 30)
-snr_mat<- matrix(NA, sim_number, 30)
+sim_number <- 100
+rf_mat <- matrix(NA, sim_number, 50)
+ff_mat <- matrix(NA, sim_number, 50)
+cif_mat <- matrix(NA, sim_number, 50)
+ff_matWGCNA<- matrix(NA, sim_number, 50)
+snr_mat<- matrix(NA, sim_number, 50)
 
 # Set seed for reproducibility
 set.seed(123)
@@ -430,11 +482,11 @@ p <- ncol(X)
 # Run multiple simulations
 for (k in 1:sim_number) {
 
-  # Random Forest
+  # === Random Forest ===
   rf <- randomForest(X, y, importance = TRUE, mtry = floor(sqrt(p)), ntree = 500)
   rf_list <- importance(rf, type = 1, scale = FALSE)
   rf_list <- rf_list[order(rf_list[, 1], decreasing = TRUE), ]
-  rf_list <- rf_list[1:30] # Top 20 most important features
+  rf_list <- rf_list[1:50] # Top 20 most important features
   rf_mat[k, ] <- names(rf_list)
   
   # === Fuzzy Forest (without WGCNA) ===
@@ -446,7 +498,7 @@ for (k in 1:sim_number) {
   )
   
   select_params <- select_control(
-    number_selected = 30,
+    number_selected = 50,
     drop_fraction = 0.1,
     ntree_factor = 2,
     mtry_factor = 15,
@@ -475,7 +527,7 @@ for (k in 1:sim_number) {
   )
   
   select_paramsWGCNA <- select_control(
-    number_selected = 30,
+    number_selected = 50,
     drop_fraction = 0.1,
     ntree_factor = 2,
     mtry_factor = 15,
@@ -491,12 +543,12 @@ for (k in 1:sim_number) {
     cif <- cforest(y ~ ., data = as.data.frame(cbind(y, X)), controls = cforest_unbiased(ntree = 100, mtry = floor(sqrt(p))))
     cif_list <- varimp(cif, conditional = TRUE)
     cif_list <- sort(cif_list, decreasing = TRUE)
-    cif_list <- names(cif_list)[1:30] # Top 30 features
+    cif_list <- names(cif_list)[1:50] # Top 30 features
     cif_mat[k, ] <- cif_list
   }
   # === Signal-to-Noise Ratio (SNR) ===
   snr <- fs.snr(x= X,y=y)
-  snr_list <- snr$fs.order[1:30]
+  snr_list <- snr$fs.order[1:50]
   snr_mat[k, ] <- snr_list
 
 }
