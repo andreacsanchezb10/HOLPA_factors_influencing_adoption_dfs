@@ -1,7 +1,10 @@
 
 
-per_adoptionBinary1<- read.csv("per_adoptionBinary1.csv",sep=",")
+#############################################################    
+########## UPLOAD DATA #####-----
+#############################################################
 
+per_adoptionBinary1<- read.csv("per_data_adoptionBinary1.csv",sep=",")
 per_adoptionBinary2<- read.csv("per_adoptionBinary2.csv",sep=",")
 
 
@@ -38,7 +41,7 @@ library(mt)
 allowWGCNAThreads()
 powers = c(c(1:10), seq(from = 12, to = 20, by = 2))
 
-data_per_adoptionBinary1 <-per_adoptionBinary1%>%
+data_per_data_adoptionBinary1 <-per_data_adoptionBinary1%>%
   mutate(across(where(is.factor), ~ as.numeric(as.character(.))))
 
 data_per_adoptionBinary1 = t(as.matrix(data_per_adoptionBinary1))
@@ -91,11 +94,11 @@ snr_mat<- matrix(NA, sim_number, 40)
 # Set seed for reproducibility
 set.seed(123)
 
-X <- per_adoptionBinary1[, !(names(per_adoptionBinary1) %in% c("dfs_adoption_binary"))]
+X <- per_data_adoptionBinary1[, !(names(per_data_adoptionBinary1) %in% c("dfs_adoption_binary"))]
 X <- X %>%mutate(across(where(is.factor), ~ as.numeric(as.character(.))))
 X
 # Binary outcome variable
-y <- as.numeric(as.character(per_adoptionBinary1$dfs_adoption_binary))
+y <- as.numeric(as.character(per_data_adoptionBinary1$dfs_adoption_binary))
 y
 
 # Sample size
@@ -220,10 +223,13 @@ mismatch_snr_ff_per_adoptionBinary1
 
 #Selected features
 ff_factors_per_adoptionBinary1
-write.csv(ff_factors_per_adoptionBinary1,"per_factors_adoptionBinary_data1.csv",row.names=FALSE)
+write.csv(ff_factors_per_adoptionBinary1,"per_factors_adoptionBinary1.csv",row.names=FALSE)
 
 
-##############################################OLD#############################
+
+
+
+##############################################OLD#############################----------------------
 ###### --- RECURSIVE FEATURE SELECTION -----
 library(caret)
 library(mlbench)
@@ -291,10 +297,22 @@ best_features
 
 
 ###### --- SES and MMPC -----
+per_data_adoptionBinary1<- read.csv("per_data_adoptionBinary1.csv",sep=",")
+
+dataset <- per_data_adoptionBinary1[, -which(names(per_data_adoptionBinary1) == "dfs_adoption_binary")] # Remove target from feature matrix
+target <- as.factor(per_data_adoptionBinary1$dfs_adoption_binary)
+target
+best_model <- cv.ses(target, dataset, kfolds = 10, 
+                      alphas = c(0.1, 0.05, 0.01), max_ks = c(3, 2), 
+                      task="C", ncores = 1)
+
+best_model
+
+
 # set up
 rm(list = ls())
 time <- proc.time()
-repetitions <- 500
+repetitions <- 2
 nCores <- 3
 
 # replicateMode = 1: Replicate the whole experiment of 500 iterations
@@ -327,7 +345,7 @@ if (replicateMode == 1) {
   rm(list = setdiff(ls(), c("time", "repetitions", "nCores", "replicateMode")))
   
   # load the main pipeline of the experiments (EXP function)
-  source("experiments.R")
+  source("Experiment.R")
   
   # Initialize the cluster
   
@@ -386,7 +404,7 @@ if (replicateMode == 1) {
     r
   }
   
-  data<- read.csv("data.csv",sep=",")
+  data<- read.csv("per_data_adoptionBinary1.csv",sep=",")
   bc_dataset <- data[, -which(names(data) == "target")] # Remove target from feature matrix
   bc_target <- as.factor(data$target)
   

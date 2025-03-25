@@ -5,7 +5,9 @@ library(reshape2)
 library(summarytools)
 library(corrplot)
 
-
+#############################################################    
+########## UPLOAD DATA #####-----
+#############################################################
 factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
   filter(is.na(remove))
 per_data_clean<- read.csv("per_data_clean.csv",sep=",")
@@ -410,11 +412,11 @@ columns_continuous <- intersect(per_summary_numerical$column_name_new, colnames(
 # Center (mean = 0) and scale (sd = 0.5) the continuous variables:
 per_adoptionBinary1[,columns_continuous] = 0.5*scale(per_adoptionBinary1[,columns_continuous])
 dim(per_adoptionBinary1) #[1] 200 200 #200 farmers; 200 variables retained
-write.csv(per_adoptionBinary1,"per_adoptionBinary1.csv",row.names=FALSE)
+write.csv(per_adoptionBinary1,"per_data_adoptionBinary1.csv",row.names=FALSE)
 
 #per_adoptionBinary2
 columns_continuous <- intersect(per_summary_numerical$column_name_new, colnames(per_adoptionBinary2))
 # Center (mean = 0) and scale (sd = 0.5) the continuous variables:
 per_adoptionBinary2[,columns_continuous] = 0.5*scale(per_adoptionBinary2[,columns_continuous])
 dim(per_adoptionBinary2) #[1] 200 200 #200 farmers; 200 variables retained
-write.csv(per_adoptionBinary2,"per_adoptionBinary2.csv",row.names=FALSE)
+write.csv(per_adoptionBinary2,"per_data_adoptionBinary2.csv",row.names=FALSE)
