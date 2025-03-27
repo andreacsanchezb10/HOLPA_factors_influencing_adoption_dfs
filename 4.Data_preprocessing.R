@@ -14,8 +14,8 @@ per_data_clean<- read.csv("per_data_clean.csv",sep=",")
 per_summary_categorical<-read.csv("per_summary_categorical.csv",sep=",") #598
 per_summary_numerical<-read.csv("per_summary_numerical.csv",sep=",") #75 factors
 
-factors_category<-per_summary_numerical%>%select(column_name_new, category_1,category_2)%>%
-  rbind(per_summary_categorical%>%select(column_name_new,category_1,category_2))%>%
+factors_category<-per_summary_numerical%>%dplyr::select(column_name_new, category_1,category_2)%>%
+  rbind(per_summary_categorical%>%dplyr::select(column_name_new,category_1,category_2))%>%
   distinct()
 
 factors_category$category_1[grepl("^Farm management characteristics", factors_category$category_1)] <- "Farm management characteristics"
@@ -38,7 +38,7 @@ per_variables_list<-c(unique(per_summary_categorical$column_name_new2),unique(pe
 per_variables_list
 
 per_data_analysis<- per_data_clean%>%
-  dplyr::select(all_of(per_variables_list))
+  dplyr::select(kobo_farmer_id,all_of(per_variables_list))
 
 dim(per_data_analysis) #[1] 200 289 #200 farmers; 289 variables evaluated
 
@@ -144,7 +144,8 @@ dim(per_data_Binary) #[1] 200 297 #200 farmers; 297 variables evaluated
 #############################################################
 a<-as.data.frame(c(colnames(per_data_Binary)))%>%
   rename("column_name_new"="c(colnames(per_data_Binary))")%>%
-  left_join(factors_list%>%select(category_1,column_name_new), by="column_name_new")%>%
+  left_join(factors_list%>%
+              dplyr::select(category_1,column_name_new), by="column_name_new")%>%
   mutate(category_1= case_when(
     column_name_new== "year_assessment.2023"~"Biophysical context",
     TRUE~category_1))%>%
@@ -166,32 +167,32 @@ dim(per_data_Binary) #[1] 200 297 #200 farmers; 297 variables retained
 #############################################################    
 ############# STANDARDIZATION OF CONTINUES VARIABLES -----
 #############################################################
-library(e1071)
+#library(e1071)
 columns_continuous <- names(per_data_Binary)[sapply(per_data_Binary, is.numeric)]
 columns_continuous
 
 # === Log-transform variables with skewned distribution ===
 #Calculate skewness for each numeric column
-skewed_vars <- sapply(per_data_Binary[columns_continuous], skewness, na.rm = TRUE)
-skewed_vars[is.na(skewed_vars)]
+#skewed_vars <- sapply(per_data_Binary[columns_continuous], skewness, na.rm = TRUE)
+#skewed_vars[is.na(skewed_vars)]
 
 #Identify variables with high skewness (absolute skewness > 1)
-highly_skewed <- names(skewed_vars[abs(skewed_vars) > 1])
-highly_skewed
-highly_skewed <- highly_skewed[!is.na(highly_skewed)]
+#highly_skewed <- names(skewed_vars[abs(skewed_vars) > 1])
+#highly_skewed
+#highly_skewed <- highly_skewed[!is.na(highly_skewed)]
 
 #sfs_burning_residues_area  error arreglar
 #NaN
 
 #Log transform the skewed variables (use log1p to avoid issues with 0s)
-per_data_logTransformed <- per_data_Binary
-per_data_logTransformed[highly_skewed] <- 
-  lapply(per_data_logTransformed[highly_skewed], function(x) log1p(x))
-str(per_data_logTransformed)
+#per_data_logTransformed <- per_data_Binary
+#per_data_logTransformed[highly_skewed] <- 
+ # lapply(per_data_logTransformed[highly_skewed], function(x) log1p(x))
+#str(per_data_logTransformed)
 
 # === Scale data ===
 # Center (mean = 0) and scale (sd = 1) the continuous variables:
-per_data_scaled<-per_data_logTransformed
+per_data_scaled<-per_data_Binary
 per_data_scaled[,columns_continuous] = scale(per_data_scaled[,columns_continuous])
 dim(per_data_scaled) #[1] 200 297 #200 farmers; 297 variables retained
 
@@ -205,7 +206,7 @@ dim(per_data_scaled) #[1] 200 297 #200 farmers; 297 variables retained
 ## frequency ratio: would be near one for well-behaved predictors and very large for highly-unbalanced data.
 ## percent of unique values: is the number of unique values divided by the total number of samples (times 100)
 #that approaches zero as the granularity of the data increases
-nzv <- nearZeroVar(per_data_scaled, saveMetrics= TRUE) 
+nzv <- caret::nearZeroVar(per_data_scaled, saveMetrics= TRUE) 
 nzv # the variables with nzv== TRUE should be remove
 
 nzv_list <- nearZeroVar(per_data_scaled)
@@ -215,12 +216,12 @@ print(nzv_factors)
 view(dfSummary(nzv_factors))
 
 ## Remove nzv variables from data
-per_data_analysis_Filterednzv<- per_data_scaled[, -nzv_list]
+per_data_Filterednzv<- per_data_scaled[, -nzv_list]
 
-dim(per_data_analysis_Filterednzv) #[1] 200 221 #200 farmers; 221 variables retained
+dim(per_data_Filterednzv) #[1] 200 221 #200 farmers; 221 variables retained
 
-b<-as.data.frame(c(colnames(per_data_analysis_Filterednzv)))%>%
-  rename("column_name_new"="c(colnames(per_data_analysis_Filterednzv))")%>%
+b<-as.data.frame(c(colnames(per_data_Filterednzv)))%>%
+  rename("column_name_new"="c(colnames(per_data_Filterednzv))")%>%
   left_join(factors_list%>%select(category_1,column_name_new), by="column_name_new")%>%
   group_by(category_1) %>%
   mutate(column_name_new_count = n()) %>%
@@ -235,17 +236,24 @@ ggplot(data=b, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_analysis_Filterednzv) #[1] 200 221 #200 farmers; 221 variables retained
+dim(per_data_Filterednzv) #[1] 200 221 #200 farmers; 222 variables retained
 
 
+write.csv(per_data_Filterednzv,"per_data_Filterednzv.csv",row.names=FALSE)
 
 
 
 #############################################################    
 ############# MULTIPLE FACTOR ANALYSIS -----
 #############################################################
-per_factors_list <- as.data.frame(colnames(per_data_analysis_Filterednzv))%>%
-  rename("column_name_new"= "colnames(per_data_analysis_Filterednzv)")%>%
+library(FactoMineR)
+library(factoextra)
+#Goal: Reduce high-dimensional grouped factors into a smaller number of 
+#interpretable axes (principal components), while considering the 
+#structure of groups (e.g., capitals, context, behavior).
+
+per_factors_list <- as.data.frame(colnames(per_data_Filterednzv))%>%
+  rename("column_name_new"= "colnames(per_data_Filterednzv)")%>%
   left_join(factors_category)%>%
   select(-category_2)
 
@@ -254,20 +262,219 @@ per_factors_list$category_1[grepl("^district.dist", per_factors_list$column_name
 per_factors_list$category_1[grepl("^marital_status.", per_factors_list$column_name_new)] <- "Human capital"
 per_factors_list$category_1[grepl("^read_write.", per_factors_list$column_name_new)] <- "Human capital"
 per_factors_list$category_1[grepl("^year_assessment.", per_factors_list$column_name_new)] <- "Biophysical context"
-
+per_factors_list<-per_factors_list%>%filter(category_1!="xxx")
 head(per_factors_list)
-length(unique(per_factors_list$column_name_new)) #221 factors
+length(unique(per_factors_list$column_name_new)) #222 factors
+sort(unique(per_factors_list$category_1)) #222 factors
 
-head(per_data_analysis_Filterednzv)
-str(per_data_analysis_Filterednzv)
+# Assign rownames
+per_data_mfa<-per_data_Filterednzv%>%
+  dplyr::select(-dfs_adoption_binary)
 
-per_data_analysis_MFA<- per_data_analysis_Filterednzv
+str(per_data_mfa)
+rownames(per_data_mfa) <- per_data_mfa$kobo_farmer_id
 
-var_list$column_name_new <- make.names(var_list$column_name_new)
+# Step 2: Create cleaned group definitions (handling mixed types)
+group_def <- per_factors_list %>%
+  filter(!is.na(category_1),
+         column_name_new %in% names(per_data_mfa)) %>%
+  rowwise() %>%
+  mutate(var_class = class(per_data_mfa[[column_name_new]])[1]) %>%
+  ungroup() %>%
+  mutate(group_type = case_when(
+    var_class == "factor" ~ "n",
+    var_class %in% c("numeric", "integer") ~ "s",
+    TRUE ~ "other"
+  )) %>%
+  mutate(category_1_type = paste0(category_1, " (", group_type, ")")) %>%
+  group_by(category_1_type, group_type) %>%
+  summarise(vars = list(column_name_new), .groups = "drop") %>%
+  mutate(group_size = lengths(vars))
+
+group_def
+
+# Extract only grouped variables
+mfa_data <- per_data_mfa[, unlist(group_def$vars)]
+
+# Prepare MFA inputs
+group_sizes <- group_def$group_size
+group_types <- group_def$group_type
+group_names <- group_def$category_1_type
+group_names
+group_types
+
+# Run MFA
+res_mfa <- MFA(mfa_data,
+               group = group_sizes,
+               type = group_types,
+               name.group = group_names,
+               #num.group.sup = group_supplementary_indices,
+               ncp = 5,
+               graph = FALSE)
+res_mfa
+
+#see how much variation is explain
+res_mfa$eig
+fviz_screeplot(res_mfa, addlabels = TRUE, ncp = 5)
+
+mfa_vars <- res_mfa$call$X
+mfa_vars
+cat_vars_mfa <- names(mfa_vars)[sapply(mfa_vars, is.factor)]
+cat_vars_mfa
+
+plot(res_mfa,choix="ind",partial="all")
+
+var <- get_mfa_var(res_mfa)
+var$coord
+
+important_vars_dim1 <- which(abs(var$coord[,1]) > 0.2)
+important_vars_dim1
+important_vars_dim2 <- which(abs(var$coord[,2]) > 0.5)
+important_vars_dim3 <- which(abs(var$coord[,3]) > 0.5)
+important_vars_dim3
 
 
-names(per_data_analysis_MFA) <- make.names(names(per_data_analysis_MFA))  # standardize names
 
+res_mfa$eig  # Table of eigenvalues, % variance, and cumulative %
+plot(res_mfa, choix = "eig")
+
+head(res_mfa$ind$coord)  # Coordinates of individuals (farmers)
+res_mfa$quali.var$coord       # for qualitative (categorical) variables
+res_mfa$quanti.var$coord      # for quantitative (numeric) variables
+res_mfa$quali.var$contrib     # contribution to axes
+res_mfa$quanti.var$contrib
+fviz_contrib(res_mfa, "group", axes = 1)
+fviz_contrib(res_mfa, "group", axes = 2)
+fviz_contrib(res_mfa, "group", axes = 3)
+fviz_contrib(res_mfa, "group", axes = 4)
+
+fviz_contrib(res_mfa, "quanti.var", axes = 1)
+fviz_contrib(res_mfa, "quanti.var", axes = 2)
+fviz_contrib(res_mfa, "quanti.var", axes = 3)
+fviz_contrib(res_mfa, "quanti.var", axes = 4)
+
+fviz_contrib(res_mfa, "quali.var", axes = 1)
+fviz_contrib(res_mfa, "quali.var", axes = 2)
+fviz_contrib(res_mfa, "quali.var", axes = 3)
+fviz_contrib(res_mfa, "quali.var", axes = 4)
+
+
+#############################################################    
+############# HCPC – Hierarchical Clustering on Principal Components -----
+#############################################################
+#Goal: Identify groups (clusters) of farmers based on their positions
+#in the reduced MFA space (i.e., their profiles).
+res.hcpc <- HCPC(res_mfa, graph = FALSE, nb.clust = 4 )
+res.hcpc$desc.var
+
+#number of optimal clusters estimated
+res.hcpc$call$t$nb.clust
+
+fviz_dend(res.hcpc, 
+          cex = 0.7,                     # Label size
+          palette = "jco",               # Color palette see ?ggpubr::ggpar
+          rect = TRUE, 
+          rect_fill = TRUE, # Add rectangle around groups
+          rect_border = "jco",           # Rectangle color
+          labels_track_height = 0.8      # Augment the room for labels
+)
+
+fviz_cluster(res.hcpc,
+             repel = TRUE,            # Avoid label overlapping
+             show.clust.cent = TRUE, # Show cluster centers
+             palette = "jco",         # Color palette see ?ggpubr::ggpar
+             ggtheme = theme_minimal(),
+             main = "Factor map")
+
+plot(res.hcpc, choice = "3D.map")
+head(res.hcpc$data.clust, 10)
+
+c1_continues_var<- as.data.frame(res.hcpc$desc.var$quanti[1])
+c1_continues_var
+c1_categorical_var<- as.data.frame(res.hcpc$desc.var$quali[1])
+c1_categorical_var
+c2_continues_var<- as.data.frame(res.hcpc$desc.var$quanti[2])
+c2_categorical_var<- as.data.frame(res.hcpc$desc.var$quali[2])
+c2_categorical_var
+c3_continues_var<- as.data.frame(res.hcpc$desc.var$quanti[3])
+c3_categorical_var<- as.data.frame(res.hcpc$desc.var$quali[3])
+c3_categorical_var
+table(mfa_data$gender, res.hcpc$data.clust$clust) |> chisq.test()
+summary(mfa_data$gender)
+
+
+res.hcpc$desc.axes$quanti
+res.hcpc$desc.ind$para
+
+# Extract farmer IDs per cluster
+head(res.hcpc$data.clust)
+
+
+# Add IDs if not already included
+res.hcpc$data.clust$kobo_farmer_id <- rownames(res.hcpc$data.clust)
+res.hcpc
+
+
+# Extract cluster info and farmer IDs
+cluster_assignments <- res.hcpc$data.clust %>%
+  dplyr::select(clust) %>%
+  dplyr::mutate(kobo_farmer_id = rownames(res.hcpc$data.clust))
+cluster_assignments
+
+# Join with your main dataset
+per_data_with_cluster <- per_data_Filterednzv %>%
+  left_join(cluster_assignments, by = "kobo_farmer_id")
+
+adoption_by_cluster <- per_data_with_cluster %>%
+  group_by(clust, dfs_adoption_binary) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(clust) %>%
+  mutate(percent = round(100 * n / sum(n), 1))
+
+adoption_by_cluster
+
+library(ggplot2)
+
+ggplot(adoption_by_cluster, aes(x = factor(clust), y = percent, fill = dfs_adoption_binary)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Cluster", y = "DFS Adoption (%)", fill = "Adoption",
+       title = "DFS Adoption across Farmer Clusters") +
+  theme_minimal()
+
+
+#############################################################    
+#############BAYESIAN CLUSTER -----
+#############################################################
+## install BiocManager if not installed 
+library(mixOmics) # import the mixOmics library
+X <- mfa_data%>%
+  dplyr::select(-dfs_adoption_binary)%>%
+  mutate(across(everything(), as.numeric))
+X<-as.matrix(X)
+class(X)
+Y <- mfa_data$dfs_adoption_binary
+
+Y <- as.numeric(as.character(mfa_data$dfs_adoption_binary))
+Y
+
+#PLS-DA
+result.plsda.srbct <- plsda(X, Y) # run the method
+plotIndiv(result.plsda.srbct) # plot the samples
+plotVar(result.plsda.srbct) # plot the variables
+plotLoadings(result.plsda.srbct, method = 'mean', contrib = 'max')  
+
+selectVar(result.plsda.srbct, comp = 2)$name 
+
+
+#sPLS-DA
+splsda.result <- splsda(X, Y, keepX = c(60,40)) # run the method
+plotIndiv(splsda.result) # plot the samples
+plotVar(splsda.result) # plot the variables
+
+# extract the variables used to construct the first latent component
+selectVar(splsda.result, comp = 2)$name 
+# depict weight assigned to each of these variables
+plotLoadings(splsda.result, method = 'mean', contrib = 'max')  
 
 
 #############################################################    
