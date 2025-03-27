@@ -4,7 +4,7 @@
 ########## UPLOAD DATA #####-----
 #############################################################
 
-per_adoptionBinary1<- read.csv("per_data_adoptionBinary1.csv",sep=",")
+per_data_adoptionBinary1<- read.csv("per_data_adoptionBinary1.csv",sep=",")
 per_adoptionBinary2<- read.csv("per_adoptionBinary2.csv",sep=",")
 
 
@@ -41,7 +41,7 @@ library(mt)
 allowWGCNAThreads()
 powers = c(c(1:10), seq(from = 12, to = 20, by = 2))
 
-data_per_data_adoptionBinary1 <-per_data_adoptionBinary1%>%
+data_per_adoptionBinary1 <-per_data_adoptionBinary1%>%
   mutate(across(where(is.factor), ~ as.numeric(as.character(.))))
 
 data_per_adoptionBinary1 = t(as.matrix(data_per_adoptionBinary1))
@@ -107,6 +107,7 @@ p <- ncol(X)
 
 # Run multiple simulations
 for (k in 1:sim_number) {
+  set.seed(123)  # Ensure reproducibility
   
   # === Random Forest ===
   rf <- randomForest(X, y, importance = TRUE, mtry = floor(sqrt(p)), ntree = 500)
@@ -205,13 +206,13 @@ jaccard <- function(set1, set2) {
 ## Fuzzy Forest vs. Other Methods 
 # → Lower Similarity
 jaccard(ff_factors_per_adoptionBinary1, rf_factors_per_adoptionBinary1) #0.4107143
-jaccard(ff_factors_per_adoptionBinary1, cif_factors_per_adoptionBinary1) #0.2641509
+jaccard(ff_factors_per_adoptionBinary1, cif_factors_per_adoptionBinary1) #0.2962963
 jaccard(ff_factors_per_adoptionBinary1, snr_factors_per_adoptionBinary1) #0.2741935
 
-jaccard(rf_factors_per_adoptionBinary1, cif_factors_per_adoptionBinary1) #0.6190476
-jaccard(rf_factors_per_adoptionBinary1, snr_factors_per_adoptionBinary1) #0.5686275
+jaccard(rf_factors_per_adoptionBinary1, cif_factors_per_adoptionBinary1) #0.6511628
+jaccard(rf_factors_per_adoptionBinary1, snr_factors_per_adoptionBinary1) #0.6
 
-jaccard(cif_factors_per_adoptionBinary1, snr_factors_per_adoptionBinary1) #0.6585366
+jaccard(cif_factors_per_adoptionBinary1, snr_factors_per_adoptionBinary1) #0.6904762
 
 
 mismatch_rf_ff_per_adoptionBinary1 <- setdiff(rf_factors_per_adoptionBinary1, ff_factors_per_adoptionBinary1) # In RF but not in FF
@@ -245,8 +246,8 @@ library(randomForest)
 # - May not work well with noisy or irrelevant features.
 
 
-predictors <- per_data1_CenteredScaled[ , !(names(per_data1_CenteredScaled) %in% c("dfs_adoption_binary"))] # Remove target from feature matrix
-target <- as.factor(per_data1_CenteredScaled$dfs_adoption_binary)
+predictors <- per_data_adoptionBinary1[ , !(names(per_data_adoptionBinary1) %in% c("dfs_adoption_binary"))] # Remove target from feature matrix
+target <- as.factor(per_data_adoptionBinary1$dfs_adoption_binary)
 
 set.seed(123)  # For reproducibility
 
@@ -260,7 +261,6 @@ rfctrl <- rfeControl(
 )
 
 
-set.seed(123)  # Ensure reproducibility
 
 # Run Recursive Feature Elimination
 rfe_result <- rfe(
