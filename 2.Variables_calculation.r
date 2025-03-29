@@ -409,7 +409,10 @@ per_data_clean<-per_data_clean%>%
     is.na(children_attend_school) ~ "0",
     children_attend_school=="1" & num_free_school_meals_perweek==0  ~ "2",
     children_attend_school=="1" & num_free_school_meals_perweek>0  ~ "5",
-    TRUE~ NA))
+    TRUE~ NA))%>%
+  mutate(access_free_school_meals_perweek= case_when(
+    country=="peru" & access_free_school_meals_perweek=="5" ~ "1",
+    TRUE~ access_free_school_meals_perweek))
 
 ### POLITICAL AND INSTITUTIONAL CONTEXT: Knowledge ----
 per_data_clean<-per_data_clean%>%
@@ -629,7 +632,9 @@ per_data_clean<-per_data_clean%>%
   mutate(sfs_monoculture_annual_adoption= case_when(sfs_monoculture_annual_area>0~ "1", TRUE~ "0"))%>%
   #Land clearing
   mutate(sfs_land_clearing_adoption= case_when(sfs_land_clearing_area>0~ "1", TRUE~ "0"))%>%
-  #burning residues
+  #  #area burning residues
+  mutate(sfs_burning_residues_area= case_when(is.na(sfs_burning_residues_area)~ 0, TRUE~ sfs_burning_residues_area))%>%
+  #adoption burning residues
   mutate(sfs_burning_residues_adoption= case_when(sfs_burning_residues_area>0~ "1", TRUE~ "0"))%>%
   #PERMANENT HOUSEHOLD LABOUR: total labour hours per year
   mutate(across(starts_with("num_workers_nhlabour_permanent_"), ~ ifelse(is.na(.) |. == 9999, 0, .)),
@@ -843,7 +848,7 @@ per_data_clean<-per_data_clean%>%
 write.csv(per_data_clean,"per_data_clean.csv",row.names=FALSE)
 
 y<-per_data_clean%>%
-  select("farmer_agency_1", "farmer_agency_3",sales_channel_crops.direct_to_consumer,
+  select(nearest_distance_dfs_km,"farmer_agency_1", "farmer_agency_3",sales_channel_crops.direct_to_consumer,
          starts_with("sales_channel_crops.")
          
   )
