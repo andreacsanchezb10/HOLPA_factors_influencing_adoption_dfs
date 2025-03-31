@@ -9,6 +9,7 @@ library(corrplot)
 ########## UPLOAD DATA #####-----
 #############################################################
 factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
+  filter(category_1!="xxx")
   filter(is.na(remove))
 factors_list$category_1[grepl("^Farm management characteristics", factors_list$category_1)] <- "Farm management characteristics"
 factors_list$category_1[grepl("^Financial capital", factors_list$category_1)] <- "Financial capital"
@@ -18,14 +19,16 @@ factors_list$category_1[grepl("^P&I context", factors_list$category_1)] <- paste
 factors_list$category_1[grepl("^P&I context_knowledge", factors_list$category_1)] <- "P&I context_knowledge"
 
 per_data_clean<- read.csv("per_data_clean.csv",sep=",")
-per_summary_categorical<-read.csv("per_summary_categorical.csv",sep=",") #598
-per_summary_numerical<-read.csv("per_summary_numerical.csv",sep=",") #75 factors
+per_summary_categorical<-read.csv("per_summary_categorical.csv",sep=",")%>% #598
+  filter(category_1!="outcome")
+per_summary_numerical<-read.csv("per_summary_numerical.csv",sep=",")%>%  #75 factors
+  filter(category_1!="outcome")
 
 factors_category<-per_summary_numerical%>%dplyr::select(column_name_new, category_1,category_2)%>%
   rbind(per_summary_categorical%>%dplyr::select(column_name_new,category_1,category_2))%>%
   distinct()
 
-sort(unique(factors_category$category_1))
+sort(unique(per_data_clean$province))
 
 #### Select the factors that were listed as important for adoption according to:
 # - data availability
@@ -39,8 +42,12 @@ per_variables_list
 
 per_data_analysis<- per_data_clean%>%
   dplyr::select(kobo_farmer_id,all_of(per_variables_list))
+rownames(per_data_analysis) <- per_data_analysis$kobo_farmer_id
 
-dim(per_data_analysis) #[1] 200 289 #200 farmers; 289 variables evaluated
+per_data_analysis<- per_data_analysis%>%
+  dplyr::select(-kobo_farmer_id)
+
+dim(per_data_analysis) #[1] 200 322 #200 farmers; 322 variables evaluated
 
 #############################################################    
 ########## DATA TYPE CONVERSION #####-----
@@ -49,7 +56,6 @@ dim(per_data_analysis) #[1] 200 289 #200 farmers; 289 variables evaluated
 ###### --- CATEGORICAL AND BINARY VARIABLES -----
 #### Convert categorical and binary to factor
 columns_categorical <- intersect(per_summary_categorical$column_name_new2, colnames(per_data_analysis))
-
 print(columns_categorical)  # Check if it holds expected values
 
 per_data_analysis<- per_data_analysis%>%
@@ -137,11 +143,6 @@ cols_to_remove
 per_data_Binary <- per_data_Binary %>%
   dplyr::select(-all_of(cols_to_remove))
 
-
-dim(per_data_Binary) #[1] 200 297 #200 farmers; 297 variables evaluated
-
-#############################################################    
-#############################################################
 a<-as.data.frame(c(colnames(per_data_Binary)))%>%
   rename("column_name_new"="c(colnames(per_data_Binary))")%>%
   left_join(factors_list%>%
@@ -162,7 +163,302 @@ ggplot(data=a, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_Binary) #[1] 200 297 #200 farmers; 297 variables retained
+dim(per_data_Binary) #[1] 200 336 #200 farmers; 336 variables retained
+
+#############################################################    
+############# ZERO AND NEAR ZERO VARIANCE PREDICTORS -----
+#############################################################
+#In some situations, the data generating mechanism can create predictors that only have a 
+#single unique value (i.e. a “zero-variance predictor”). For many models (excluding tree-based models),
+#this may cause the model to crash or the fit to be unstable.
+#Similarly, predictors might have only a handful of unique values that occur with very low frequencies.
+## frequency ratio: would be near one for well-behaved predictors and very large for highly-unbalanced data.
+## percent of unique values: is the number of unique values divided by the total number of samples (times 100)
+#that approaches zero as the granularity of the data increases
+nzv <- caret::nearZeroVar(per_data_Binary, saveMetrics= TRUE) 
+nzv # the variables with nzv== TRUE should be remove
+
+nzv_list <- nearZeroVar(per_data_Binary)
+
+nzv_factors<- per_data_Binary[, nzv_list]
+print(nzv_factors)
+view(dfSummary(nzv_factors))
+
+## Remove nzv variables from data
+per_data_Filterednzv<- per_data_Binary[, -nzv_list]
+
+dim(per_data_Filterednzv) #[1] 200 251 #200 farmers; 251 variables retained
+
+b<-as.data.frame(c(colnames(per_data_Filterednzv)))%>%
+  rename("column_name_new"="c(colnames(per_data_Filterednzv))")%>%
+  left_join(factors_list%>%select(category_1,column_name_new), by="column_name_new")%>%
+  group_by(category_1) %>%
+  mutate(column_name_new_count = n()) %>%
+  tally()%>%filter(category_1!="xxx")
+
+ggplot(data=b, aes(x=n, y=category_1, fill= category_1)) +
+  geom_bar(stat="identity")+
+  geom_text(aes(label = n), 
+            hjust = -0.2, # Adjust position of the label to the right of the bar
+            size = 4) +
+  theme_minimal() +
+  labs(x = "Number of factors", y = "Category") +
+  theme(legend.position = "none")
+
+dim(per_data_Filterednzv) #[1] 200 239 #200 farmers; 239 variables retained
+
+
+#write.csv(per_data_Filterednzv,"per_data_Filterednzv.csv",row.names=FALSE)
+
+#############################################################    
+############# SPEARMAN'S  CORRELATION -----
+#############################################################
+library(tidyverse)
+library(corrplot)
+
+per_factors_list <- as.data.frame(colnames(per_data_Filterednzv))%>%
+  rename("column_name_new"= "colnames(per_data_Filterednzv)")%>%
+  left_join(factors_category)
+per_factors_list$category_1[grepl("^year_assessment.", per_factors_list$column_name_new)] <- "Biophysical context"
+per_factors_list$category_1[grepl("^crop_type", per_factors_list$column_name_new)] <- "Farm management characteristics"
+per_factors_list$category_1[grepl("^marital_status.", per_factors_list$column_name_new)] <- "Human capital"
+per_factors_list$category_1[grepl("^read_write.", per_factors_list$column_name_new)] <- "Human capital"
+per_factors_list$category_1[grepl("^gender_land_tenure.", per_factors_list$column_name_new)] <- "P&I context_land tenure"
+per_factors_list$category_1[grepl("^district.dist", per_factors_list$column_name_new)] <- "P&I context_general"
+per_factors_list$category_1[grepl("^province.prov", per_factors_list$column_name_new)] <- "P&I context_general"
+
+create_cor_df <- function(data, factors_list) {
+  cor_matrix <- cor(data %>% mutate(across(everything(), as.numeric)),
+                    method = "spearman", use = "pairwise.complete.obs")
+  
+  cor_df <- as.data.frame(cor_matrix) %>%
+    rownames_to_column("factor1") %>%
+    pivot_longer(-factor1, names_to = "factor2", values_to = "spearman_correlation") %>%
+    left_join(factors_list %>% select(column_name_new, category_1), by = c("factor1" = "column_name_new")) %>%
+    rename(category_1.factor1 = category_1) %>%
+    left_join(factors_list %>% select(column_name_new, category_1), by = c("factor2" = "column_name_new")) %>%
+    rename(category_1.factor2 = category_1)
+  
+  return(cor_df)
+}
+
+
+per_data_cor<-create_cor_df(per_data_Filterednzv,per_factors_list)
+str(per_data_cor)
+
+plot_correlation_by_category <- function(cor_df) {
+  unique_categories <- unique(cor_df$category_1.factor1)
+  plots <- list()
+  
+  for (cat in unique_categories) {
+    cat_data <- cor_df %>%
+      filter(category_1.factor1 == cat, category_1.factor2 == cat)
+    
+    if (nrow(cat_data) > 0) {
+      plots[[cat]] <- ggplot(cat_data, aes(x = factor1, y = factor2, fill = spearman_correlation)) +
+        geom_tile(color = "white") +
+        geom_text(data = cat_data %>% filter(abs(spearman_correlation) >= 0.8),
+                  aes(label = round(spearman_correlation, 2)), size = 5) +
+        scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0,
+                             limits = c(-1, 1), name = "Spearman\nCorrelation") +
+        theme_minimal() +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1),
+              axis.text.y = element_text(size = 8),
+              plot.title = element_text(hjust = 0.5)) +
+        labs(title = paste("Category:", cat), x = NULL, y = NULL)
+    }
+  }
+  return(plots)
+}
+
+plot_correlation_by_category(per_data_cor)
+
+#############################################################
+############# REMOVE REDUNDANT FACTORS -----
+#############################################################
+per_redundant_factors<- read_excel("factors_list.xlsx",sheet = "redundant_factors")%>%
+  select(removed)
+per_redundant_factors<-per_redundant_factors$removed
+per_redundant_factors
+
+per_data_FilteredRedundant<-per_data_Filterednzv%>%
+  dplyr::select(-dplyr::any_of(per_redundant_factors))
+
+per_data_FilteredRedundant_cor<-create_cor_df(per_data_FilteredRedundant,per_factors_list)
+str(per_data_FilteredRedundant_cor)
+sort(unique(per_data_FilteredRedundant_cor$factor1))
+
+plot_correlation_by_category(per_data_FilteredRedundant_cor)
+
+#############################################################  
+############# SEPARATE CORRELATED FACTORS IN DIFFERENT DATASETS -----
+#############################################################
+per_data1<- per_data_FilteredRedundant%>%
+  select(-c(
+    #== Human capital ==
+    full_time_farmer, #num_occupation_secondary_list
+    
+    #== Farm management characteristics ==
+    livestock_sale, #use_percentage_crops_sales
+    main_crops_shrub,#num_main_crops_shrub
+    main_crops_herb, #num_main_crops_herb
+    main_crops_annual,#num_main_crops_annual
+    livestock_exotic_local, #num_farm_products
+    soil_fertility_management_organic,#organic_fertilizer_amount_ha
+    sfs_monoculture_annual_adoption, #keep	sfs_monoculture_annual_area
+    soil_fertility_management_ecol_practices, #keep num_soil_fertility_ecol_practices
+    
+    #== Financial capital ==
+    income_access_nonfarm, #keep income_amount_nonfarm
+    farm_products.Livestock, #livestock_count_tlu
+    
+    #== Natural capital ==
+    vegetation_cover_bushland, #keep vegetation_diversity_bushland
+    vegetation_cover_forest, #keep vegetation_diversity_forest
+    vegetation_cover_wetland, #keep vegetation_diversity_wetland
+    vegetation_cover_woodlots, #keep vegetation_diversity_woodlots
+    
+    #== P&I context_knowledge ==
+    access_info_exchange_consumers, #keep num_info_exchange_consumers
+    access_info_exchange_extension, #keep num_info_exchange_extension
+    access_info_exchange_farmers, #keep num_info_exchange_farmers
+    access_info_exchange_ngo, #keep num_info_exchange_ngo
+    access_info_exchange_researchers, #keep num_info_exchange_researchers
+    access_info_exchange_traders, #keep num_info_exchange_traders
+    access_info_exchange, #keep  num_info_exchange_sources
+    training_participation, #num_training_topics
+    
+    #== P&I context_value chain ==
+    fair_price_livestock, # num_sales_channel_livestock
+    
+    #== Social capital ==
+    influence_nr_frequency, #keep participation_nr_frequency
+    
+    #== Vulnerability context ==
+    household_shock_strategy, #keep household_shock_strategy_count
+  ))
+
+per_data1_cor<-create_cor_df(per_data1,per_factors_list)
+plot_correlation_by_category(per_data1_cor)
+
+dim(per_data1) #[1] 200 203 #200 farmers; 203 variables retained
+any(is.na(per_data1)) #[1] FALSE
+
+
+per_data2<- per_data_FilteredRedundant%>%
+  select(-c(
+    #== Human capital ==
+    num_occupation_secondary_list, #full_time_farmer
+    
+    #== Farm management characteristics ==
+    use_percentage_livestock_sales, #livestock_sale
+    num_main_crops_shrub, #main_crops_shrub
+    num_main_crops_herb, #main_crops_herb, #
+    num_main_crops_annual, #main_crops_annual
+    num_farm_products, #livestock_exotic_local
+    organic_fertilizer_amount_ha, #soil_fertility_management_organic,#
+    num_soil_fertility_ecol_practices, #keep soil_fertility_management_ecol_practices
+    sfs_monoculture_annual_area, #keep	sfs_monoculture_annual_adoption
+    
+    #== Financial capital ==
+    income_amount_nonfarm, #keep income_access_nonfarm
+    farm_products.Livestock, #livestock_count_tlu
+    
+    #== Natural capital ==
+    vegetation_diversity_bushland, #keep vegetation_cover_bushland
+    vegetation_diversity_forest, #keep vegetation_cover_forest
+    vegetation_diversity_wetland, #keep vegetation_cover_wetland
+    vegetation_diversity_woodlots, #keep vegetation_cover_woodlots
+    
+    #== P&I context_knowledge
+    num_info_exchange_consumers, #keep access_info_exchange_consumers,
+    num_info_exchange_extension,  #keep access_info_exchange_extension,
+    num_info_exchange_farmers, #keep access_info_exchange_farmers
+    num_info_exchange_ngo , #keep access_info_exchange_ngo
+    num_info_exchange_researchers,  #keep access_info_exchange_researchers
+    num_info_exchange_traders, #keep access_info_exchange_traders
+    num_info_exchange_sources, #keep access_info_exchange
+    num_training_topics, #training_participation
+    
+    #== P&I context_value chain ==
+    num_sales_channel_livestock, #fair_price_livestock
+    
+    #== Social capital ==
+    participation_nr_frequency, #keep influence_nr_frequency
+    
+    #== Vulnerability context ==
+    household_shock_strategy_count, #keep household_shock_strategy
+  ))
+
+per_data2_cor<-create_cor_df(per_data2,per_factors_list)
+plot_correlation_by_category(per_data2_cor)
+
+
+dim(per_data2) #[1] 200 203 #200 farmers; 203 variables retained
+any(is.na(per_data2)) #[1] FALSE
+
+############################################################
+############# GET DIFFERENT DATABASES WITHOUT CORRELATED VARIABLES -----
+#############################################################
+create_uncorrelated_datasets <- function(data, cor_df, correlation_col = "spearman_correlation", threshold = 0.8) {
+  # Filter for correlated pairs above threshold and exclude self-pairs
+  cor_pairs <- cor_df %>%
+    filter(factor1 != factor2) %>%
+    filter(abs(!!sym(correlation_col)) >= threshold)%>%
+    filter(category_1.factor1 == category_1.factor2)
+  
+  
+  # Initialize a list of variable sets — starting with all variables
+  base_vars <- colnames(data)
+  datasets <- list()
+  
+  # Remove duplicated pairs (i.e., treat (A,B) same as (B,A))
+  cor_pairs_unique <- cor_pairs %>%
+    rowwise() %>%
+    mutate(pair_id = paste(sort(c(factor1, factor2)), collapse = "_")) %>%
+    distinct(pair_id, .keep_all = TRUE)
+  
+  # Generate all possible combinations by choosing one variable per pair to keep
+  pair_options <- cor_pairs_unique %>%
+    mutate(option1 = factor1,
+           option2 = factor2)
+  
+  # Recursive function to generate combinations
+  generate_sets <- function(pairs, current_vars = base_vars) {
+    if (nrow(pairs) == 0) return(list(current_vars))
+    
+    this_pair <- pairs[1, ]
+    rest_pairs <- pairs[-1, ]
+    
+    # Option 1: keep factor1, remove factor2
+    opt1 <- setdiff(current_vars, this_pair$factor2)
+    opt1_sets <- generate_sets(rest_pairs, opt1)
+    
+    # Option 2: keep factor2, remove factor1
+    opt2 <- setdiff(current_vars, this_pair$factor1)
+    opt2_sets <- generate_sets(rest_pairs, opt2)
+    
+    return(c(opt1_sets, opt2_sets))
+  }
+  
+  # Generate all combinations of variables
+  variable_sets <- generate_sets(pair_options)
+  
+  # Convert to unique list (some combinations may be duplicated)
+  unique_variable_sets <- unique(variable_sets)
+  
+  # Build the datasets
+  dataset_list <- map(unique_variable_sets, ~ data[, .x, drop = FALSE])
+  names(dataset_list) <- paste0("uncorrelated_set_", seq_along(dataset_list))
+  
+  return(dataset_list)
+}
+
+
+uncorrelated_datasets <- create_uncorrelated_datasets(per_data_FilteredRedundant, per_data_FilteredRedundant_cor)
+head(uncorrelated_datasets[[1]])
+
+
 
 #############################################################    
 ############# STANDARDIZATION OF CONTINUES VARIABLES -----
@@ -187,7 +483,7 @@ highly_skewed <- highly_skewed[!is.na(highly_skewed)]
 #Log transform the skewed variables (use log1p to avoid issues with 0s)
 per_data_logTransformed <- per_data_Binary
 per_data_logTransformed[highly_skewed] <- 
-lapply(per_data_logTransformed[highly_skewed], function(x) log1p(x))
+  lapply(per_data_logTransformed[highly_skewed], function(x) log1p(x))
 str(per_data_logTransformed)
 
 # === Scale data ===
@@ -196,53 +492,8 @@ per_data_scaled<-per_data_logTransformed
 per_data_scaled[,columns_continuous] = scale(per_data_scaled[,columns_continuous])
 dim(per_data_scaled) #[1] 200 297 #200 farmers; 297 variables retained
 
-#############################################################    
-############# ZERO AND NEAR ZERO VARIANCE PREDICTORS -----
-#############################################################
-#In some situations, the data generating mechanism can create predictors that only have a 
-#single unique value (i.e. a “zero-variance predictor”). For many models (excluding tree-based models),
-#this may cause the model to crash or the fit to be unstable.
-#Similarly, predictors might have only a handful of unique values that occur with very low frequencies.
-## frequency ratio: would be near one for well-behaved predictors and very large for highly-unbalanced data.
-## percent of unique values: is the number of unique values divided by the total number of samples (times 100)
-#that approaches zero as the granularity of the data increases
-nzv <- caret::nearZeroVar(per_data_scaled, saveMetrics= TRUE) 
-nzv # the variables with nzv== TRUE should be remove
 
-nzv_list <- nearZeroVar(per_data_scaled)
-
-nzv_factors<- per_data_scaled[, nzv_list]
-print(nzv_factors)
-view(dfSummary(nzv_factors))
-
-## Remove nzv variables from data
-per_data_Filterednzv<- per_data_scaled[, -nzv_list]
-
-dim(per_data_Filterednzv) #[1] 200 221 #200 farmers; 221 variables retained
-
-b<-as.data.frame(c(colnames(per_data_Filterednzv)))%>%
-  rename("column_name_new"="c(colnames(per_data_Filterednzv))")%>%
-  left_join(factors_list%>%select(category_1,column_name_new), by="column_name_new")%>%
-  group_by(category_1) %>%
-  mutate(column_name_new_count = n()) %>%
-  tally()%>%filter(category_1!="xxx")
-
-ggplot(data=b, aes(x=n, y=category_1, fill= category_1)) +
-  geom_bar(stat="identity")+
-  geom_text(aes(label = n), 
-            hjust = -0.2, # Adjust position of the label to the right of the bar
-            size = 4) +
-  theme_minimal() +
-  labs(x = "Number of factors", y = "Category") +
-  theme(legend.position = "none")
-
-dim(per_data_Filterednzv) #[1] 200 221 #200 farmers; 222 variables retained
-
-
-#write.csv(per_data_Filterednzv,"per_data_Filterednzv.csv",row.names=FALSE)
-
-
-####
+####----
 agroecologycal_adherance<- read.csv("C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Peru/peru_data_clean/per/per_agroecology_score.csv")%>%
   mutate(score_agroecology_module=as.numeric(score_agroecology_module))%>%
 names(agroecologycal_adherance)
@@ -319,134 +570,6 @@ length(which(res$W[,7] > 0)) #4 principles
 which(res$W[,7] > 0)
 
 
-#############################################################
-############# Sparse weighted k-means for mixed data -----
-#############################################################
-#https://cran.r-project.org/web/packages/vimpclust/vignettes/sparsewkm.html
-#https://cran.r-project.org/web/packages/vimpclust/vimpclust.pdf
-#Sparse and group-sparse clustering for mixed data An illustration of the vimpclust package
-install.packages("vimpclust")
-library(vimpclust)
-head(HDdata)
-str(HDdata)
-names(per_data_sewkm)
-per_data_sewkm<- per_data_Filterednzv%>%
-  select(-kobo_farmer_id)%>%
-  select(crop)
-rownames(per_data_sewkm) <- per_data_Filterednzv$kobo_farmer_id
-
-str(per_data_sewkm)
-# === Training the sparsewkm function ===
-res <- sparsewkm(X = per_data_sewkm[, !(names(per_data_sewkm) == "dfs_adoption_binary")], centers = 3)
-res$W[,1:5]
-plot(res, what="weights.features")
-
-avg_weights <- rowMeans(res$W)
-top_features <- sort(avg_weights, decreasing = TRUE)[1:30]
-library(ggplot2)
-
-ggplot(data.frame(
-  Feature = names(top_features),
-  Weight = top_features
-), aes(x = reorder(Feature, Weight), y = Weight)) +
-  geom_col() +
-  coord_flip() +
-  labs(title = "Top 20 Features by Average SparseWKM Weight",
-       x = "Feature", y = "Average Weight") +
-  theme_minimal()
-
-plot(res, what="weights.levels", Which=c(1:30))
-plot(res, what="weights.levels", Which=c(31:40))
-
-#Additional plots
-#The number of selected features and the number of selected levels for a given value of 
-#the regularization parameter lambda provide valuable information. These two criteria may 
-#be illustrated using options what=sel.features and what=sel.levels in the plot function.
-
-plot(res, what="sel.features")
-plot(res, what="sel.levels")
-#The two curves are very similar and show how the number of selected features 
-#relevant for the clustering rapidly decreases with lambda.
-#Clustering may also be assessed using criteria based on the evolution of the explained variance.
-#The latter is computed as the ratio between the between-class variance and the global variance
-#in the data, and represents the ratio of information explained by the clustering. 
-#The explained variance may be computed on all features used for clustering, without taking the weights into account,
-#or in a weighted fashion, by taking the computed weights into account and thus suppressing all features discarded 
-#by the algorithm. In the latter case and for large lambda, the explained weighted variance results in being computed 
-#using one feature only, maxhr.
-
-plot(res, what="expl.var")
-plot(res, what="w.expl.var")
-
-#These two criteria, combined with the number of selected features, may be used to select the 
-#appropriate regularization parameter lambda. A good choice for lambda should preserve a high percentage
-#of variance explained by the clustering, while discarding a large number of features. 
-#This amounts to a trade-off between the quality of the model and its parcimony.
-
-
-# === Comparing the clustering with the “ground truth” ===
-
-library(mclust)
-sapply(c(1,7,20), function(x) {adjustedRandIndex(res$cluster[,x],per_data_sewkm$dfs_adoption_binary)})
-#Output: 0.2585535 0.2513924 0.1329980
-#Lambda 1 (lowest penalty): ARI = 0.2585535
-#Lambda 7 (moderate penalty): ARI = 0.2513924
-#Lambda 12 (high penalty): ARI = 0.1329980
-#This demonstrates a decline in Adjusted Rand Index (ARI) as lambda increases, i.e., as regularization increases and fewer features are kept.
-
-table(per_data_sewkm$dfs_adoption_binary, res$cluster[,1])
-#   1  2  3
-#0 70 54 20
-#1  2 3  51
-
-#Correct assignments (assuming cluster 3 = adopters): 70 + 51 = 121
-#Total = 200
-#Accuracy ≈ 121 / 200 = 60.5%
-
-table(per_data_sewkm$dfs_adoption_binary, res$cluster[,7])
-#    1  2  3
-#0  20 55 69
-#1  50  5  1
-table(per_data_sewkm$dfs_adoption_binary, res$cluster[,20])
-#   1  2  3
-#0 69 49 29
-#1  5 10 41
-
-# === Get the list of factors included in each lamba ===
-#Cluster compostion
-info_clust(res, 1, X = per_data_sewkm)
-length(which(res$W[,1] > 0)) #218 factors
-length(which(res$W[,2] > 0)) #165 factors
-length(which(res$W[,3] > 0)) #120 factors
-length(which(res$W[,5] > 0)) #67 factors
-length(which(res$W[,6] > 0)) #52 factors
-which(res$W[,6] > 0)
-length(which(res$W[,10] > 0)) #16 factors
-length(which(res$W[,12] > 0)) #4 factors
-which(res$W[,12] > 0)
-
-# Assuming 'res' is your sparsewkm result object
-
-# Extract the weight matrix
-W <- res$W
-
-# Initialize an empty list to store selected features per lambda
-selected_features_list <- lapply(1:ncol(W), function(i) {
-  selected <- rownames(W)[W[, i] > 0]
-  data.frame(
-    lambda = paste0("lambda_", i),
-    feature = selected,
-    stringsAsFactors = FALSE
-  )
-})
-
-# Combine into a single data frame
-selected_features_df <- do.call(rbind, selected_features_list)
-
-# View or save the data
-head(selected_features_df)
-# write.csv(selected_features_df, "selected_features_by_lambda.csv", row.names = FALSE)
-
 
 #############################################################    
 #############FEATURE SELECTION MIXOMICS -----
@@ -483,492 +606,6 @@ selectVar(splsda.result, comp = 2)$name
 plotLoadings(splsda.result, method = 'mean', contrib = 'max')  
 
  
-#############################################################    
-############# CluMix -----
-#############################################################  
-#https://github.com/cran/CluMix
-library(cluster)  # for daisy()
-load("CluMix/mixdata.rda")
-str(mixdata)
-#CHECK tengo que transformar los ordinal variables a Ord.factor mirar function dist.subjects
-
-per_data_CluMix<- per_data_Filterednzv%>%
-  select(-kobo_farmer_id)
-
-generate_daisy_type <- function(df) {
-  # Initialize type lists
-  type_list <- list(asymm = c(), ordered = c(), numeric = c())
-  
-  for (colname in names(df)) {
-    col <- df[[colname]]
-    
-    if (is.factor(col)) {
-      n_levels <- nlevels(col)
-      if (n_levels == 2) {
-        type_list$asymm <- c(type_list$asymm, colname)
-      } else if (n_levels > 2) {
-        type_list$ordered <- c(type_list$ordered, colname)
-      }
-    } else if (is.numeric(col)) {
-      type_list$numeric <- c(type_list$numeric, colname)
-    }
-  }
-  
-  # Remove any empty types
-  type_list <- type_list[lengths(type_list) > 0]
-  
-  return(type_list)
-}
-rownames(per_data_CluMix) <- per_data_Filterednzv$kobo_farmer_id
-
-type_spec <- generate_daisy_type(per_data_CluMix)
-type_spec
-
-sort(unique(per_data_CluMix$male_land_tenure_hold_proportion))
-
-# === Distance matrix ===
-#https://www.rdocumentation.org/packages/cluster/versions/2.1.8/topics/daisy
-# For clustering farmes using mixed type data variables
-###--- Gower dissimilarity matrix
-per_gower_dist <- daisy(per_data_CluMix, metric = "gower", type = type_spec)
-colnames(per_data_CluMix)[190]
-per_gower_dist
-#TO CHECK hay un problema con male_land_tenure_hold_proportion solo tiene valores de 0 y 100
-
-
-source("CluMix/similarity.subjects.r")
-
-per_gower_dist2 <- dist.subjects(per_data_CluMix)
-per_gower_dist2
-
-per_hclust<- dendro.subjects(per_data_CluMix)
-plot(per_hclust)
-
-# === Cluster farmers ===
-#https://r-charts.com/part-whole/hclust/
-#Group farmers by similarity in the structure of their responses.
-###--- Hierarchical clustering ---
-per_hclust <- hclust(per_gower_dist, method = "ward.D2")
-per_hclust
-plot(per_hclust) # Dendrogram
-rect.hclust(per_hclust, k = 2) # Dendrogram with 4 clusters
-
-# Cut the dendrogram into k clusters (e.g., 3 clusters)
-k <- 3
-per_clusters <- cutree(per_hclust, k = k)
-table(per_clusters)
-
-per_data<-per_data_CluMix
-per_data$cluster <- per_clusters[rownames(per_data)]
-
-
-table(per_data$cluster, per_data$dfs_adoption_binary)
-
-
-###--- PAM clustering (if you want to pre-specify k) ---
-pam_result
-
-# === Cluster factors ===
-library(extracat)
-clumix_files <- list.files("CluMix", pattern = "\\.R$", full.names = TRUE)
-sapply(clumix_files, source)
-source("CluMix/distcor.r")
-source("CluMix/distmap.r")
-
-###--- CluMix-ama ---
-#The CluMix-ama (association measures approach) method consists in combination of different similarity measures. A novel 
-#strategy based on category reordering is suggested for measuring the association between a 
-#multi-categorical and any other type of variable. 
-
-per_CluMixama <- dist.variables(per_data_CluMix, method="association")
-distmap(per_data_CluMix, what="subjects")
-
-heatmap(as.matrix(per_CluMixama))
-
-###--- CluMix-dcor ---
-#The CluMix-dcor (distance correlation) approach is based on a novel similarity
-#measure, which is derived using the concept of generalized distance correlations [9].
-per_CluMixdcor <- dist.variables(per_data_CluMix, method="distcor")
-distmap(per_data_CluMix, what="variables", method="distcor")
-distmap(per_data_CluMix, what="subjects", method="distcor")
-
-heatmap(as.matrix(per_CluMixdcor))
-
-
-
-
-
-
-
-#############################################################    
-############# MFA/HCPC -----
-#############################################################
-library(FactoMineR)
-library(factoextra)
-
-#Goal: Reduce high-dimensional grouped factors into a smaller number of 
-#interpretable axes (principal components), while considering the 
-#structure of groups (e.g., capitals, context, behavior).
-
-# === Data format for analysis ===
-per_factors_list <- as.data.frame(colnames(per_data_Filterednzv))%>%
-  rename("column_name_new"= "colnames(per_data_Filterednzv)")%>%
-  left_join(factors_category)%>%
-  select(-category_2)
-
-per_factors_list$category_1[grepl("^crop_type", per_factors_list$column_name_new)] <- "Farm management characteristics"
-per_factors_list$category_1[grepl("^district.dist", per_factors_list$column_name_new)] <- "P&I context_general"
-per_factors_list$category_1[grepl("^marital_status.", per_factors_list$column_name_new)] <- "Human capital"
-per_factors_list$category_1[grepl("^read_write.", per_factors_list$column_name_new)] <- "Human capital"
-per_factors_list$category_1[grepl("^year_assessment.", per_factors_list$column_name_new)] <- "Biophysical context"
-per_factors_list<-per_factors_list%>%filter(category_1!="xxx")%>%filter(category_1!="outcome")
-head(per_factors_list)
-length(unique(per_factors_list$column_name_new)) #222 factors
-sort(unique(per_factors_list$category_1)) #222 factors
-
-# I converted categorical ordinal variables with more than 2 factor levels to numeric
-#since MFA transform each level to a binary column
-per_data_mfa<-per_data_Filterednzv%>%
-  dplyr::select(-dfs_adoption_binary)%>%
-  mutate(across(where(~ is.factor(.) && nlevels(.) > 2),~ as.numeric(.)))%>%
-  mutate(across(
-    where(~ is.factor(.) && all(levels(.) %in% c("0", "1"))),
-    ~ factor(ifelse(. == "1", "yes", "no"), levels = c("no", "yes"))
-  ))
-str(per_data_mfa)
-
-sort(unique(per_data_mfa$main_crops_annual ))
-
-str(per_data_mfa)
-rownames(per_data_mfa) <- per_data_mfa$kobo_farmer_id
-
-# Step 2: Create cleaned group definitions (handling mixed types)
-group_def <- per_factors_list %>%
-  filter(!is.na(category_1),
-         column_name_new %in% names(per_data_mfa)) %>%
-  rowwise() %>%
-  mutate(var_class = class(per_data_mfa[[column_name_new]])[1]) %>%
-  ungroup() %>%
-  mutate(group_type = case_when(
-    var_class == "factor" ~ "n",
-    var_class %in% c("numeric", "integer") ~ "s",
-    TRUE ~ "other"
-  )) %>%
-  mutate(category_1_type = paste0(category_1, " (", group_type, ")")) %>%
-  group_by(category_1_type, group_type) %>%
-  summarise(vars = list(column_name_new), .groups = "drop") %>%
-  mutate(group_size = lengths(vars))
-
-group_def
-
-# Extract only grouped variables
-mfa_data <- per_data_mfa[, unlist(group_def$vars)]
-
-# Prepare MFA inputs
-group_sizes <- group_def$group_size
-group_types <- group_def$group_type
-group_names <- group_def$category_1_type
-group_names
-group_types
-
-# === MFA - Multiple Factor Analysis  ===
-#https://www.sthda.com/english/articles/31-principal-component-methods-in-r-practical-guide/116-mfa-multiple-factor-analysis-in-r-essentials/#google_vignette
-
-set.seed(123)
-res_mfa <- MFA(mfa_data,
-               group = group_sizes,
-               type = group_types,
-               name.group = group_names,
-               #num.group.sup = group_supplementary_indices,
-               ncp = 5,
-               graph = FALSE)
-res_mfa
-
-#see how much variation is explain
-res_mfa$eig
-fviz_screeplot(res_mfa, addlabels = TRUE, ncp = 5)
-
-mfa_vars <- res_mfa$call$X
-mfa_vars
-cat_vars_mfa <- names(mfa_vars)[sapply(mfa_vars, is.factor)]
-cat_vars_mfa
-
-plot(res_mfa,choix="ind",partial="all")
-
-var <- get_mfa_var(res_mfa)
-var$coord
-
-important_vars_dim1 <- which(abs(var$coord[,1]) > 0.5)
-important_vars_dim1
-important_vars_dim2 <- which(abs(var$coord[,2]) > 0.5)
-important_vars_dim2
-important_vars_dim3 <- which(abs(var$coord[,3]) > 0.5)
-important_vars_dim3
-
-head(res_mfa$ind$coord)  # Coordinates of individuals (farmers)
-res_mfa$quali.var$coord       # for qualitative (categorical) variables
-res_mfa$quanti.var$coord      # for quantitative (numeric) variables
-res_mfa$quali.var$contrib     # contribution to axes
-res_mfa$quanti.var$contrib
-fviz_contrib(res_mfa, "group", axes = 1)
-fviz_contrib(res_mfa, "group", axes = 2)
-fviz_contrib(res_mfa, "group", axes = 3)
-fviz_contrib(res_mfa, "group", axes = 4)
-
-fviz_contrib(res_mfa, "quanti.var", axes = 1)
-fviz_contrib(res_mfa, "quanti.var", axes = 2)
-fviz_contrib(res_mfa, "quanti.var", axes = 3)
-fviz_contrib(res_mfa, "quanti.var", axes = 4)
-
-fviz_contrib(res_mfa, "quali.var", axes = 1)
-fviz_contrib(res_mfa, "quali.var", axes = 2)
-fviz_contrib(res_mfa, "quali.var", axes = 3)
-fviz_contrib(res_mfa, "quali.var", axes = 4)
-
-# === HCPC – Hierarchical Clustering on Principal Components  ===
-#https://www.sthda.com/english/articles/31-principal-component-methods-in-r-practical-guide/117-hcpc-hierarchical-clustering-on-principal-components-essentials/
-#Goal: Identify groups (clusters) of farmers based on their positions
-#in the reduced MFA space (i.e., their profiles).
-res.hcpc <- HCPC(res_mfa, graph = FALSE, nb.clust = 3 )
-res.hcpc$desc.var
-
-#number of optimal clusters estimated
-res.hcpc$call$t$nb.clust
-
-fviz_dend(res.hcpc, 
-          cex = 0.7,                     # Label size
-          palette = "jco",               # Color palette see ?ggpubr::ggpar
-          rect = TRUE, 
-          rect_fill = TRUE, # Add rectangle around groups
-          rect_border = "jco",           # Rectangle color
-          labels_track_height = 0.8      # Augment the room for labels
-)
-
-fviz_cluster(res.hcpc,
-             repel = TRUE,            # Avoid label overlapping
-             show.clust.cent = TRUE, # Show cluster centers
-             palette = "jco",         # Color palette see ?ggpubr::ggpar
-             ggtheme = theme_minimal(),
-             main = "Factor map")
-
-plot(res.hcpc, choice = "3D.map")
-head(res.hcpc$data.clust, 10)
-
-c1_continues_var<- as.data.frame(res.hcpc$desc.var$quanti[1])
-c1_continues_var
-c1_categorical_var<- as.data.frame(res.hcpc$desc.var$quali[1])
-c1_categorical_var
-c2_continues_var<- as.data.frame(res.hcpc$desc.var$quanti[2])
-c2_categorical_var<- as.data.frame(res.hcpc$desc.var$quali[2])
-c2_categorical_var
-c3_continues_var<- as.data.frame(res.hcpc$desc.var$quanti[3])
-c3_categorical_var<- as.data.frame(res.hcpc$desc.var$quali[3])
-c3_categorical_var
-table(mfa_data$gender, res.hcpc$data.clust$clust) |> chisq.test()
-summary(mfa_data$gender)
-
-
-res.hcpc$desc.axes$quanti
-res.hcpc$desc.ind$para
-
-# Extract farmer IDs per cluster
-head(res.hcpc$data.clust)
-
-
-# Add IDs if not already included
-res.hcpc$data.clust$kobo_farmer_id <- rownames(res.hcpc$data.clust)
-res.hcpc
-
-
-# Extract cluster info and farmer IDs
-cluster_assignments <- res.hcpc$data.clust %>%
-  dplyr::select(clust) %>%
-  dplyr::mutate(kobo_farmer_id = rownames(res.hcpc$data.clust))
-cluster_assignments
-
-# Join with your main dataset
-per_data_with_HCPCcluster <- per_data_Filterednzv %>%
-  left_join(cluster_assignments, by = "kobo_farmer_id")
-
-adoption_by_HCPCcluster <- per_data_with_HCPCcluster %>%
-  group_by(clust, dfs_adoption_binary) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  group_by(clust) %>%
-  mutate(percent = round(100 * n / sum(n), 1))
-
-adoption_by_HCPCcluster
-
-library(ggplot2)
-
-ggplot(adoption_by_HCPCcluster, aes(x = factor(clust), y = percent, fill = dfs_adoption_binary)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  labs(x = "Cluster", y = "DFS Adoption (%)", fill = "Adoption",
-       title = "DFS Adoption across Farmer Clusters: MFA/HCPC") +
-  theme_minimal()
-
-
-
-#############################################################    
-
-
-
-#############################################################    
-############# iClusterBayes BAYESIAN CLUSTER -----
-#############################################################
-# === Data format for analysis ===
-dim(per_data_Filterednzv)
-library(tibble)
-per_data_icluster<-per_data_Filterednzv%>%
-  dplyr::select(-dfs_adoption_binary)%>%
-  mutate(across(where(~ is.factor(.) && nlevels(.) > 2),~ as.numeric(.)))%>%
-  {rownames(.) <- NULL; .} %>%
-  tibble::column_to_rownames(var = "kobo_farmer_id")
-
-
-per_data_icluster_continuous<-as.matrix(
-  per_data_icluster %>%
-  select(where(is.numeric)))
-str(per_data_icluster_continuous)
-all(rownames(per_data_icluster_count)==rownames(per_data_icluster_continuous))
-#[1] TRUE
-
-per_data_icluster_binary<-as.matrix(
-  per_data_icluster %>%
-  select(where(is.factor))%>%
-    mutate(across(everything(), ~ as.integer(as.character(.)))))
-str(per_data_icluster_binary)
-all(rownames(per_data_icluster_binary)==rownames(per_data_icluster_binary))
-#[1] TRUE
-
-ncol(per_data_icluster_continuous) + 
-  ncol(per_data_icluster_binary)
-
-# === iClusterBayes ===
-library(iClusterPlus)
-library(parallel)
-iManual()
-
-set.seed(123) 
-date()
-#[1] "Fri Mar 28 00:45:27 2025"
-
-## Model tuning using tune.iClusterBayes
-tune.clusterBayes = tune.iClusterBayes(cpus=1,dt1=per_data_icluster_continuous, dt2=per_data_icluster_binary, 
-                               type=c("gaussian","binomial"),#,"gaussian","binomial"),
-                            K=1:6,n.burnin=18000,
-                               n.draw=12000,prior.gamma=c(0.5,0.5),#0.5),
-                            sdev=0.05,thin=3)
-
-save.image(file="tune.clusterBayes.RData") 
-load("tune.clusterBayes.RData")
-
-## Model selection
-tune.clusterBayes
-
-#BIC or deviance ratio may be used as a criterion to select an optimal value for k, the 
-#parameter that deﬁnes the number of clusters.
-allBIC = NULL
-devratio = NULL
-nK = length(tune.clusterBayes$fit)
-
-for(i in 1:nK){
-   allBIC = c(allBIC,tune.clusterBayes$fit[[i]]$BIC)
-   devratio = c(devratio,tune.clusterBayes$fit[[i]]$dev.ratio) 
-   }
-
-#From the BIC and deviance ratio plots, we see that k=3 is an optimal solution. However, if 
-#the data are noisy, the deviance ratio may keep increasing and the BIC may keep decreasing 
-#when k increases.
-par(mar=c(4.0,4.0,0.5,0.5),mfrow=c(1,2))
-plot(1:nK, allBIC,type="b",xlab="k",ylab="BIC")#,pch=c(1,1,19,1,1,1))
-plot(1:nK,devratio,type="b",xlab="k",ylab="Deviance ratio")#,pch=c(1,1,19,1,1,1))
-
-#Choose the K where: 
-#- BIC is minimized
-#- Deviance ratio begins to level off (the "elbow")
-#k=3
-best.cluster = tune.clusterBayes$fit[[3]]$clusters
-best.cluster
-table(best.cluster)
-
-best.fit<-tune.clusterBayes$fit[[2]]
-best.fit
-
-# 2. Extract cluster assignments
-cluster_assignments <- best.fit$clusters
-
-# 3. Combine with farmer IDs
-farmer_iClusterBayes <- data.frame(
-  kobo_farmer_id = rownames(per_data_icluster),  # matches your dataset
-  iClusterBayes = cluster_assignments
-)
-
-# 4. Split into a list of farmers per cluster
-farmers_by_cluster <- split(farmer_clusters$FarmerID, farmer_clusters$Cluster)
-
-
-per_data_with_iClusterBayes <- per_data_Filterednzv %>%
-  left_join(farmer_iClusterBayes, by = "kobo_farmer_id")
-
-adoption_by_iClusterBayes <- per_data_with_iClusterBayes %>%
-  group_by(iClusterBayes, dfs_adoption_binary) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  group_by(iClusterBayes) %>%
-  mutate(percent = round(100 * n / sum(n), 1))
-
-adoption_by_iClusterBayes
-
-
-ggplot(adoption_by_iClusterBayes, aes(x = factor(iClusterBayes), y = percent, fill = dfs_adoption_binary)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  labs(x = "Cluster", y = "DFS Adoption (%)", fill = "Adoption",
-       title = "DFS Adoption across Farmer Clusters: iClusterBayes") +
-  theme_minimal()
-
-## Feature Importance from Posterior Probabilities
-
-threshold <- 0.9 #0 (not important at all) → 1 (very important)
-beta_pp <- best.fit$beta.pp
-
-# Continuous variables
-top_continuous <- which(beta_pp[[1]] > threshold)
-top_continuous
-top_continuous_features <- colnames(per_data_icluster_continuous)[top_continuous]
-top_continuous_features
-
-# Binary variables
-top_binary <- which(beta_pp[[2]] > threshold)
-top_binary_features <- colnames(per_data_icluster_binary)[top_binary]
-top_binary_features
-
-# Top N continuous variables
-top_n <- 60
-top_cont_df <- data.frame(
-  Feature = colnames(per_data_icluster_continuous),
-  PosteriorProb = beta_pp[[1]]
-) |> 
-  dplyr::arrange(desc(PosteriorProb)) |> 
-  head(top_n)
-
-# Top N binary variables
-top_bin_df <- data.frame(
-  Feature = colnames(per_data_icluster_binary),
-  PosteriorProb = beta_pp[[2]]
-) |> 
-  dplyr::arrange(desc(PosteriorProb)) |> 
-  head(top_n)
-
-top_cont_df
-top_bin_df
-
-
-
-
-
-
-#############################################################    
-############# MOFA2 -----
-#############################################################
 
 
 

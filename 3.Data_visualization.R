@@ -13,6 +13,8 @@ per_data_clean<- read.csv("per_data_clean.csv",sep=",")
 global_survey<-read.csv("global_survey.csv",sep=",")
 per_global_choices<-read.csv("per_global_choices.csv",sep=",")
 factors_list <- read_excel("factors_list.xlsx",sheet = "factors_list")%>%
+  filter(category_1!="xxx")
+
   filter(is.na(remove))
 factors_list$category_1[grepl("^Farm management characteristics", factors_list$category_1)] <- "Farm management characteristics"
 factors_list$category_1[grepl("^Financial capital", factors_list$category_1)] <- "Financial capital"
