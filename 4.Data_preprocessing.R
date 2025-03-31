@@ -167,7 +167,7 @@ dim(per_data_Binary) #[1] 200 297 #200 farmers; 297 variables retained
 #############################################################    
 ############# STANDARDIZATION OF CONTINUES VARIABLES -----
 #############################################################
-#library(e1071)
+library(e1071)
 columns_continuous <- names(per_data_Binary)[sapply(per_data_Binary, is.numeric)]
 columns_continuous
 
@@ -192,7 +192,7 @@ str(per_data_logTransformed)
 
 # === Scale data ===
 # Center (mean = 0) and scale (sd = 1) the continuous variables:
-per_data_scaled<-per_data_Binary
+per_data_scaled<-per_data_logTransformed
 per_data_scaled[,columns_continuous] = scale(per_data_scaled[,columns_continuous])
 dim(per_data_scaled) #[1] 200 297 #200 farmers; 297 variables retained
 
@@ -240,6 +240,365 @@ dim(per_data_Filterednzv) #[1] 200 221 #200 farmers; 222 variables retained
 
 
 #write.csv(per_data_Filterednzv,"per_data_Filterednzv.csv",row.names=FALSE)
+
+
+####
+agroecologycal_adherance<- read.csv("C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Peru/peru_data_clean/per/per_agroecology_score.csv")%>%
+  mutate(score_agroecology_module=as.numeric(score_agroecology_module))%>%
+names(agroecologycal_adherance)
+str(agroecologycal_adherance)
+agroecologycal_adherance<-agroecologycal_adherance%>%
+  group_by(kobo_farmer_id,theme)%>%
+  mutate(median_score=median(score_agroecology_module))%>%
+  ungroup()
+library(tidyr)
+agroecology_principles <- agroecologycal_adherance %>%
+  group_by(kobo_farmer_id, theme) %>%
+  summarise(median_score = median(score_agroecology_module, na.rm = TRUE), .groups = "drop") %>%
+  mutate(theme = paste0("agroecology_principle_", theme)) %>%
+  pivot_wider(names_from = theme, values_from = median_score)%>%
+  ungroup()%>%
+  dplyr::select(-kobo_farmer_id)
+agroecology_principles[is.na(agroecology_principles)] <- 0
+
+
+# Optional: view the result
+head(agroecology_wide)
+length(agroecology_wide$kobo_farmer_id)
+str(agroecology_wide)
+res <- sparsewkm(X = agroecology_principles, centers = 2)
+res$W[,1:5]
+plot(res, what="weights.features")
+
+plot(res, what="expl.var")
+plot(res, what="w.expl.var")
+
+table(per_data_sewkm$dfs_adoption_binary, res$cluster[,1])
+table(per_data_sewkm$dfs_adoption_binary, res$cluster[,7])
+
+table(per_data_sewkm$dfs_adoption_binary, res$cluster[,12])
+length(which(res$W[,7] > 0)) #4 principles
+which(res$W[,7] > 0)
+
+agroecology_question <- agroecologycal_adherance %>%
+  group_by(kobo_farmer_id, name_question_recla) %>%
+  summarise(median_score = median(score_agroecology_module, na.rm = TRUE), .groups = "drop") %>%
+  mutate(name_question_recla = paste0("agroecology_question", name_question_recla)) %>%
+  pivot_wider(id_cols = kobo_farmer_id,names_from = name_question_recla, values_from = median_score)%>%
+  ungroup()%>%
+  dplyr::select(-kobo_farmer_id)
+agroecology_question[is.na(agroecology_question)] <- 0
+str(agroecology_question)
+
+nzv_list2 <- caret::nearZeroVar(agroecology_question, saveMetrics = TRUE)
+
+
+
+nzv_list2 <- nearZeroVar(agroecology_question)  # This returns a numeric vector
+nzv_factors <- agroecology_question[, nzv_list2]
+
+nzv_factors<- agroecology_question[, nzv_list2]
+print(nzv_factors)
+view(dfSummary(nzv_factors))
+
+## Remove nzv variables from data
+agroecology_question<- agroecology_question[, -nzv_list2]
+
+res2 <- sparsewkm(X = agroecology_question, centers = 2)
+res$W[,1:5]
+plot(res, what="weights.features")
+
+plot(res, what="expl.var")
+plot(res, what="w.expl.var")
+
+table(per_data_sewkm$dfs_adoption_binary, res$cluster[,1])
+table(per_data_sewkm$dfs_adoption_binary, res$cluster[,7])
+
+table(per_data_sewkm$dfs_adoption_binary, res$cluster[,12])
+length(which(res$W[,7] > 0)) #4 principles
+which(res$W[,7] > 0)
+
+
+#############################################################
+############# Sparse weighted k-means for mixed data -----
+#############################################################
+#https://cran.r-project.org/web/packages/vimpclust/vignettes/sparsewkm.html
+#https://cran.r-project.org/web/packages/vimpclust/vimpclust.pdf
+#Sparse and group-sparse clustering for mixed data An illustration of the vimpclust package
+install.packages("vimpclust")
+library(vimpclust)
+head(HDdata)
+str(HDdata)
+names(per_data_sewkm)
+per_data_sewkm<- per_data_Filterednzv%>%
+  select(-kobo_farmer_id)%>%
+  select(crop)
+rownames(per_data_sewkm) <- per_data_Filterednzv$kobo_farmer_id
+
+str(per_data_sewkm)
+# === Training the sparsewkm function ===
+res <- sparsewkm(X = per_data_sewkm[, !(names(per_data_sewkm) == "dfs_adoption_binary")], centers = 3)
+res$W[,1:5]
+plot(res, what="weights.features")
+
+avg_weights <- rowMeans(res$W)
+top_features <- sort(avg_weights, decreasing = TRUE)[1:30]
+library(ggplot2)
+
+ggplot(data.frame(
+  Feature = names(top_features),
+  Weight = top_features
+), aes(x = reorder(Feature, Weight), y = Weight)) +
+  geom_col() +
+  coord_flip() +
+  labs(title = "Top 20 Features by Average SparseWKM Weight",
+       x = "Feature", y = "Average Weight") +
+  theme_minimal()
+
+plot(res, what="weights.levels", Which=c(1:30))
+plot(res, what="weights.levels", Which=c(31:40))
+
+#Additional plots
+#The number of selected features and the number of selected levels for a given value of 
+#the regularization parameter lambda provide valuable information. These two criteria may 
+#be illustrated using options what=sel.features and what=sel.levels in the plot function.
+
+plot(res, what="sel.features")
+plot(res, what="sel.levels")
+#The two curves are very similar and show how the number of selected features 
+#relevant for the clustering rapidly decreases with lambda.
+#Clustering may also be assessed using criteria based on the evolution of the explained variance.
+#The latter is computed as the ratio between the between-class variance and the global variance
+#in the data, and represents the ratio of information explained by the clustering. 
+#The explained variance may be computed on all features used for clustering, without taking the weights into account,
+#or in a weighted fashion, by taking the computed weights into account and thus suppressing all features discarded 
+#by the algorithm. In the latter case and for large lambda, the explained weighted variance results in being computed 
+#using one feature only, maxhr.
+
+plot(res, what="expl.var")
+plot(res, what="w.expl.var")
+
+#These two criteria, combined with the number of selected features, may be used to select the 
+#appropriate regularization parameter lambda. A good choice for lambda should preserve a high percentage
+#of variance explained by the clustering, while discarding a large number of features. 
+#This amounts to a trade-off between the quality of the model and its parcimony.
+
+
+# === Comparing the clustering with the “ground truth” ===
+
+library(mclust)
+sapply(c(1,7,20), function(x) {adjustedRandIndex(res$cluster[,x],per_data_sewkm$dfs_adoption_binary)})
+#Output: 0.2585535 0.2513924 0.1329980
+#Lambda 1 (lowest penalty): ARI = 0.2585535
+#Lambda 7 (moderate penalty): ARI = 0.2513924
+#Lambda 12 (high penalty): ARI = 0.1329980
+#This demonstrates a decline in Adjusted Rand Index (ARI) as lambda increases, i.e., as regularization increases and fewer features are kept.
+
+table(per_data_sewkm$dfs_adoption_binary, res$cluster[,1])
+#   1  2  3
+#0 70 54 20
+#1  2 3  51
+
+#Correct assignments (assuming cluster 3 = adopters): 70 + 51 = 121
+#Total = 200
+#Accuracy ≈ 121 / 200 = 60.5%
+
+table(per_data_sewkm$dfs_adoption_binary, res$cluster[,7])
+#    1  2  3
+#0  20 55 69
+#1  50  5  1
+table(per_data_sewkm$dfs_adoption_binary, res$cluster[,20])
+#   1  2  3
+#0 69 49 29
+#1  5 10 41
+
+# === Get the list of factors included in each lamba ===
+#Cluster compostion
+info_clust(res, 1, X = per_data_sewkm)
+length(which(res$W[,1] > 0)) #218 factors
+length(which(res$W[,2] > 0)) #165 factors
+length(which(res$W[,3] > 0)) #120 factors
+length(which(res$W[,5] > 0)) #67 factors
+length(which(res$W[,6] > 0)) #52 factors
+which(res$W[,6] > 0)
+length(which(res$W[,10] > 0)) #16 factors
+length(which(res$W[,12] > 0)) #4 factors
+which(res$W[,12] > 0)
+
+# Assuming 'res' is your sparsewkm result object
+
+# Extract the weight matrix
+W <- res$W
+
+# Initialize an empty list to store selected features per lambda
+selected_features_list <- lapply(1:ncol(W), function(i) {
+  selected <- rownames(W)[W[, i] > 0]
+  data.frame(
+    lambda = paste0("lambda_", i),
+    feature = selected,
+    stringsAsFactors = FALSE
+  )
+})
+
+# Combine into a single data frame
+selected_features_df <- do.call(rbind, selected_features_list)
+
+# View or save the data
+head(selected_features_df)
+# write.csv(selected_features_df, "selected_features_by_lambda.csv", row.names = FALSE)
+
+
+#############################################################    
+#############FEATURE SELECTION MIXOMICS -----
+#############################################################
+## install BiocManager if not installed 
+library(mixOmics) # import the mixOmics library
+X <- per_data_Filterednzv%>%
+  dplyr::select(-dfs_adoption_binary,-kobo_farmer_id)%>%
+mutate(across(everything(), as.numeric))
+X<-as.matrix(X)
+class(X)
+Y <- per_data_Filterednzv$dfs_adoption_binary
+
+Y <- as.numeric(as.character(per_data_Filterednzv$dfs_adoption_binary))
+Y
+
+#PLS-DA
+result.plsda.srbct <- plsda(X, Y) # run the method
+plotIndiv(result.plsda.srbct) # plot the samples
+plotVar(result.plsda.srbct) # plot the variables
+plotLoadings(result.plsda.srbct, method = 'mean', contrib = 'max')  
+
+selectVar(result.plsda.srbct, comp = 2)$name 
+
+
+#sPLS-DA
+splsda.result <- splsda(X, Y, keepX = c(60,40)) # run the method
+plotIndiv(splsda.result) # plot the samples
+plotVar(splsda.result) # plot the variables
+
+# extract the variables used to construct the first latent component
+selectVar(splsda.result, comp = 2)$name 
+# depict weight assigned to each of these variables
+plotLoadings(splsda.result, method = 'mean', contrib = 'max')  
+
+ 
+#############################################################    
+############# CluMix -----
+#############################################################  
+#https://github.com/cran/CluMix
+library(cluster)  # for daisy()
+load("CluMix/mixdata.rda")
+str(mixdata)
+#CHECK tengo que transformar los ordinal variables a Ord.factor mirar function dist.subjects
+
+per_data_CluMix<- per_data_Filterednzv%>%
+  select(-kobo_farmer_id)
+
+generate_daisy_type <- function(df) {
+  # Initialize type lists
+  type_list <- list(asymm = c(), ordered = c(), numeric = c())
+  
+  for (colname in names(df)) {
+    col <- df[[colname]]
+    
+    if (is.factor(col)) {
+      n_levels <- nlevels(col)
+      if (n_levels == 2) {
+        type_list$asymm <- c(type_list$asymm, colname)
+      } else if (n_levels > 2) {
+        type_list$ordered <- c(type_list$ordered, colname)
+      }
+    } else if (is.numeric(col)) {
+      type_list$numeric <- c(type_list$numeric, colname)
+    }
+  }
+  
+  # Remove any empty types
+  type_list <- type_list[lengths(type_list) > 0]
+  
+  return(type_list)
+}
+rownames(per_data_CluMix) <- per_data_Filterednzv$kobo_farmer_id
+
+type_spec <- generate_daisy_type(per_data_CluMix)
+type_spec
+
+sort(unique(per_data_CluMix$male_land_tenure_hold_proportion))
+
+# === Distance matrix ===
+#https://www.rdocumentation.org/packages/cluster/versions/2.1.8/topics/daisy
+# For clustering farmes using mixed type data variables
+###--- Gower dissimilarity matrix
+per_gower_dist <- daisy(per_data_CluMix, metric = "gower", type = type_spec)
+colnames(per_data_CluMix)[190]
+per_gower_dist
+#TO CHECK hay un problema con male_land_tenure_hold_proportion solo tiene valores de 0 y 100
+
+
+source("CluMix/similarity.subjects.r")
+
+per_gower_dist2 <- dist.subjects(per_data_CluMix)
+per_gower_dist2
+
+per_hclust<- dendro.subjects(per_data_CluMix)
+plot(per_hclust)
+
+# === Cluster farmers ===
+#https://r-charts.com/part-whole/hclust/
+#Group farmers by similarity in the structure of their responses.
+###--- Hierarchical clustering ---
+per_hclust <- hclust(per_gower_dist, method = "ward.D2")
+per_hclust
+plot(per_hclust) # Dendrogram
+rect.hclust(per_hclust, k = 2) # Dendrogram with 4 clusters
+
+# Cut the dendrogram into k clusters (e.g., 3 clusters)
+k <- 3
+per_clusters <- cutree(per_hclust, k = k)
+table(per_clusters)
+
+per_data<-per_data_CluMix
+per_data$cluster <- per_clusters[rownames(per_data)]
+
+
+table(per_data$cluster, per_data$dfs_adoption_binary)
+
+
+###--- PAM clustering (if you want to pre-specify k) ---
+pam_result
+
+# === Cluster factors ===
+library(extracat)
+clumix_files <- list.files("CluMix", pattern = "\\.R$", full.names = TRUE)
+sapply(clumix_files, source)
+source("CluMix/distcor.r")
+source("CluMix/distmap.r")
+
+###--- CluMix-ama ---
+#The CluMix-ama (association measures approach) method consists in combination of different similarity measures. A novel 
+#strategy based on category reordering is suggested for measuring the association between a 
+#multi-categorical and any other type of variable. 
+
+per_CluMixama <- dist.variables(per_data_CluMix, method="association")
+distmap(per_data_CluMix, what="subjects")
+
+heatmap(as.matrix(per_CluMixama))
+
+###--- CluMix-dcor ---
+#The CluMix-dcor (distance correlation) approach is based on a novel similarity
+#measure, which is derived using the concept of generalized distance correlations [9].
+per_CluMixdcor <- dist.variables(per_data_CluMix, method="distcor")
+distmap(per_data_CluMix, what="variables", method="distcor")
+distmap(per_data_CluMix, what="subjects", method="distcor")
+
+heatmap(as.matrix(per_CluMixdcor))
+
+
+
+
+
+
 
 #############################################################    
 ############# MFA/HCPC -----
@@ -450,9 +809,6 @@ ggplot(adoption_by_HCPCcluster, aes(x = factor(clust), y = percent, fill = dfs_a
 
 
 #############################################################    
-############# Sparse weighted k-means for mixed data -----
-#############################################################
-#https://cran.r-project.org/web/packages/vimpclust/vignettes/sparsewkm.html
 
 
 
@@ -615,39 +971,6 @@ top_bin_df
 #############################################################
 
 
-#############################################################    
-#############FEATURE SELECTION MIXOMICS -----
-#############################################################
-## install BiocManager if not installed 
-library(mixOmics) # import the mixOmics library
-X <- per_data_Filterednzv%>%
-  dplyr::select(-dfs_adoption_binary)
-  mutate(across(everything(), as.numeric))
-X<-as.matrix(X)
-class(X)
-Y <- mfa_data$dfs_adoption_binary
-
-Y <- as.numeric(as.character(mfa_data$dfs_adoption_binary))
-Y
-
-#PLS-DA
-result.plsda.srbct <- plsda(X, Y) # run the method
-plotIndiv(result.plsda.srbct) # plot the samples
-plotVar(result.plsda.srbct) # plot the variables
-plotLoadings(result.plsda.srbct, method = 'mean', contrib = 'max')  
-
-selectVar(result.plsda.srbct, comp = 2)$name 
-
-
-#sPLS-DA
-splsda.result <- splsda(X, Y, keepX = c(60,40)) # run the method
-plotIndiv(splsda.result) # plot the samples
-plotVar(splsda.result) # plot the variables
-
-# extract the variables used to construct the first latent component
-selectVar(splsda.result, comp = 2)$name 
-# depict weight assigned to each of these variables
-plotLoadings(splsda.result, method = 'mean', contrib = 'max')  
 
 
 #############################################################    
