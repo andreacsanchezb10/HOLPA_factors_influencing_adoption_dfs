@@ -4,12 +4,24 @@
 ########## UPLOAD DATA #####-----
 #############################################################
 
-per_data_adoptionBinary1<- read.csv("per_data_adoptionBinary1.csv",sep=",")
-per_adoptionBinary2<- read.csv("per_adoptionBinary2.csv",sep=",")
+per_data0<- read.csv("per_data0.csv",sep=",") #all correlated factors
+per_data1<- read.csv("per_data1.csv",sep=",") #data1
+per_data2<- read.csv("per_data2.csv",sep=",") #data2
 
+any(is.na(per_data0)) #[1] FALSE
+any(is.na(per_data1)) #[1] FALSE
+any(is.na(per_data2)) #[1] FALSE
 
-########### FUZZY FORESTS ALGORITHM ----
+per_outcomes<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
+  filter(category_1=="outcome")
+per_outcomes<-per_outcomes$column_name_new
+
+#############################################################    
+########### FEATURE SELECTION ----
+#############################################################    
 # Load libraries
+library(ggplot2)
+
 library(WGCNA)
 library(mvtnorm)
 library(Matrix)
@@ -17,7 +29,411 @@ library(fuzzyforest)
 library(party)
 library(randomForest)
 library(mt)
+library(dplyr)
 
+library(WGCNA)
+library(dplyr)
+library(readxl)
+
+# Reusable function to convert factors to numeric and transpose
+prepare_numeric_matrix <- function(df) {
+  df %>%
+    mutate(across(where(is.factor), ~ as.numeric(as.character(.)))) %>%
+    as.matrix() %>%
+    t()
+}
+
+# Function to run WGCNA soft threshold selection
+run_soft_threshold <- function(data_numeric, powers = c(1:10, seq(12, 20, 2)), dataset_name = "Dataset") {
+  sft <- pickSoftThreshold(data_numeric, powerVector = powers, verbose = 5)
+  par(mfrow = c(1, 2))
+  cex1 <- 0.9
+  
+  plot(sft$fitIndices[, 1],
+       -sign(sft$fitIndices[, 3]) * sft$fitIndices[, 2],
+       xlab = "Soft Threshold (power)",
+       ylab = "Scale Free Topology Model Fit, signed R^2",
+       main = paste(dataset_name, " - Scale Independence"))
+  text(sft$fitIndices[, 1],
+       -sign(sft$fitIndices[, 3]) * sft$fitIndices[, 2],
+       labels = powers, cex = cex1, col = "red")
+  abline(h = 0.90, col = "red")
+  
+  plot(sft$fitIndices[, 1],
+       sft$fitIndices[, 5],
+       xlab = "Soft Threshold (power)",
+       ylab = "Mean Connectivity",
+       type = "n",
+       main = paste(dataset_name, " - Mean Connectivity"))
+  text(sft$fitIndices[, 1],
+       sft$fitIndices[, 5],
+       labels = powers, cex = cex1, col = "red")
+  
+  return(sft)
+}
+
+# Function to run feature selection algotithms
+run_feature_selection_experiment <- function(factors, adoptionOutcome, picked_power, file_name = "dataset") {
+  library(e1071)
+  library(caret)
+  library(randomForest)
+  library(party)
+  library(fuzzyforest)
+  library(tidyr)
+  library(tibble)
+  
+  feature_nums <- c(5,10,15,20,25,30,35,40,45,50,55,60)
+  times <- 100 #number of runs
+  
+  acc_ff <- matrix(0, nrow = times, ncol = length(feature_nums))
+  acc_rf <- matrix(0, nrow = times, ncol = length(feature_nums))
+  acc_cf <- matrix(0, nrow = times, ncol = length(feature_nums))
+  
+  selected_ff <- list()
+  selected_rf <- list()
+  selected_cf <- list()
+  
+  for (j in seq_along(feature_nums)) {
+    feats_ff <- c()
+    feats_rf <- c()
+    feats_cf <- c()
+    
+    for (i in 1:times) {
+      set.seed(sample(1:1000, 1))
+      train_index <- createDataPartition(adoptionOutcome, p = 0.7, list = FALSE)
+      train_data <- factors[train_index, ]
+      test_data <- factors[-train_index, ]
+      y_train <- adoptionOutcome[train_index]
+      y_test <- adoptionOutcome[-train_index]
+      
+      # === Fuzzy Forest (with WGCNA) ===
+      WGCNA_params <- WGCNA_control(
+        power = picked_power, 
+        minModuleSize = 30,
+        TOMType = "unsigned", 
+        reassignThreshold = 0.05, 
+        mergeCutHeight = 0.25, 
+        numericLabels = TRUE, 
+        pamRespectsDendro = FALSE)
+      
+      screen_paramsWGCNA <- screen_control(
+        keep_fraction = 0.25,
+        ntree_factor = 2,
+        mtry_factor = 15,
+        min_ntree = 500
+      )
+      
+      select_paramsWGCNA <- select_control(
+        number_selected = 40,
+        drop_fraction = 0.1,
+        ntree_factor = 2,
+        mtry_factor = 15,
+        min_ntree = 500
+      )
+      
+      ff_model <- wff(X = train_data, y = as.factor(y_train),
+                      WGCNA_params = WGCNA_params,
+                      select_params = select_paramsWGCNA,
+                      screen_params = screen_paramsWGCNA)
+      feats_ff_i_all <- ff_model$feature_list[[1]]  # first component
+      feats_ff_i <- feats_ff_i_all[1:min(length(feats_ff_i_all), feature_nums[j])]
+      
+      #feats_ff_i <- ff_model$feature_list[1:feature_nums[j]]
+      
+      #feats_ff_i <- ff_model$feature_list[[1]][1:feature_nums[j]]
+      svm_ff_model <- svm(x = train_data[, feats_ff_i], y = as.factor(y_train), kernel = "linear")
+      pred_ff <- predict(svm_ff_model, newdata = test_data[, feats_ff_i])
+      acc_ff[i, j] <- mean(pred_ff == as.factor(y_test))
+      
+      # Random Forest
+      rf_model <- randomForest(x = train_data, y = as.factor(y_train), importance = TRUE, mtry = floor(sqrt(ncol(train_data))), ntree = 500)
+      imp_rf <- importance(rf_model, type = 1, scale = FALSE)
+      feats_rf_i <- rownames(head(imp_rf[order(imp_rf, decreasing = TRUE), , drop = FALSE], feature_nums[j]))
+      svm_rf_model <- svm(x = train_data[, feats_rf_i], y = as.factor(y_train), kernel = "linear")
+      pred_rf <- predict(svm_rf_model, newdata = test_data[, feats_rf_i])
+      acc_rf[i, j] <- mean(pred_rf == as.factor(y_test))
+      
+      # Conditional Inference Forest
+      cf_model <- cforest(as.factor(y_train) ~ ., data = data.frame(train_data, y_train),
+                          controls = cforest_unbiased(ntree = 100, mtry = floor(sqrt(ncol(train_data)))))
+      varimp_cf <- varimp(cf_model, conditional = TRUE)
+      feats_cf_i <- names(sort(varimp_cf, decreasing = TRUE))[1:feature_nums[j]]
+      svm_cf_model <- svm(x = train_data[, feats_cf_i], y = as.factor(y_train), kernel = "linear")
+      pred_cf <- predict(svm_cf_model, newdata = test_data[, feats_cf_i])
+      acc_cf[i, j] <- mean(pred_cf == as.factor(y_test))
+      
+      feats_ff <- c(feats_ff, paste(feats_ff_i, collapse = ","))
+      feats_rf <- c(feats_rf, paste(feats_rf_i, collapse = ","))
+      feats_cf <- c(feats_cf, paste(feats_cf_i, collapse = ","))
+    }
+    
+    selected_ff[[paste0("featNum", feature_nums[j])]] <- feats_ff
+    selected_rf[[paste0("featNum", feature_nums[j])]] <- feats_rf
+    selected_cf[[paste0("featNum", feature_nums[j])]] <- feats_cf
+  }
+  
+  acc_ff_df <- as.data.frame(rbind(acc_ff, colMeans(acc_ff)))
+  acc_rf_df <- as.data.frame(rbind(acc_rf, colMeans(acc_rf)))
+  acc_cf_df <- as.data.frame(rbind(acc_cf, colMeans(acc_cf)))
+  colnames(acc_ff_df) <- colnames(acc_rf_df) <- colnames(acc_cf_df) <- paste0("featNum", feature_nums)
+  rownames(acc_ff_df) <- rownames(acc_rf_df) <- rownames(acc_cf_df) <- c(paste0("acc", 1:times), "acc_mean")
+  
+  # Write to CSV
+  #write.csv(acc_ff_df, paste0(file_name, "_accValAllFuzzyForest.csv"))
+  #write.csv(acc_rf_df, paste0(file_name, "_accValAllRandomForest.csv"))
+  #write.csv(acc_cf_df, paste0(file_name, "_accValAllCForest.csv"))
+  #write.csv(as.data.frame(selected_ff), paste0(file_name, "_featureSelectedFuzzyForest.csv"))
+  #write.csv(as.data.frame(selected_rf), paste0(file_name, "_featureSelectedRandomForest.csv"))
+  #write.csv(as.data.frame(selected_cf), paste0(file_name, "_featureSelectedCForest.csv"))
+  
+  # Return data frames for plotting if needed
+  list(
+    acc_ff_df = acc_ff_df,
+    acc_rf_df = acc_rf_df,
+    acc_cf_df = acc_cf_df,
+    selected_ff = selected_ff,
+    selected_rf = selected_rf,
+    selected_cf = selected_cf
+  )
+}
+
+# Function to plot accuracy vs number of selected features
+plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df, acc_cf_df, method_name = "Model") {
+  process_df <- function(df, algo_name) {
+    df %>%
+      rownames_to_column("Run") %>%
+      filter(Run == "acc_mean") %>%
+      pivot_longer(-Run, names_to = "NumFeatures", values_to = "Accuracy") %>%
+      mutate(
+        NumFeatures = as.numeric(gsub("featNum", "", NumFeatures)),
+        algorithm = algo_name
+      )
+  }
+  
+  acc_long <- bind_rows(
+    process_df(acc_ff_df, "Fuzzy Forest"),
+    process_df(acc_rf_df, "Random Forest"),
+    process_df(acc_cf_df, "Conditional Inference Forest")
+  )
+  
+  ggplot(acc_long, aes(x = NumFeatures, y = Accuracy, color = algorithm)) +
+    geom_line(size = 1) +
+    geom_point(size = 3) +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+    labs(
+      title = method_name,
+      x = "Number of selected factors",
+      y = "Mean classification accuracy (%)",
+      color = "Feature selection algorithm"
+    ) +
+    theme_minimal(base_size = 14)
+}
+
+##=== Run for data0 ====
+per_data0_numeric <- prepare_numeric_matrix(per_data0)
+sft0 <- run_soft_threshold(per_data0_numeric, dataset_name = "per_data0")
+per_picked_power0 <- 5  # Optionally automate this later
+
+per_adoptionBinary0 <- per_data0$dfs_adoption_binary
+per_factors0 <- per_data0 %>% select(-any_of(per_outcomes))
+
+results0 <- run_feature_selection_experiment(per_factors0, per_adoptionBinary0, per_picked_power0, file_name = "per_data0")
+plot_accuracy_vs_features(results0$acc_ff_df, results0$acc_rf_df, results0$acc_cf_df, method_name = "per_data0")
+
+##=== Run for data1 ====
+per_data1_numeric <- prepare_numeric_matrix(per_data1)
+sft1 <- run_soft_threshold(per_data1_numeric, dataset_name = "per_data1")
+per_picked_power1 <- 5  # Optionally automate this later
+
+per_adoptionBinary1 <- per_data1$dfs_adoption_binary
+per_factors1 <- per_data1 %>% select(-any_of(per_outcomes))
+
+results1 <- run_feature_selection_experiment(per_factors1, per_adoptionBinary1, per_picked_power1, file_name = "per_data1")
+plot_accuracy_vs_features(results1$acc_ff_df, results1$acc_rf_df, results1$acc_cf_df, method_name = "per_data1")
+
+##=== Run for data2 ====
+per_data2_numeric <- prepare_numeric_matrix(per_data2)
+sft2 <- run_soft_threshold(per_data2_numeric, dataset_name = "per_data1")
+per_picked_power2 <- 5  # Optionally automate this later
+
+per_adoptionBinary2 <- per_data2$dfs_adoption_binary
+per_factors2 <- per_data2 %>% select(-any_of(per_outcomes))
+
+results2 <- run_feature_selection_experiment(per_factors2, per_adoptionBinary2, per_picked_power2, file_name = "per_data2")
+plot_accuracy_vs_features(results2$acc_ff_df, results2$acc_rf_df, results2$acc_cf_df, method_name = "per_data2")
+
+
+
+
+##################
+
+# Set parameters
+feature_nums <- c(5,10,15,20, 25, 30,35, 40,45, 50,55, 60)
+times <- 100
+
+# Initialize adoptionOutcome storage
+acc_ff <- matrix(0, nrow = times, ncol = length(feature_nums))
+acc_rf <- matrix(0, nrow = times, ncol = length(feature_nums))
+acc_cf <- matrix(0, nrow = times, ncol = length(feature_nums))
+
+selected_ff <- list()
+selected_rf <- list()
+selected_cf <- list()
+
+for (j in seq_along(feature_nums)) {
+  feats_ff <- c()
+  feats_rf <- c()
+  feats_cf <- c()
+  
+  for (i in 1:times) {
+    set.seed(sample(1:1000, 1))
+    train_index <- createDataPartition(adoptionOutcome, p = 0.7, list = FALSE)
+    train_data <- factors[train_index, ]
+    test_data <- factors[-train_index, ]
+    y_train <- per_adoptionBinary[train_index]
+    y_test <- per_adoptionBinary[-train_index]
+    
+    # === Fuzzy Forest (with WGCNA) ===
+    WGCNA_params <- WGCNA_control(
+      power = picked_power, 
+      minModuleSize = 30,
+      TOMType = "unsigned", 
+      reassignThreshold = 0.05, 
+      mergeCutHeight = 0.25, 
+      numericLabels = TRUE, 
+      pamRespectsDendro = FALSE)
+    
+    screen_paramsWGCNA <- screen_control(
+      keep_fraction = 0.25,
+      ntree_factor = 2,
+      mtry_factor = 15,
+      min_ntree = 500
+    )
+    
+    select_paramsWGCNA <- select_control(
+      number_selected = 40,
+      drop_fraction = 0.1,
+      ntree_factor = 2,
+      mtry_factor = 15,
+      min_ntree = 500
+    )
+    
+    ff_model <- wff(X= train_data, y=  as.factor(y_train), WGCNA_params = WGCNA_params, 
+                    select_params = select_paramsWGCNA, screen_params = screen_paramsWGCNA)
+    feats_ff_i <- ff_model$feature_list[[1]][1:feature_nums[5]]
+    # feats_ff_i <-names(head(ff_model$feature_list, feature_nums[j]))
+    #screen_result <- screen.randomForest(data.frame(train_data, class = y_train), y_train)
+    #select_result <- select.fuzzy.forest(screen_result, data.frame(train_data, class = y_train), y_train)
+    #feats_ff_i <- names(head(select_result$feature_list, feature_nums[j]))
+    # Train SVM on selected features
+    svm_ff_model <- svm(x = train_data[, feats_ff_i], y = as.factor(y_train), kernel = "linear")
+    pred_ff <- predict(svm_ff_model, newdata = test_data[, feats_ff_i])
+    acc_ff[i, j] <- mean(pred_ff == as.factor(y_test))
+    
+    
+    # === Random Forest ===
+    rf_model <- randomForest(x=train_data, y = as.factor(y_train), importance = TRUE, mtry = floor(sqrt(ncol(train_data))), ntree = 500)
+    imp_rf <- importance(rf_model, type = 1, scale = FALSE)
+    feats_rf_i <- rownames(head(imp_rf[order(imp_rf, decreasing = TRUE), , drop = FALSE], feature_nums[j]))
+    # Train SVM on selected features
+    svm_rf_model <- svm(x = train_data[, feats_rf_i], y = as.factor(y_train), kernel = "linear")
+    pred_rf <- predict(svm_rf_model, newdata = test_data[, feats_rf_i])
+    acc_rf[i, j] <- mean(pred_rf == as.factor(y_test))
+    
+    # === Conditional Inference Forest ===
+    cf_model <- cforest(as.factor(y_train) ~ ., data = data.frame(train_data, y_train),  controls = cforest_unbiased(ntree = 100, mtry = floor(sqrt(ncol(train_data)))))
+    varimp_cf <- varimp(cf_model,conditional = TRUE)
+    feats_cf_i <- names(sort(varimp_cf, decreasing = TRUE))[1:feature_nums[j]]
+    
+    # Train SVM on selected features
+    svm_cf_model <- svm(x = train_data[, feats_cf_i], y = as.factor(y_train), kernel = "linear")
+    pred_cf <- predict(svm_cf_model, newdata = test_data[, feats_cf_i])
+    acc_cf[i, j] <- mean(pred_cf == as.factor(y_test))
+    
+    
+    feats_ff <- c(feats_ff, paste(feats_ff_i, collapse = ","))
+    feats_rf <- c(feats_rf, paste(feats_rf_i, collapse = ","))
+    feats_cf <- c(feats_cf, paste(feats_cf_i, collapse = ","))
+  }
+  
+  selected_ff[[paste0("featNum", feature_nums[j])]] <- feats_ff
+  selected_rf[[paste0("featNum", feature_nums[j])]] <- feats_rf
+  selected_cf[[paste0("featNum", feature_nums[j])]] <- feats_cf
+}
+
+
+selected_cf
+# Save results
+# === Fuzzy Forest (with WGCNA) ===
+
+acc_ff_df <- as.data.frame(rbind(acc_ff, colMeans(acc_ff)))
+colnames(acc_ff_df) <- paste0("featNum", feature_nums)
+rownames(acc_ff_df) <- c(paste0("acc", 1:times), "acc_mean")
+acc_ff_df
+#write.csv(acc_ff_df, paste0(file_name, "_accValAllFuzzyForest.csv"))
+
+# === Random Forest ===
+acc_rf_df <- as.data.frame(rbind(acc_rf, colMeans(acc_rf)))
+colnames(acc_rf_df) <- paste0("featNum", feature_nums)
+rownames(acc_rf_df) <- c(paste0("acc", 1:times), "acc_mean")
+#write.csv(acc_rf_df, paste0(file_name, "_accValAllRandomForest.csv"))
+
+# === Conditional Inference Forest ===
+acc_cf_df <- as.data.frame(rbind(acc_cf, colMeans(acc_cf)))
+colnames(acc_cf_df) <- paste0("featNum", feature_nums)
+rownames(acc_cf_df) <- c(paste0("acc", 1:times), "acc_mean")
+#write.csv(acc_cf_df, paste0(file_name, "_accValAllCForest.csv"))
+
+plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df, acc_cf_df, method_name = "Model") {
+  process_df <- function(df, algo_name) {
+    df %>%
+      rownames_to_column("Run") %>%
+      filter(Run == "acc_mean") %>%
+      pivot_longer(-Run, names_to = "NumFeatures", values_to = "Accuracy") %>%
+      mutate(
+        NumFeatures = as.numeric(gsub("featNum", "", NumFeatures)),
+        algorithm = algo_name
+      )
+  }
+  
+  acc_long <- bind_rows(
+    process_df(acc_ff_df, "Fuzzy Forest"),
+    process_df(acc_rf_df, "Random Forest"),
+    process_df(acc_cf_df, "Conditional Inference Forest")
+  )
+  
+  ggplot(acc_long, aes(x = NumFeatures, y = Accuracy, color = algorithm)) +
+    geom_line(size = 1) +
+    geom_point(size = 3) +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+    labs(
+      title = method_name,
+      x = "Number of selected factors",
+      y = "Mean classification accuracy (%)",
+      color = "Feature selection algorithm"
+    ) +
+    theme_minimal(base_size = 14)
+}
+
+plot_accuracy_vs_features(acc_ff_df,acc_rf_df, acc_cf_df, method_name = "")
+
+
+rf_feat_lists <- strsplit(selected_rf[["featNum20"]], split = ",")
+rf_feat_lists
+
+
+
+write.csv(as.data.frame(selected_ff), paste0(file_name, "_featureSelectedFuzzyForest.csv"))
+write.csv(as.data.frame(selected_rf), paste0(file_name, "_featureSelectedRandomForest.csv"))
+write.csv(as.data.frame(selected_cf), paste0(file_name, "_featureSelectedCForest.csv"))
+
+
+
+
+
+#############################################################    
+########### FUZZY FOREST ----
+#############################################################    
 ## Advantages
 # - The fuzzy forests algorithm is an extension of random forests designed to obtain less bi-ased feature selection in the presence of correlated features. 
 # - WGCNA takes in the matrix of features and uses the correlation structure to partition the features into distinct groups such that the 
@@ -41,15 +457,17 @@ library(mt)
 allowWGCNAThreads()
 powers = c(c(1:10), seq(from = 12, to = 20, by = 2))
 
-data_per_adoptionBinary1 <-per_data_adoptionBinary1%>%
+per_data1_numeric <-per_data1%>%
   mutate(across(where(is.factor), ~ as.numeric(as.character(.))))
+any(is.na(per_data1_numeric)) #[1] FALSE
 
-data_per_adoptionBinary1 = t(as.matrix(data_per_adoptionBinary1))
-data_per_adoptionBinary1
-str(data_per_adoptionBinary1)
+per_data1_numeric = t(as.matrix(per_data1_numeric))
+per_data1_numeric
 
-sft_per_adoptionBinary1 = pickSoftThreshold(
-  data_per_adoptionBinary1,             # <= Input data
+str(per_data1_numeric)
+
+sft_per_data1 = pickSoftThreshold(
+  per_data1_numeric,             # <= Input data
   #blockSize = 30,
   powerVector = powers,
   verbose = 5
@@ -58,30 +476,30 @@ sft_per_adoptionBinary1 = pickSoftThreshold(
 par(mfrow = c(1,2));
 cex1 = 0.9;
 
-plot(sft_per_adoptionBinary1$fitIndices[, 1],
-     -sign(sft_per_adoptionBinary1$fitIndices[, 3]) * sft_per_adoptionBinary1$fitIndices[, 2],
+plot(sft_per_data1$fitIndices[, 1],
+     -sign(sft_per_data1$fitIndices[, 3]) * sft_per_data1$fitIndices[, 2],
      xlab = "Soft Threshold (power)",
      ylab = "Scale Free Topology Model Fit, signed R^2",
      main = paste("Scale independence")
 )
-text(sft_per_adoptionBinary1$fitIndices[, 1],
-     -sign(sft_per_adoptionBinary1$fitIndices[, 3]) * sft_per_adoptionBinary1$fitIndices[, 2],
+text(sft_per_data1$fitIndices[, 1],
+     -sign(sft_per_data1$fitIndices[, 3]) * sft_per_data1$fitIndices[, 2],
      labels = powers, cex = cex1, col = "red"
 )
 abline(h = 0.90, col = "red")
-plot(sft_per_adoptionBinary1$fitIndices[, 1],
-     sft_per_adoptionBinary1$fitIndices[, 5],
+plot(sft_per_data1$fitIndices[, 1],
+     sft_per_data1$fitIndices[, 5],
      xlab = "Soft Threshold (power)",
      ylab = "Mean Connectivity",
      type = "n",
      main = paste("Mean connectivity")
 )
-text(sft_per_adoptionBinary1$fitIndices[, 1],
-     sft_per_adoptionBinary1$fitIndices[, 5],
+text(sft_per_data1$fitIndices[, 1],
+     sft_per_data1$fitIndices[, 5],
      labels = powers,
      cex = cex1, col = "red")
 
-picked_power = 8
+picked_power = 5
 
 # Number of simulations
 sim_number <- 100
@@ -94,11 +512,11 @@ snr_mat<- matrix(NA, sim_number, 40)
 # Set seed for reproducibility
 set.seed(123)
 
-X <- per_data_adoptionBinary1[, !(names(per_data_adoptionBinary1) %in% c("dfs_adoption_binary"))]
+X <- per_data1[, !(names(per_data1) %in% c("dfs_adoption_binary"))]
 X <- X %>%mutate(across(where(is.factor), ~ as.numeric(as.character(.))))
 X
 # Binary outcome variable
-y <- as.numeric(as.character(per_data_adoptionBinary1$dfs_adoption_binary))
+y <- as.numeric(as.character(per_data1$dfs_adoption_binary))
 y
 
 # Sample size

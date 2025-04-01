@@ -10,7 +10,7 @@ library(corrplot)
 #############################################################
 factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
   filter(category_1!="xxx")
-  filter(is.na(remove))
+ 
 factors_list$category_1[grepl("^Farm management characteristics", factors_list$category_1)] <- "Farm management characteristics"
 factors_list$category_1[grepl("^Financial capital", factors_list$category_1)] <- "Financial capital"
 factors_list$category_1[grepl("^P&I context", factors_list$category_1)] <- "P&I context"
@@ -19,9 +19,9 @@ factors_list$category_1[grepl("^P&I context", factors_list$category_1)] <- paste
 factors_list$category_1[grepl("^P&I context_knowledge", factors_list$category_1)] <- "P&I context_knowledge"
 
 per_data_clean<- read.csv("per_data_clean.csv",sep=",")
-per_summary_categorical<-read.csv("per_summary_categorical.csv",sep=",")%>% #598
+per_summary_categorical<-read.csv("per_summary_categorical.csv",sep=",") #598
   filter(category_1!="outcome")
-per_summary_numerical<-read.csv("per_summary_numerical.csv",sep=",")%>%  #75 factors
+per_summary_numerical<-read.csv("per_summary_numerical.csv",sep=",")  #75 factors
   filter(category_1!="outcome")
 
 factors_category<-per_summary_numerical%>%dplyr::select(column_name_new, category_1,category_2)%>%
@@ -219,6 +219,7 @@ library(corrplot)
 per_factors_list <- as.data.frame(colnames(per_data_Filterednzv))%>%
   rename("column_name_new"= "colnames(per_data_Filterednzv)")%>%
   left_join(factors_category)
+
 per_factors_list$category_1[grepl("^year_assessment.", per_factors_list$column_name_new)] <- "Biophysical context"
 per_factors_list$category_1[grepl("^crop_type", per_factors_list$column_name_new)] <- "Farm management characteristics"
 per_factors_list$category_1[grepl("^marital_status.", per_factors_list$column_name_new)] <- "Human capital"
@@ -226,6 +227,8 @@ per_factors_list$category_1[grepl("^read_write.", per_factors_list$column_name_n
 per_factors_list$category_1[grepl("^gender_land_tenure.", per_factors_list$column_name_new)] <- "P&I context_land tenure"
 per_factors_list$category_1[grepl("^district.dist", per_factors_list$column_name_new)] <- "P&I context_general"
 per_factors_list$category_1[grepl("^province.prov", per_factors_list$column_name_new)] <- "P&I context_general"
+per_factors_list <-per_factors_list%>%
+  filter(category_1!="outcome")
 
 create_cor_df <- function(data, factors_list) {
   cor_matrix <- cor(data %>% mutate(across(everything(), as.numeric)),
@@ -241,7 +244,6 @@ create_cor_df <- function(data, factors_list) {
   
   return(cor_df)
 }
-
 
 per_data_cor<-create_cor_df(per_data_Filterednzv,per_factors_list)
 str(per_data_cor)
@@ -290,8 +292,10 @@ sort(unique(per_data_FilteredRedundant_cor$factor1))
 
 plot_correlation_by_category(per_data_FilteredRedundant_cor)
 
+write.csv(per_data_FilteredRedundant,"per_data0.csv",row.names=FALSE)
+
 #############################################################  
-############# SEPARATE CORRELATED FACTORS IN DIFFERENT DATASETS -----
+############# SEPARATE CORRELATED FACTORS INTO DIFFERENT DATASETS -----
 #############################################################
 per_data1<- per_data_FilteredRedundant%>%
   select(-c(
@@ -343,6 +347,7 @@ plot_correlation_by_category(per_data1_cor)
 
 dim(per_data1) #[1] 200 203 #200 farmers; 203 variables retained
 any(is.na(per_data1)) #[1] FALSE
+write.csv(per_data1,"per_data1.csv",row.names=FALSE)
 
 
 per_data2<- per_data_FilteredRedundant%>%
@@ -396,6 +401,7 @@ plot_correlation_by_category(per_data2_cor)
 
 dim(per_data2) #[1] 200 203 #200 farmers; 203 variables retained
 any(is.na(per_data2)) #[1] FALSE
+write.csv(per_data2,"per_data2.csv",row.names=FALSE)
 
 ############################################################
 ############# GET DIFFERENT DATABASES WITHOUT CORRELATED VARIABLES -----
