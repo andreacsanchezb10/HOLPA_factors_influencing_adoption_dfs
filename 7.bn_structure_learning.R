@@ -9,7 +9,10 @@ length(unique(per_factors_adoptionBinary1$x))#39 factors
 per_factors_adoptionBinary1
 
 factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")
-per_adoptionBinary1<- read.csv("per_data_adoptionBinary1.csv",sep=",")
+
+per_data0<- read.csv("per_data0.csv",sep=",") #all correlated factors
+per_data1<- read.csv("per_data1.csv",sep=",") #data1
+per_data2<- read.csv("per_data2.csv",sep=",") #data2
 
 #############################################################    
 ########## SELECTED FACTORS #####-----
@@ -30,6 +33,34 @@ str(per_analysis_adoptionBinary1)
 per_analysis_adoptionBinary1<-per_analysis_adoptionBinary1%>%
   mutate(across(where(is.integer), as.factor))
 str(per_analysis_adoptionBinary1)
+
+
+#############################################################    
+########## STRUCTURE LEARNING #####-----
+#############################################################
+# Algorithms to try
+algorithms <- list(
+  list(name = "pc.stable", args = list(test = "mi-cg", alpha = 0.5)),
+  list(name = "pc.stable", args = list(test = "mi-cg", alpha = 0.05)),
+  list(name = "pc.stable", args = list(test = "mi-cg", alpha = 0.01)),
+  list(name = "gs", args = list(test = "mi-cg", alpha = 0.5)),
+  list(name = "gs", args = list(test = "mi-cg", alpha = 0.05)),
+  list(name = "gs", args = list(test = "mi-cg", alpha = 0.01)),
+  list(name = "hc", args = list(score = "bic")),
+  list(name = "tabu", args = list(score = "bic"))
+)
+
+# Learn structures and store arcs
+structures <- list()
+for (i in seq_along(algorithms)) {
+  algo <- algorithms[[i]]
+  cat("Running:", algo$name, "\n")
+  net <- do.call(algo$name, c(list(x = data_bn), algo$args))
+  structures[[i]] <- arcs(net)
+}
+
+
+
 
 #############################################################    
 ########## DATA DISCRETIZATION #####-----

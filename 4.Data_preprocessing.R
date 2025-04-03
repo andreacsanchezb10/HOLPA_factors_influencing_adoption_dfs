@@ -20,9 +20,7 @@ factors_list$category_1[grepl("^P&I context_knowledge", factors_list$category_1)
 
 per_data_clean<- read.csv("per_data_clean.csv",sep=",")
 per_summary_categorical<-read.csv("per_summary_categorical.csv",sep=",") #598
-  filter(category_1!="outcome")
 per_summary_numerical<-read.csv("per_summary_numerical.csv",sep=",")  #75 factors
-  filter(category_1!="outcome")
 
 factors_category<-per_summary_numerical%>%dplyr::select(column_name_new, category_1,category_2)%>%
   rbind(per_summary_categorical%>%dplyr::select(column_name_new,category_1,category_2))%>%
@@ -207,7 +205,6 @@ ggplot(data=b, aes(x=n, y=category_1, fill= category_1)) +
 
 dim(per_data_Filterednzv) #[1] 200 239 #200 farmers; 239 variables retained
 
-
 #write.csv(per_data_Filterednzv,"per_data_Filterednzv.csv",row.names=FALSE)
 
 #############################################################    
@@ -215,21 +212,7 @@ dim(per_data_Filterednzv) #[1] 200 239 #200 farmers; 239 variables retained
 #############################################################
 library(tidyverse)
 library(corrplot)
-
-per_factors_list <- as.data.frame(colnames(per_data_Filterednzv))%>%
-  rename("column_name_new"= "colnames(per_data_Filterednzv)")%>%
-  left_join(factors_category)
-
-per_factors_list$category_1[grepl("^year_assessment.", per_factors_list$column_name_new)] <- "Biophysical context"
-per_factors_list$category_1[grepl("^crop_type", per_factors_list$column_name_new)] <- "Farm management characteristics"
-per_factors_list$category_1[grepl("^marital_status.", per_factors_list$column_name_new)] <- "Human capital"
-per_factors_list$category_1[grepl("^read_write.", per_factors_list$column_name_new)] <- "Human capital"
-per_factors_list$category_1[grepl("^gender_land_tenure.", per_factors_list$column_name_new)] <- "P&I context_land tenure"
-per_factors_list$category_1[grepl("^district.dist", per_factors_list$column_name_new)] <- "P&I context_general"
-per_factors_list$category_1[grepl("^province.prov", per_factors_list$column_name_new)] <- "P&I context_general"
-per_factors_list <-per_factors_list%>%
-  filter(category_1!="outcome")
-
+# Function to calculate Spearman's correlation
 create_cor_df <- function(data, factors_list) {
   cor_matrix <- cor(data %>% mutate(across(everything(), as.numeric)),
                     method = "spearman", use = "pairwise.complete.obs")
@@ -245,9 +228,7 @@ create_cor_df <- function(data, factors_list) {
   return(cor_df)
 }
 
-per_data_cor<-create_cor_df(per_data_Filterednzv,per_factors_list)
-str(per_data_cor)
-
+# Function to plot correlated factors within categories
 plot_correlation_by_category <- function(cor_df) {
   unique_categories <- unique(cor_df$category_1.factor1)
   plots <- list()
@@ -273,12 +254,69 @@ plot_correlation_by_category <- function(cor_df) {
   return(plots)
 }
 
+# Function to plot correlated factors between categories
+plot_correlation_betw_category <- function(cor_df) {
+  categories <- unique(c(cor_df$category_1.factor1, cor_df$category_1.factor2))
+  plots <- list()
+  
+  # All unique combinations of categories (including cross-category)
+  category_pairs <- combn(categories, 2, simplify = FALSE)
+  
+  for (pair in category_pairs) {
+    cat1 <- pair[1]
+    cat2 <- pair[2]
+    
+    # Get all correlations where both variables are from cat1 or cat2
+    cat_data <- cor_df %>%
+      filter(
+        (category_1.factor1 %in% c(cat1, cat2)) &
+          (category_1.factor2 %in% c(cat1, cat2))
+      )
+    
+    if (nrow(cat_data) > 0) {
+      plot_title <- paste("Category:", cat1, "&", cat2, "- All Correlations")
+      
+      plots[[plot_title]] <- ggplot(cat_data, aes(x = factor1, y = factor2, fill = spearman_correlation)) +
+        geom_tile(color = "white") +
+        geom_text(data = cat_data %>% filter(abs(spearman_correlation) >= 0.8),
+                  aes(label = round(spearman_correlation, 2)), size = 5) +
+        scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0,
+                             limits = c(-1, 1), name = "Spearman\nCorrelation") +
+        theme_minimal() +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1),
+              axis.text.y = element_text(size = 8),
+              plot.title = element_text(hjust = 0.5)) +
+        labs(title = plot_title, x = NULL, y = NULL)
+    }
+  }
+  
+  return(plots)
+}
+
+per_factors_list <- as.data.frame(colnames(per_data_Filterednzv))%>%
+  rename("column_name_new"= "colnames(per_data_Filterednzv)")%>%
+  left_join(factors_category)
+
+per_factors_list$category_1[grepl("^year_assessment.", per_factors_list$column_name_new)] <- "Biophysical context"
+per_factors_list$category_1[grepl("^crop_type", per_factors_list$column_name_new)] <- "Farm management characteristics"
+per_factors_list$category_1[grepl("^marital_status.", per_factors_list$column_name_new)] <- "Human capital"
+per_factors_list$category_1[grepl("^read_write.", per_factors_list$column_name_new)] <- "Human capital"
+per_factors_list$category_1[grepl("^gender_land_tenure.", per_factors_list$column_name_new)] <- "P&I context_land tenure"
+per_factors_list$category_1[grepl("^district.dist", per_factors_list$column_name_new)] <- "P&I context_general"
+per_factors_list$category_1[grepl("^province.prov", per_factors_list$column_name_new)] <- "P&I context_general"
+per_factors_list <-per_factors_list%>%
+  filter(category_1!="outcome")
+
+per_data_cor<-create_cor_df(per_data_Filterednzv,per_factors_list)
+str(per_data_cor)
+
 plot_correlation_by_category(per_data_cor)
+plot_correlation_betw_category(per_data_cor)
 
 #############################################################
 ############# REMOVE REDUNDANT FACTORS -----
 #############################################################
-per_redundant_factors<- read_excel("factors_list.xlsx",sheet = "redundant_factors")%>%
+per_redundant_factors<- read_excel("factors_list.xlsx",sheet = "per_redundant_factors")%>%
   select(removed)
 per_redundant_factors<-per_redundant_factors$removed
 per_redundant_factors
@@ -340,12 +378,24 @@ per_data1<- per_data_FilteredRedundant%>%
     
     #== Vulnerability context ==
     household_shock_strategy, #keep household_shock_strategy_count
-  ))
+    
+    #== Between categories ==
+    crop_type.cacao, #energy_tillage_haverst_type
+    credit_access, #credit_payment_hability
+    num_farm_products, #livestock_count_tlu
+    livestockland_area, #livestock_count_tlu
+    use_percentage_livestock_sales, #num_sales_channel_livestock
+    income_sources.livestock, #num_sales_channel_livestock
+    district.dist_3, #months_count_water_accessibility_difficulty_flood_year
+    labour_productivity, #farm_size
+    cropland_area, #sfs_monoculture_perennial_area
+    ))
 
 per_data1_cor<-create_cor_df(per_data1,per_factors_list)
-plot_correlation_by_category(per_data1_cor)
+#plot_correlation_by_category(per_data1_cor)
+plot_correlation_betw_category(per_data1_cor)
 
-dim(per_data1) #[1] 200 203 #200 farmers; 203 variables retained
+dim(per_data1) #[1] 200 196 #200 farmers; 196 variables retained
 any(is.na(per_data1)) #[1] FALSE
 write.csv(per_data1,"per_data1.csv",row.names=FALSE)
 
@@ -393,16 +443,32 @@ per_data2<- per_data_FilteredRedundant%>%
     
     #== Vulnerability context ==
     household_shock_strategy_count, #keep household_shock_strategy
-  ))
+    
+    #== Between categories ==
+    energy_tillage_haverst_type, #crop_type.cacao 
+    credit_payment_hability, #credit_access
+    livestock_count_tlu, #num_farm_products
+    #livestock_count_tlu, #livestockland_area
+    #num_sales_channel_livestock, #use_percentage_livestock_sales
+    #num_sales_channel_livestock, #use_percentage_livestock_sales, 
+    #num_sales_channel_livestock, #income_sources.livestock 
+    months_count_water_accessibility_difficulty_flood_year, #district.dist_3
+    accessibility_waste_collection, #district.dist_3
+    farm_size, #labour_productivity #
+    sfs_monoculture_perennial_area #cropland_area
+    ))
 
 per_data2_cor<-create_cor_df(per_data2,per_factors_list)
-plot_correlation_by_category(per_data2_cor)
+#plot_correlation_by_category(per_data2_cor)
+plot_correlation_betw_category(per_data2_cor)
 
-
-dim(per_data2) #[1] 200 203 #200 farmers; 203 variables retained
+dim(per_data2) #[1] 200 198 #200 farmers; 198 variables retained
 any(is.na(per_data2)) #[1] FALSE
 write.csv(per_data2,"per_data2.csv",row.names=FALSE)
 
+
+
+############################# OLD CODE ####################
 ############################################################
 ############# GET DIFFERENT DATABASES WITHOUT CORRELATED VARIABLES -----
 #############################################################

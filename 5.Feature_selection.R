@@ -1,4 +1,5 @@
-
+library(dplyr)
+library(readxl)
 
 #############################################################    
 ########## UPLOAD DATA #####-----
@@ -29,11 +30,7 @@ library(fuzzyforest)
 library(party)
 library(randomForest)
 library(mt)
-library(dplyr)
 
-library(WGCNA)
-library(dplyr)
-library(readxl)
 
 # Reusable function to convert factors to numeric and transpose
 prepare_numeric_matrix <- function(df) {
@@ -83,7 +80,7 @@ run_feature_selection_experiment <- function(factors, adoptionOutcome, picked_po
   library(tibble)
   
   feature_nums <- c(5,10,15,20,25,30,35,40,45,50,55,60)
-  times <- 100 #number of runs
+  times <- 10 #number of runs
   
   acc_ff <- matrix(0, nrow = times, ncol = length(feature_nums))
   acc_rf <- matrix(0, nrow = times, ncol = length(feature_nums))
@@ -179,12 +176,12 @@ run_feature_selection_experiment <- function(factors, adoptionOutcome, picked_po
   rownames(acc_ff_df) <- rownames(acc_rf_df) <- rownames(acc_cf_df) <- c(paste0("acc", 1:times), "acc_mean")
   
   # Write to CSV
-  #write.csv(acc_ff_df, paste0(file_name, "_accValAllFuzzyForest.csv"))
-  #write.csv(acc_rf_df, paste0(file_name, "_accValAllRandomForest.csv"))
-  #write.csv(acc_cf_df, paste0(file_name, "_accValAllCForest.csv"))
-  #write.csv(as.data.frame(selected_ff), paste0(file_name, "_featureSelectedFuzzyForest.csv"))
-  #write.csv(as.data.frame(selected_rf), paste0(file_name, "_featureSelectedRandomForest.csv"))
-  #write.csv(as.data.frame(selected_cf), paste0(file_name, "_featureSelectedCForest.csv"))
+  write.csv(acc_ff_df, paste0(file_name, "_accValAllFuzzyForest.csv"))
+  write.csv(acc_rf_df, paste0(file_name, "_accValAllRandomForest.csv"))
+  write.csv(acc_cf_df, paste0(file_name, "_accValAllCForest.csv"))
+  write.csv(as.data.frame(selected_ff), paste0(file_name, "_featureSelectedFuzzyForest.csv"))
+  write.csv(as.data.frame(selected_rf), paste0(file_name, "_featureSelectedRandomForest.csv"))
+  write.csv(as.data.frame(selected_cf), paste0(file_name, "_featureSelectedCForest.csv"))
   
   # Return data frames for plotting if needed
   list(
@@ -201,8 +198,8 @@ run_feature_selection_experiment <- function(factors, adoptionOutcome, picked_po
 plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df, acc_cf_df, method_name = "Model") {
   process_df <- function(df, algo_name) {
     df %>%
-      rownames_to_column("Run") %>%
-      filter(Run == "acc_mean") %>%
+      rename("Run"="X")%>%
+        filter(Run == "acc_mean") %>%
       pivot_longer(-Run, names_to = "NumFeatures", values_to = "Accuracy") %>%
       mutate(
         NumFeatures = as.numeric(gsub("featNum", "", NumFeatures)),
@@ -215,8 +212,14 @@ plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df, acc_cf_df, method_na
     process_df(acc_rf_df, "Random Forest"),
     process_df(acc_cf_df, "Conditional Inference Forest")
   )
+  acc_long_mean<- acc_long%>%
+    group_by(Run, NumFeatures)%>%
+    summarise(Accuracy= mean(Accuracy))%>%
+    ungroup()%>%
+    mutate(algorithm="Mean")%>%
+    rbind(acc_long)
   
-  ggplot(acc_long, aes(x = NumFeatures, y = Accuracy, color = algorithm)) +
+  ggplot(acc_long_mean, aes(x = NumFeatures, y = Accuracy, color = algorithm)) +
     geom_line(size = 1) +
     geom_point(size = 3) +
     scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
@@ -229,6 +232,29 @@ plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df, acc_cf_df, method_na
     theme_minimal(base_size = 14)
 }
 
+# Function to extract selected factors frequency
+selected_factors_freq <- function(select_factors_cf, select_factors_ff, select_factors_rf) {
+  process_df <- function(df, algo_name) {
+    df %>%
+      rename("Run"="X")%>%
+      pivot_longer(-Run, names_to = "NumFeatures", values_to = "selected_factors") %>%
+      mutate(algorithm = algo_name)%>%
+      separate_rows(selected_factors, sep = ",")
+  }
+  
+  selected_factors <- bind_rows(
+    process_df(select_factors_cf, "Fuzzy Forest"),
+    process_df(select_factors_ff, "Random Forest"),
+    process_df(select_factors_rf, "Conditional Inference Forest")
+  )
+  
+  selected_factors_freq<- selected_factors%>%
+    group_by(NumFeatures,selected_factors) %>%
+    summarise(frequency = n(), .groups = 'drop')%>%
+    ungroup()
+  return(selected_factors_freq)
+  
+}
 ##=== Run for data0 ====
 per_data0_numeric <- prepare_numeric_matrix(per_data0)
 sft0 <- run_soft_threshold(per_data0_numeric, dataset_name = "per_data0")
@@ -238,7 +264,50 @@ per_adoptionBinary0 <- per_data0$dfs_adoption_binary
 per_factors0 <- per_data0 %>% select(-any_of(per_outcomes))
 
 results0 <- run_feature_selection_experiment(per_factors0, per_adoptionBinary0, per_picked_power0, file_name = "per_data0")
-plot_accuracy_vs_features(results0$acc_ff_df, results0$acc_rf_df, results0$acc_cf_df, method_name = "per_data0")
+
+# Plot accuracy vs number of selected factors
+per_data0_acc_ff<- read.csv("per_data0_accValAllFuzzyForest.csv",sep=",") 
+per_data0_acc_rf<- read.csv("per_data0_accValAllRandomForest.csv",sep=",") 
+per_data0_acc_cf<- read.csv("per_data0_accValAllCForest.csv",sep=",") 
+plot_accuracy_vs_features(per_data0_acc_ff,per_data0_acc_rf, per_data0_acc_cf, method_name = "per_data0")
+
+## Extract the best 5 factors
+per_data0_select_factors_cf<- read.csv("per_data0_featureSelectedCForest.csv",sep=",") 
+per_data0_select_factors_ff<- read.csv("per_data0_featureSelectedCForest.csv",sep=",") 
+per_data0_select_factors_rf<- read.csv("per_data0_featureSelectedCForest.csv",sep=",") 
+
+
+per_data0_selected_factors_freq<-selected_factors_freq(per_data0_select_factors_cf,per_data0_select_factors_ff,per_data0_select_factors_rf)
+write.csv(per_data0_selected_factors_freq, "per_data0_selected_factors_freq.csv")
+
+per_data0_selected_factors<-per_data0_selected_factors_freq%>%
+  filter(NumFeatures=="featNum5")%>%
+  slice_max(order_by = frequency, n = 5)
+
+
+per_data0_selected_factors$selected_factors
+
+create_cor_df <- function(data,selected_factors) {
+data_num<-data %>% 
+  mutate(across(everything(), as.numeric))%>%
+  select(any_of(per_data0_selected_factors$selected_factors))
+           
+  cor_matrix <- cor(data_num,
+                    method = "spearman", use = "pairwise.complete.obs")
+  
+  cor_df <- as.data.frame(cor_matrix) %>%
+    rownames_to_column("factor1") %>%
+    pivot_longer(-factor1, names_to = "factor2", values_to = "spearman_correlation") 
+    #left_join(factors_list %>% select(column_name_new, category_1), by = c("factor1" = "column_name_new")) %>%
+    #rename(category_1.factor1 = category_1) %>%
+    #left_join(factors_list %>% select(column_name_new, category_1), by = c("factor2" = "column_name_new")) %>%
+    #rename(category_1.factor2 = category_1)
+  
+  return(cor_df)
+}
+per_data0_selected_factors_cor<-create_cor_df(per_data0,per_data0_selected_factors)
+
+
 
 ##=== Run for data1 ====
 per_data1_numeric <- prepare_numeric_matrix(per_data1)
@@ -249,7 +318,24 @@ per_adoptionBinary1 <- per_data1$dfs_adoption_binary
 per_factors1 <- per_data1 %>% select(-any_of(per_outcomes))
 
 results1 <- run_feature_selection_experiment(per_factors1, per_adoptionBinary1, per_picked_power1, file_name = "per_data1")
-plot_accuracy_vs_features(results1$acc_ff_df, results1$acc_rf_df, results1$acc_cf_df, method_name = "per_data1")
+
+# Plot accuracy vs number of selected factors
+per_data1_acc_ff<- read.csv("per_data1_accValAllFuzzyForest.csv",sep=",") 
+per_data1_acc_rf<- read.csv("per_data1_accValAllRandomForest.csv",sep=",") 
+per_data1_acc_cf<- read.csv("per_data1_accValAllCForest.csv",sep=",") 
+plot_accuracy_vs_features(per_data1_acc_ff,per_data1_acc_rf, per_data1_acc_cf, method_name = "per_data1")
+
+## Extract the best 5 factors
+per_data1_select_factors_cf<- read.csv("per_data1_featureSelectedCForest.csv",sep=",") 
+per_data1_select_factors_ff<- read.csv("per_data1_featureSelectedCForest.csv",sep=",") 
+per_data1_select_factors_rf<- read.csv("per_data1_featureSelectedCForest.csv",sep=",") 
+
+per_data1_selected_factors_freq<-selected_factors_freq(per_data1_select_factors_cf,per_data1_select_factors_ff,per_data1_select_factors_rf)
+write.csv(per_data1_selected_factors_freq, "per_data1_selected_factors_freq.csv")
+
+per_data1_selected_factors<-per_data1_selected_factors_freq%>%
+  filter(NumFeatures=="featNum5")%>%
+  slice_max(order_by = frequency, n = 5)
 
 ##=== Run for data2 ====
 per_data2_numeric <- prepare_numeric_matrix(per_data2)
@@ -260,10 +346,24 @@ per_adoptionBinary2 <- per_data2$dfs_adoption_binary
 per_factors2 <- per_data2 %>% select(-any_of(per_outcomes))
 
 results2 <- run_feature_selection_experiment(per_factors2, per_adoptionBinary2, per_picked_power2, file_name = "per_data2")
-plot_accuracy_vs_features(results2$acc_ff_df, results2$acc_rf_df, results2$acc_cf_df, method_name = "per_data2")
 
+# Plot accuracy vs number of selected factors
+per_data2_acc_ff<- read.csv("per_data2_accValAllFuzzyForest.csv",sep=",") 
+per_data2_acc_rf<- read.csv("per_data2_accValAllRandomForest.csv",sep=",") 
+per_data2_acc_cf<- read.csv("per_data2_accValAllCForest.csv",sep=",") 
+plot_accuracy_vs_features(per_data2_acc_ff,per_data2_acc_rf, per_data2_acc_cf, method_name = "per_data2")
 
+## Extract the best 5 factors
+per_data2_select_factors_cf<- read.csv("per_data2_featureSelectedCForest.csv",sep=",") 
+per_data2_select_factors_ff<- read.csv("per_data2_featureSelectedCForest.csv",sep=",") 
+per_data2_select_factors_rf<- read.csv("per_data2_featureSelectedCForest.csv",sep=",") 
 
+per_data2_selected_factors_freq<-selected_factors_freq(per_data2_select_factors_cf,per_data2_select_factors_ff,per_data2_select_factors_rf)
+write.csv(per_data2_selected_factors_freq, "per_data2_selected_factors_freq.csv")
+
+per_data2_selected_factors<-per_data2_selected_factors_freq%>%
+  filter(NumFeatures=="featNum5")%>%
+  slice_max(order_by = frequency, n = 5)
 
 ##################
 
