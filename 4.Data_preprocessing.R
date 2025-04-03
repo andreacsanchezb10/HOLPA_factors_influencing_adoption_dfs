@@ -317,12 +317,14 @@ plot_correlation_betw_category(per_data_cor)
 ############# REMOVE REDUNDANT FACTORS -----
 #############################################################
 per_redundant_factors<- read_excel("factors_list.xlsx",sheet = "per_redundant_factors")%>%
-  select(removed)
+  dplyr::select(removed)
 per_redundant_factors<-per_redundant_factors$removed
 per_redundant_factors
 
 per_data_FilteredRedundant<-per_data_Filterednzv%>%
   dplyr::select(-dplyr::any_of(per_redundant_factors))
+sort(unique(per_data_FilteredRedundant$num_adults_total))
+
 
 per_data_FilteredRedundant_cor<-create_cor_df(per_data_FilteredRedundant,per_factors_list)
 str(per_data_FilteredRedundant_cor)
@@ -395,11 +397,11 @@ per_data1_cor<-create_cor_df(per_data1,per_factors_list)
 #plot_correlation_by_category(per_data1_cor)
 plot_correlation_betw_category(per_data1_cor)
 
-dim(per_data1) #[1] 200 196 #200 farmers; 196 variables retained
+dim(per_data1) #[1] 200 191 #200 farmers; 196 variables retained
 any(is.na(per_data1)) #[1] FALSE
 write.csv(per_data1,"per_data1.csv",row.names=FALSE)
 
-
+sort(unique(per_data1$educat))
 per_data2<- per_data_FilteredRedundant%>%
   select(-c(
     #== Human capital ==
@@ -462,7 +464,7 @@ per_data2_cor<-create_cor_df(per_data2,per_factors_list)
 #plot_correlation_by_category(per_data2_cor)
 plot_correlation_betw_category(per_data2_cor)
 
-dim(per_data2) #[1] 200 198 #200 farmers; 198 variables retained
+dim(per_data2) #[1] 200 193 #200 farmers; 198 variables retained
 any(is.na(per_data2)) #[1] FALSE
 write.csv(per_data2,"per_data2.csv",row.names=FALSE)
 

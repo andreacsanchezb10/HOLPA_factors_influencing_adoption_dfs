@@ -4,7 +4,6 @@ library(readxl)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-
 per_data0<- read.csv("per_data0.csv",sep=",") #all correlated factors
 per_data1<- read.csv("per_data1.csv",sep=",") #data1
 per_data2<- read.csv("per_data2.csv",sep=",") #data2
@@ -16,6 +15,7 @@ any(is.na(per_data2)) #[1] FALSE
 per_outcomes<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
   filter(category_1=="outcome")
 per_outcomes<-per_outcomes$column_name_new
+
 
 #############################################################    
 ########### FEATURE SELECTION ----
@@ -276,7 +276,6 @@ per_data0_select_factors_cf<- read.csv("per_data0_featureSelectedCForest.csv",se
 per_data0_select_factors_ff<- read.csv("per_data0_featureSelectedCForest.csv",sep=",") 
 per_data0_select_factors_rf<- read.csv("per_data0_featureSelectedCForest.csv",sep=",") 
 
-
 per_data0_selected_factors_freq<-selected_factors_freq(per_data0_select_factors_cf,per_data0_select_factors_ff,per_data0_select_factors_rf)
 write.csv(per_data0_selected_factors_freq, "per_data0_selected_factors_freq.csv")
 
@@ -284,6 +283,7 @@ per_data0_selected_factors<-per_data0_selected_factors_freq%>%
   filter(NumFeatures=="featNum5")%>%
   slice_max(order_by = frequency, n = 5)
 
+write.csv(per_data0_selected_factors, "per_data0_selected_factors.csv")
 
 per_data0_selected_factors$selected_factors
 
@@ -297,16 +297,11 @@ data_num<-data %>%
   
   cor_df <- as.data.frame(cor_matrix) %>%
     rownames_to_column("factor1") %>%
-    pivot_longer(-factor1, names_to = "factor2", values_to = "spearman_correlation") 
-    #left_join(factors_list %>% select(column_name_new, category_1), by = c("factor1" = "column_name_new")) %>%
-    #rename(category_1.factor1 = category_1) %>%
-    #left_join(factors_list %>% select(column_name_new, category_1), by = c("factor2" = "column_name_new")) %>%
-    #rename(category_1.factor2 = category_1)
+    pivot_longer(-factor1, names_to = "factor2", values_to = "spearman_correlation")
   
   return(cor_df)
 }
 per_data0_selected_factors_cor<-create_cor_df(per_data0,per_data0_selected_factors)
-
 
 
 ##=== Run for data1 ====
@@ -334,13 +329,15 @@ per_data1_selected_factors_freq<-selected_factors_freq(per_data1_select_factors_
 write.csv(per_data1_selected_factors_freq, "per_data1_selected_factors_freq.csv")
 
 per_data1_selected_factors<-per_data1_selected_factors_freq%>%
-  filter(NumFeatures=="featNum5")%>%
-  slice_max(order_by = frequency, n = 5)
+  filter(NumFeatures=="featNum35")%>%
+  slice_max(order_by = frequency, n = 35)
+write.csv(per_data1_selected_factors, "per_data1_selected_factors.csv")
+
 
 ##=== Run for data2 ====
 per_data2_numeric <- prepare_numeric_matrix(per_data2)
 sft2 <- run_soft_threshold(per_data2_numeric, dataset_name = "per_data1")
-per_picked_power2 <- 5  # Optionally automate this later
+per_picked_power2 <- 6  # Optionally automate this later
 
 per_adoptionBinary2 <- per_data2$dfs_adoption_binary
 per_factors2 <- per_data2 %>% select(-any_of(per_outcomes))
@@ -364,6 +361,8 @@ write.csv(per_data2_selected_factors_freq, "per_data2_selected_factors_freq.csv"
 per_data2_selected_factors<-per_data2_selected_factors_freq%>%
   filter(NumFeatures=="featNum5")%>%
   slice_max(order_by = frequency, n = 5)
+write.csv(per_data2_selected_factors, "per_data2_selected_factors.csv")
+
 
 ##################
 
