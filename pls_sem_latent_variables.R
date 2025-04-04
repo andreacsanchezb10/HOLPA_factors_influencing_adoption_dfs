@@ -8,42 +8,48 @@ per_data0<- read.csv("per_data0.csv",sep=",")#all correlated factors
 per_data1<- read.csv("per_data1.csv",sep=",") #data1
 per_data2<- read.csv("per_data2.csv",sep=",") #data2
 
-factor_list<-read_excel("factors_list.xlsx",sheet = "factors_list")
-  
+factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")
+factors_list$category_1[grepl("^Farm management characteristics", factors_list$category_1)] <- "Farm management characteristics"
+factors_list$category_1[grepl("^Financial capital", factors_list$category_1)] <- "Financial capital"
+factors_list$category_1[grepl("^P&I context", factors_list$category_1)] <- "P&I context"
+factors_list$category_1[grepl("^P&I context", factors_list$category_1)] <- paste0(
+  factors_list$category_1[grepl("^P&I context", factors_list$category_1)],"_",  factors_list$category_2[grepl("^P&I context", factors_list$category_1)])
+factors_list$category_1[grepl("^P&I context_knowledge", factors_list$category_1)] <- "P&I context_knowledge"
+
 plssem_constructs<-read_excel("factors_list.xlsx",sheet = "plssem_constructs")
 
-
-per_outcomes<-factor_list%>%
+per_outcomes<-factors_list%>%
   filter(category_1=="outcome")
 per_outcomes<-per_outcomes$column_name_new
-
 
 
 #############################################################    
 ########## SELECTED FACTORS #####-----
 #############################################################
 # Get column names
-constructs_variables <- factor_list%>%
+constructs_variables <- factors_list%>%
   select(category_1,constructs, column_name_new)%>%
   filter(category_1=="Biophysical context"|
            category_1=="Human capital"|
-           constructs== "dfs_adoption_binary")%>%
+           constructs== "dfs_adoption_binary"|
+           category_1=="Social capital")%>%
   #CHECK THIS PROBLEMS TOMORROW
   #filter(constructs!="household_head_demographic")%>%
-  filter(constructs!="labour")
+  filter(constructs!="labour")%>%
+  left_join(plssem_constructs%>%select(constructs, constructs_type), by= "constructs")
 
 
 per_data0_analysis<- per_data0%>%
   select(any_of(constructs_variables$column_name_new))%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))
 
-dim(per_data0_analysis) #[1] 200   36
+dim(per_data0_analysis) #[1] 200   48
 str(per_data0_analysis)
 
 per_data1_analysis<- per_data1%>%
   select(any_of(constructs_variables$column_name_new))%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))
-dim(per_data1_analysis)#[1] 200   32
+dim(per_data1_analysis)#[1] 200   46
 str(per_data1_analysis)
 
 per_data2_analysis<- per_data2%>%
@@ -98,16 +104,24 @@ check_multicollinearity <- function(construct_list, data, threshold = 0.999) {
   return(problematic_constructs)
 }
 
-# Step 1: Merge construct metadata with items
+
+
+#########################################################
+########## Measurements model (also called outer model) ====
+##########################################################
+#- The measurement models (also called outer models in PLS-SEM), which describe 
+#the relationships between the latent variables and their measures (i.e., their indicators)
+#display the relationships between the constructs and the indicator variables
+##=== STEP 1: Merge construct metadata with items ====
 constructs_def <- constructs_variables %>%
+  select(-"constructs_type")%>%
   inner_join(plssem_constructs, by = "constructs") %>%
   filter(column_name_new %in% intersect(constructs_variables$column_name_new, colnames(per_data1_analysis)))%>%
   group_by(constructs, constructs_type, weights) %>%
   summarise(items = list(column_name_new), .groups = "drop") %>%
   mutate(n_items = lengths(items))
-head(constructs_def)
 
-##=== Reflective constructs ====
+##=== STEP 2: Get Reflective constructs ====
 reflective_constructs <- constructs_def %>%
   filter(constructs_type == "reflective", n_items >= 2)%>%
   mutate(item_str = map_chr(items, ~ paste0("'", .x, "'", collapse = ", ")),
@@ -123,7 +137,7 @@ reflective_measures
 names(reflective_measures) <- reflective_constructs$constructs
 reflective_measures
 
-##=== Composite constructs multiple items ====
+##=== STEP 3: Get Composite constructs multiple items ====
 composite_multi_constructs <- constructs_def %>%
   filter(constructs_type == "composite", n_items > 1)%>%
   mutate(weights = trimws(weights)) %>%  # remove leading/trailing whitespace
@@ -141,7 +155,7 @@ names(composite_multi_measures) <- composite_multi_constructs$constructs
 composite_multi_measures
 class(composite_multi_measures[[1]])
 
-##=== Composite constructs single items ====
+##=== STEP 4: Get Composite constructs single items ====
 composite_single_constructs <- constructs_def %>%
   filter(n_items == 1)%>%
   mutate(item_str = map_chr(items, ~ paste0("'", .x, "'", collapse = ", ")),
@@ -156,73 +170,255 @@ composite_single_measures
 names(composite_single_measures) <- composite_single_constructs$constructs
 composite_single_measures
 
-##=== Measurements object ====
-all_constructs <- c(
-  #reflective_measures, 
-  composite_multi_measures, composite_single_measures)
-all_constructs
+##=== STEP 4: Merge Constructs ====
+reflective_measurement_model <- do.call(seminr::constructs, reflective_measures)
+reflective_measurement_model
 
-measurements <- do.call(seminr::constructs, all_constructs)
-measurements
+composite_measurement_model<- do.call(seminr::constructs, c(composite_multi_measures, composite_single_measures))
+composite_measurement_model
 
-problematic <- check_multicollinearity(all_constructs, per_data1_analysis)
+measurement_model <- do.call(seminr::constructs, c(  reflective_measures, composite_multi_measures, composite_single_measures))
+measurement_model
+
+problematic <- check_multicollinearity(c(  reflective_measures, composite_multi_measures, composite_single_measures), per_data1_analysis)
 problematic
 
-##=== Structural model ====
-measurements
-measurements2 <- constructs(
-  composite("household_demographic",        c("num_children" ,"education_level_household_finished" ,"num_adults_total"), weights = mode_B),
-  composite("household_head_health", c("human_wellbeing_3","human_wellbeing_10"), weights = mode_B),
-  composite("household_food_security",c("access_diversified_food","access_healthy_food" ,"access_seasonal_food","access_traditional_food"), weights = mode_B ),
-  composite("household_head_demographic", c("age","gender","education_level_finished"), weights = mode_B),
-  composite("household_head_occupation", single_item("num_occupation_secondary_list")),
+
+#########################################################
+########## Structural model (also called inner model) ====
+#########################################################
+
+#measurements2 <- constructs(
+# composite("household_demographic",        c("num_children" ,"education_level_household_finished" ,"num_adults_total")),
+# composite("household_head_health", c("human_wellbeing_3","human_wellbeing_10"), weights = mode_B),
+# composite("household_food_security",c("access_diversified_food","access_healthy_food" ,"access_seasonal_food","access_traditional_food"), weights = mode_B ),
+# composite("household_head_demographic", c("age","gender","education_level_finished"), weights = mode_B),
+# composite("household_head_occupation", single_item("num_occupation_secondary_list")),
   #composite("labour", c("age","gender","education_level_finished"), weights = mode_B), #CHECK LABOUR
-  
-  composite("soil_characteristics_perception", single_item("soil_fertility_perception")),
-  composite("soil_characteristics", c("soil_depth","soil_MO_percentage_mean","soil_pH_mean" ), weights = mode_B),
-  composite("farm_topography", c("farm_elevation","soil_slope_perception"), weights = mode_B),
-  
-  composite("dfs_adoption_binary", single_item("dfs_adoption_binary")))
-measurements2
+# composite("soil_characteristics_perception", single_item("soil_fertility_perception")),
+# composite("soil_characteristics", c("soil_depth","soil_MO_percentage_mean","soil_pH_mean" ), weights = mode_B),
+# composite("farm_topography", c("farm_elevation","soil_slope_perception"), weights = mode_B),
+#  composite("dfs_adoption_binary", single_item("dfs_adoption_binary")))
+#measurements2
 
-direct_effect2<- purrr::map_chr(measurements2, ~ .[1]) %>%
+#direct_effect2<- purrr::map_chr(measurements2, ~ .[1]) %>%
+#  unique() %>%
+#  setdiff("dfs_adoption_binary")
+#direct_effect2
+
+#structural_model2<-relationships(
+# paths(from= c(direct_effect2), to="dfs_adoption_binary"))
+#structural_model2
+
+reflective_direct_effect<- purrr::map_chr(reflective_measurement_model, ~ .[1]) %>%
   unique() %>%
   setdiff("dfs_adoption_binary")
-direct_effect2
 
-structural_model2<-relationships(
-  paths(from= c(direct_effect2), to="dfs_adoption_binary"))
-structural_model2
+reflective_structural_model <-relationships(
+  paths(from= c(reflective_direct_effect), to="dfs_adoption_binary"))
+reflective_structural_model
 
 
-direct_effect<- purrr::map_chr(measurements, ~ .[1]) %>%
+direct_effect<- purrr::map_chr(measurement_model, ~ .[1]) %>%
   unique() %>%
   setdiff("dfs_adoption_binary")
-direct_effect
 
-structural_model<-relationships(
+structural_model <-relationships(
   paths(from= c(direct_effect), to="dfs_adoption_binary"))
 structural_model
 
-##=== PLS model ====
-data=per_data1_analysis%>%
-  select("num_children" ,"education_level_household_finished" ,"num_adults_total",
-         "human_wellbeing_3","human_wellbeing_10",
-         "access_diversified_food","access_healthy_food" ,"access_seasonal_food","access_traditional_food",
-         "age","gender","education_level_finished",
-         "num_occupation_secondary_list",
-         "soil_depth","soil_MO_percentage_mean","soil_pH_mean",
-         "soil_fertility_perception",
-         "farm_elevation","soil_slope_perception",
-         "dfs_adoption_binary")
-names(data)
-set.seed(123)
+#########################################################
+########## Estimating the PLS-SEM model ====
+#########################################################
+pls_sem_model <- estimate_pls(data = per_data1_analysis,
+                                        measurement_model = measurement_model,
+                                        structural_model = structural_model)
+# Summarize the model results
+pls_sem_summary<- summary(pls_sem_model)
+# Inspect the model’s path coefficients and the R^2 values
+pls_sem_summary$paths
+# Inspect the construct reliability metrics 
+pls_sem_summary$reliability
+# Inspect descriptive statistics
+pls_sem_summary$descriptives$statistics
+#- Number of iterations that the PLS-SEM algorithm needed to converge 
+#This number should be lower than the maximum number of iterations (e.g., 300)
+pls_sem_summary$iterations 
+#[1] 1
 
-pls_model <- estimate_pls(
-  data = per_data1_analysis,
-  measurement_model = measurements,
-  structural_model = structural_model
-)
+#########################################################
+########## Bootstrapping the model ====
+#########################################################
+boot_model <- bootstrap_model(seminr_model = pls_sem_summary, 
+                                         nboot = 1000, 
+                                         cores = 2 ) 
+# Store the summary of the bootstrapped model 
+boot_model_summary <- summary(boot_model,alpha = 0.10)
+boot_model_summary
+
+
+#########################################################
+########## Assessing the reflective measurement models ====
+#########################################################
+#An important characteristic of PLS-SEM is that the model estimates will change when 
+#any of the model relationships or variables are changed. We thus need to reassess the 
+#reflective measurement models to ensure that this portion of the model remains valid 
+#and reliable before continuing to evaluate the four new exogenous formative constructs.
+
+##=== STEP 1: Assess indicator reliability ====
+#- Rule of thumb: Reflective indicator loading's threshold >= 0.708
+#Obs: Rather than automatically eliminating indicators when their loading is below 0.70,
+#researchers should carefully examine the effects of indicator removal on other reliability and validity measures. 
+
+#Inspect the outer loading
+
+outer_loading<- as.data.frame(relective_pls_sem_summary$loadings)%>%
+  tibble::rownames_to_column("factors") %>%
+  tidyr::pivot_longer(
+    cols = -factors,
+    names_to = "constructs",
+    values_to = "reliability"
+  ) %>%
+  filter(reliability != 0)%>%
+  select(constructs,factors,reliability)%>%
+  left_join(constructs_def%>%select(constructs,constructs_type),by="constructs")%>%
+  filter(constructs_type=="reflective")%>%
+  mutate(reliability_assessment= case_when(
+    reliability>=0.708~ "Good",
+    reliability >0.4 ~ "acceptable", # check if excluding them improve or not 
+    TRUE~"Please check"))
+
+#INTERPRETATION: check if indicator loadings of the reflective measured constructs are above or bellow 0.708
+#Rather than automatically eliminating indicators 
+#when their loading is below 0.70, researchers should carefully examine the effects 
+#of indicator removal on other reliability and validity measures. Generally, indica-
+#tors with loadings between 0.40 and 0.708 should be considered for removal only 
+#when deleting the indicator leads to an increase in the INTERNAL CONSISTENCY RELIABILITY (STEP 2) 
+#or convergent validity (discussed in the next sections) above the suggested threshold value.
+
+#Another consideration in the decision of whether to delete an indicator
+#is the extent to which its removal affects content validity, which refers to the 
+#extent to which a measure represents all facets of a given construct. As a consequence, 
+#indicators with weaker loadings are sometimes retained. Indicators with 
+#very low loadings (below 0.40) should, however, always be eliminated from the 
+#measurement model (Hair, Hult, Ringle, & Sarstedt, 2022).
+
+#Inspect the indicator reliability
+reliability<-as.data.frame(pls_summary$loadings^2)%>%
+  tibble::rownames_to_column("factors") %>%
+  tidyr::pivot_longer(
+    cols = -factors,
+    names_to = "constructs",
+    values_to = "reliability"
+  ) %>%
+  filter(reliability != 0)%>%
+  select(constructs,factors,reliability)
+
+head(reliability)
+
+##=== STEP 2: Assess internal consistency reliability AND ====
+#Internal consistency reliability is the extent to which 
+#indicators measuring the same construct are associated with each other. 
+#- Rule of thumb:
+#Cronbach’s alpha is the lower bound, and the composite reliability rhoc is 
+#the upper bound for internal consistency reliability. The reliability 
+#coefficient rhoA usually lies between these bounds and may serve as a good 
+#representation of a construct’s internal consistency reliability
+#Minimum 0.70 (or 0.60 in exploratory research)
+#Maximum of 0.95 to avoid indicator redundancy, which would compromise content validity
+#Recommended 0.80 to 0.90
+
+##=== STEP 3: Assess the convergent validity ====
+#Convergent validity is the extent to which the construct converges in order to explain the variance of its indicators.
+# average variance extracted (AVE): is defined as the grand mean value of the squared loadings of the 
+#indicators associated with the construct (i.e., the sum of the squared loadings divided by the number of indicators).
+#- Rule of thumb: AVE≥0.50
+# INTERPRETATION: The minimum acceptable AVE is 0.50 – an AVE of 0.50 or 
+#higher indicates the construct explains 50 percent or more of the indicators’ 
+#variance that make up the construct (Hair et al., 2022).
+
+# Inspect the composite reliability AND Convergent validity
+internal_consistency_reliability<- as.data.frame(relective_pls_sem_summary$reliability)%>%
+  tibble::rownames_to_column("constructs")%>%
+  left_join(constructs_def%>%select(constructs,constructs_type),by="constructs")%>%
+  filter(constructs_type=="reflective")%>%
+  mutate(alpha_assessment= case_when(
+    alpha >0.95 ~ "Check for redundancy",
+    alpha <=0.95 & alpha >0.9 ~ "Maximum accepted",
+    alpha<=0.9 & alpha >=0.8 ~ "Recommended",
+    alpha <0.8 & alpha >= 0.6~ "Acceptable for exploratory research",
+    alpha <0.6 ~ "Please check",TRUE~"NA"))%>%
+  mutate(rhoC_assessment= case_when(
+    rhoC >0.95 ~ "Check for redundancy",
+    rhoC <=0.95 & rhoC >0.9 ~ "Maximum accepted",
+    rhoC<=0.9 & rhoC >=0.8 ~ "Recommended",
+    rhoC <0.8 & rhoC >= 0.6~ "Acceptable for exploratory research",
+    rhoC <0.6 ~ "Please check",TRUE~"NA"))%>%
+  mutate(rhoA_assessment= case_when(
+    rhoA >0.95 ~ "Check for redundancy",
+    rhoA <=0.95 & rhoA >0.9 ~ "Maximum accepted",
+    rhoA<=0.9 & rhoA >=0.8 ~ "Recommended",
+    rhoA <0.8 & rhoA >= 0.6~ "Acceptable for exploratory research",
+    rhoA <0.6 ~ "Please check", TRUE~"NA"))%>%
+  mutate(AVE_assessment= case_when(
+    AVE >=0.5 ~"Good",
+    TRUE~"Please check"))
+
+plot(pls_summary$reliability)
+  
+##=== STEP 4: Assess discriminant validity ====
+#This metric measures the extent to which a construct is empirically distinct from other constructs in the structural model
+#- Rule of thumb: 
+#For conceptually similar constructs, HTMT <0.90
+#For conceptually different constructs, HTMT <0.85
+#Test if the HTMT is significantly lower than the threshold value
+
+#INTERPRETATION: Discriminant validity problems are present when HTMT values are high. 
+#Henseler et al. (2015) propose a threshold value of 0.90 for structural models with 
+#constructs that are conceptually very similar, such as cognitive satisfaction, affective 
+#satisfaction, and loyalty. In such a setting, an HTMT value above 0.90 would 
+#suggest that discriminant validity is not present. But when constructs are conceptually 
+#more distinct, a lower, more conservative, threshold value is suggested, such as 0.85 (Henseler et al., 2015).
+
+discriminat_validity<- as.data.frame(relective_pls_sem_summary$validity$htmt)%>%
+  tibble::rownames_to_column("constructs")
+  
+
+# Extract the bootstrapped HTMT 
+reflective_boot_model_summary$bootstrapped_HTMT  ### CHECK HOW TO INTERPRET THIS!!!!!!!
+
+#########################################################
+########## Assessing the formative measurement models ====
+#########################################################
+##=== STEP 1: Assess the convergent validity (redundancy analysis) ====
+#In formative measurement model evaluation, convergent validity refers to the 
+#degree to which the formatively specified construct correlates with an alternative 
+#reflectively measured variable(s) of the same concept.
+#- Rule of thumb: 
+#≥ 0.708 correlation between the formative construct and a 
+#reflective (or single-item) measurement of the same concept
+
+#INTERPRETATION: Hair et al. (2022) suggest the correlation 
+#of the formatively measured construct with the reflectively measured item(s) should 
+#be 0.708 or higher, which implies that the construct explains (more than) 50% of 
+#the alternative measure’s variance.
+
+demo("seminr-primer-chap5")
+
+
+
+###-- Multicollinearity: VIF
+
+pls_summary$validity$vif_items #item reliability
+
+
+
+
+
+
+
+
+
 
 summary(pls_model)$validity$vif_items #All VIF values are below 3.3, which means no concerning multicollinearity
 summary(pls_model)$validity$htmt
@@ -268,7 +464,7 @@ measurements2
 
 direct_effect2<- purrr::map_chr(measurements2, ~ .[1]) %>%
   unique() %>%
-  setdiff("dfs_adoption_binary")%>%
+  setdiff("dfs_adoption_binary")
   
 direct_effect2
 
@@ -424,6 +620,7 @@ measurements <- constructs(
     composite("Satisfaction", multi_items("CUSA", 1:3)),
     interaction_term(iv = "Image", moderator = "Expectation")
   )
+
 
 
 
