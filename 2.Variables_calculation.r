@@ -730,6 +730,10 @@ per_data_clean<- per_data_clean %>%
     str_detect(crop_damage_cause, "pest")~ "1",
     household_shock.8=="1"~ "1", #Pest or disease outbreaks
     TRUE~"0"))%>%
+  #Perceived soil erosion as a production constraint
+  mutate(perceived_shock_soil_erosion= case_when(
+    soil_erosion_perception=="0"~"0",
+    TRUE~"1"))%>%
   #Household decision-making agency
   mutate(across(c(farmer_agency_1, farmer_agency_3), ~ replace_na(as.numeric(as.character(.)), 0)))%>%
   mutate(farmer_agency_1_3 = case_when(
@@ -739,7 +743,13 @@ per_data_clean<- per_data_clean %>%
     TRUE~ NA))%>%
   mutate(farmer_agency_1_3= round(farmer_agency_1_3, digits=0))
   
-  #Distance to the nearest farmer adopting DFS
+
+    
+    
+    
+  
+
+#Distance to the nearest farmer adopting DFS
 per_data_clean<-per_data_clean%>%
     rowwise() %>%
     mutate(

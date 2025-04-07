@@ -9,18 +9,21 @@ library(corrplot)
 ########## UPLOAD DATA #####-----
 #############################################################
 factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
-  filter(category_1!="xxx")
- 
-factors_list$category_1[grepl("^Farm management characteristics", factors_list$category_1)] <- "Farm management characteristics"
-factors_list$category_1[grepl("^Financial capital", factors_list$category_1)] <- "Financial capital"
+  filter(category_1!="xxx")%>%
+  filter(is.na(peru_remove))%>%
+  select(-peru_remove, -peru_remove_reason)
+sort(unique(factors_list$peru_remove))
+sort(unique(factors_list$category_1))
+
 factors_list$category_1[grepl("^P&I context", factors_list$category_1)] <- "P&I context"
 factors_list$category_1[grepl("^P&I context", factors_list$category_1)] <- paste0(
   factors_list$category_1[grepl("^P&I context", factors_list$category_1)],"_",  factors_list$category_2[grepl("^P&I context", factors_list$category_1)])
 factors_list$category_1[grepl("^P&I context_knowledge", factors_list$category_1)] <- "P&I context_knowledge"
 
 per_data_clean<- read.csv("per_data_clean.csv",sep=",")
-per_summary_categorical<-read.csv("per_summary_categorical.csv",sep=",") #598
-per_summary_numerical<-read.csv("per_summary_numerical.csv",sep=",")  #75 factors
+sort(unique(per_data_clean$soil_erosion_perception))
+per_summary_categorical<-read.csv("per_summary_categorical.csv",sep=",") #645
+per_summary_numerical<-read.csv("per_summary_numerical.csv",sep=",")  #106 factors
 
 factors_category<-per_summary_numerical%>%dplyr::select(column_name_new, category_1,category_2)%>%
   rbind(per_summary_categorical%>%dplyr::select(column_name_new,category_1,category_2))%>%
@@ -45,7 +48,7 @@ rownames(per_data_analysis) <- per_data_analysis$kobo_farmer_id
 per_data_analysis<- per_data_analysis%>%
   dplyr::select(-kobo_farmer_id)
 
-dim(per_data_analysis) #[1] 200 322 #200 farmers; 322 variables evaluated
+dim(per_data_analysis) #[1] 200 341 #200 farmers; 341 variables evaluated
 
 #############################################################    
 ########## DATA TYPE CONVERSION #####-----
@@ -60,24 +63,6 @@ per_data_analysis<- per_data_analysis%>%
   mutate(across(all_of(columns_categorical), as.factor))
 sort(unique(per_data_analysis$main_crops_annual ))
 
-###### --- CATEGORICAL ORDINAL AND BINARY -----
-#### Convert categorical and binary to factor
-#columns_categorical_nominal <- intersect(per_summary_categorical$column_name_new2[per_summary_categorical$categorical_type!="nominal" ], colnames(per_data_analysis))
-#print(columns_categorical_nominal)  # Check if it holds expected values
-
-#per_data_analysis<- per_data_analysis%>%
-# mutate(across(all_of(columns_categorical_nominal), as.factor))
-#sort(unique(per_data_analysis$dfs_adoption_binary))
-#str(per_data_analysis)
-###### --- CATEGORICAL NOMINAL -----
-#### Convert categorical and binary to factor
-#columns_categorical_nominal <- intersect(per_summary_categorical$column_name_new2[per_summary_categorical$categorical_type=="nominal" ], colnames(per_data_analysis))
-#print(columns_categorical_nominal)  # Check if it holds expected values
-
-#per_data_analysis<- per_data_analysis%>%
-#  mutate(across(all_of(columns_categorical_nominal), as.factor))
-#sort(unique(per_data_analysis$dfs_adoption_binary))
-
 ###### --- NUMERICAL VARIABLES -----
 #### Convert continuous variables to numeric
 columns_continuous <- intersect(per_summary_numerical$column_name_new, colnames(per_data_analysis))
@@ -85,6 +70,7 @@ print(columns_continuous)  # Check if it holds expected values
 
 per_data_analysis<- per_data_analysis%>%
   mutate(across(all_of(columns_continuous), as.numeric))
+
 
 #############################################################    
 ############# CREATING DUMMY VARIABLES -----
@@ -146,7 +132,7 @@ a<-as.data.frame(c(colnames(per_data_Binary)))%>%
   left_join(factors_list%>%
               dplyr::select(category_1,column_name_new), by="column_name_new")%>%
   mutate(category_1= case_when(
-    column_name_new== "year_assessment.2023"~"Biophysical context",
+    column_name_new== "year_assessment.2023"~"biophysical_context",
     TRUE~category_1))%>%
   group_by(category_1) %>%
   mutate(column_name_new_count = n()) %>%
@@ -161,7 +147,7 @@ ggplot(data=a, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_Binary) #[1] 200 336 #200 farmers; 336 variables retained
+dim(per_data_Binary) #[1] 200 355 #200 farmers; 355 variables retained
 
 #############################################################    
 ############# ZERO AND NEAR ZERO VARIANCE PREDICTORS -----
@@ -181,18 +167,26 @@ nzv_list <- nearZeroVar(per_data_Binary)
 nzv_factors<- per_data_Binary[, nzv_list]
 print(nzv_factors)
 view(dfSummary(nzv_factors))
+nzv_factors<-as.data.frame(c(colnames(nzv_factors)))%>%
+  rename("column_name_new"="c(colnames(nzv_factors))")%>%
+  left_join(factors_list%>%select(category_1,column_name_new,constructs,constructs_type), by="column_name_new")
 
 ## Remove nzv variables from data
 per_data_Filterednzv<- per_data_Binary[, -nzv_list]
 
-dim(per_data_Filterednzv) #[1] 200 251 #200 farmers; 251 variables retained
+dim(per_data_Filterednzv) #[1] 200 245 #200 farmers; 245 variables retained
 
 b<-as.data.frame(c(colnames(per_data_Filterednzv)))%>%
   rename("column_name_new"="c(colnames(per_data_Filterednzv))")%>%
-  left_join(factors_list%>%select(category_1,column_name_new), by="column_name_new")%>%
+  left_join(factors_list%>%select(category_1,column_name_new,constructs,constructs_type), by="column_name_new")%>%
+  mutate(category_1= case_when(
+    column_name_new== "year_assessment.2023"~"biophysical_context",
+    column_name_new== "read_write.3"~"human_capital",
+    TRUE~category_1))%>%
   group_by(category_1) %>%
   mutate(column_name_new_count = n()) %>%
-  tally()%>%filter(category_1!="xxx")
+  tally()%>%
+  filter(category_1!="xxx")
 
 ggplot(data=b, aes(x=n, y=category_1, fill= category_1)) +
   geom_bar(stat="identity")+
@@ -203,9 +197,9 @@ ggplot(data=b, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_Filterednzv) #[1] 200 239 #200 farmers; 239 variables retained
+dim(per_data_Filterednzv) #[1] 200 245 #200 farmers; 245 variables retained
 
-#write.csv(per_data_Filterednzv,"per_data_Filterednzv.csv",row.names=FALSE)
+write.csv(per_data_Filterednzv,"per_data_Filterednzv.csv",row.names=FALSE)
 
 #############################################################    
 ############# SPEARMAN'S  CORRELATION -----

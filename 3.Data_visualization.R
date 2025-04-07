@@ -8,6 +8,7 @@ library(AppliedPredictiveModeling)
 library(readxl)
 library(ggplot2)
 library(reshape2)
+library(psych)
 
 per_data_clean<- read.csv("per_data_clean.csv",sep=",")
 global_survey<-read.csv("global_survey.csv",sep=",")
@@ -16,8 +17,6 @@ factors_list <- read_excel("factors_list.xlsx",sheet = "factors_list")%>%
   filter(category_1!="xxx")
 
   filter(is.na(remove))
-factors_list$category_1[grepl("^Farm management characteristics", factors_list$category_1)] <- "Farm management characteristics"
-factors_list$category_1[grepl("^Financial capital", factors_list$category_1)] <- "Financial capital"
 factors_list$category_1[grepl("^P&I context", factors_list$category_1)] <- "P&I context"
 factors_list$category_1[grepl("^P&I context", factors_list$category_1)] <- paste0(
   factors_list$category_1[grepl("^P&I context", factors_list$category_1)],"_",  factors_list$category_2[grepl("^P&I context", factors_list$category_1)])
@@ -30,27 +29,9 @@ summary_stats_num <- function(df,numeric_valid_columns) {
   df %>%
   select(-kobo_farmer_id) %>%  # Exclude 'id' column
   select(all_of(numeric_valid_columns))%>%
-  summarise(across(everything(), list(
-    mean = ~mean(. , na.rm = TRUE),
-    sd = ~sd(. , na.rm = TRUE),
-    min = ~min(. , na.rm = TRUE),
-    max = ~max(. , na.rm = TRUE),
-    missing_perc = ~sum(is.na(.)) / length(.) * 100,
-    n = ~sum(!is.na(.))
-  ), .names = "{.col}_{.fn}")) %>%
-  pivot_longer(cols = everything(), 
-               names_to = "full_name", 
-               values_to = "value") %>%
-  mutate(total=length(.),
-         column_name_new = case_when(
-      str_detect(full_name, "_missing_perc$") ~ str_remove(full_name, "_missing_perc$"),  # Keep "missing_perc" together
-      TRUE ~ str_extract(full_name, ".*(?=_[^_]+$)")),  # Extract everything before last "_"
-    statistic = case_when(
-      str_detect(full_name, "_missing_perc$") ~ "missing_perc",  # Assign "missing_perc" as a single statistic
-      TRUE ~ str_extract(full_name, "[^_]+$"))) %>% # Extract everything after last "_"
-  select(column_name_new, statistic, value)%>%  # Reorder columns for clarity
-  pivot_wider(names_from = "statistic", values_from = "value")%>%
-    left_join(factors_list%>%select(category_1,category_2,category_3,factor, metric, metric_type,column_name_new,description),by="column_name_new")
+    describe(.)%>%
+    tibble::rownames_to_column("column_name_new") %>%
+    left_join(factors_list%>%select(category_1,category_2,constructs,constructs_type,weights,factor, metric, metric_type,column_name_new,description),by="column_name_new")
 }
 
 
@@ -59,6 +40,8 @@ summary_stats_factor <- function(df,factor_valid_columns,categorical_choices,fac
     select(-kobo_farmer_id) %>%  # Exclude 'id' column
     select(all_of(factor_valid_columns))%>%
     mutate(across(all_of(factor_valid_columns),as.factor))%>%
+    #describe(.)%>%
+    #tibble::rownames_to_column("column_name_new") %>%
     pivot_longer(cols = everything(), names_to = "column_name_new2", values_to = "name_choice") %>%
     group_by(column_name_new2, name_choice) %>%
     summarise(Count = n(), .groups = "drop") %>%
@@ -94,6 +77,7 @@ summary_stats_factor <- function(df,factor_valid_columns,categorical_choices,fac
 ### Summary statistics
 columns_numeric <- intersect(factors_list$column_name_new[factors_list$metric_type == "continuous"], colnames(per_data_clean))
 print(columns_numeric)  # Check if it holds expected values
+
 per_summary_numerical <- summary_stats_num(per_data_clean,columns_numeric)
 sort(unique(per_summary_numerical$factor))
 
