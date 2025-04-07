@@ -9,9 +9,7 @@ library(corrplot)
 ########## UPLOAD DATA #####-----
 #############################################################
 factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
-  filter(category_1!="xxx")%>%
-  filter(is.na(peru_remove))%>%
-  select(-peru_remove, -peru_remove_reason)
+  filter(category_1!="xxx")
 sort(unique(factors_list$peru_remove))
 sort(unique(factors_list$category_1))
 
@@ -41,14 +39,20 @@ sort(unique(per_data_clean$province))
 per_variables_list<-c(unique(per_summary_categorical$column_name_new2),unique(per_summary_numerical$column_name_new))
 per_variables_list
 
+factors_list$column_name_new[factors_list$peru_remove %in% c("irrelevant", "redundant",  "remove"  )]
+per_remove_list<- intersect(factors_list$column_name_new[factors_list$peru_remove %in%c("irrelevant", "redundant",  "remove"  )],colnames(per_data_clean))
+per_remove_list
+
 per_data_analysis<- per_data_clean%>%
-  dplyr::select(kobo_farmer_id,all_of(per_variables_list))
+  dplyr::select(kobo_farmer_id,all_of(per_variables_list))%>%
+  dplyr::select(-all_of(per_remove_list))
+
 rownames(per_data_analysis) <- per_data_analysis$kobo_farmer_id
 
 per_data_analysis<- per_data_analysis%>%
   dplyr::select(-kobo_farmer_id)
 
-dim(per_data_analysis) #[1] 200 341 #200 farmers; 341 variables evaluated
+dim(per_data_analysis) #[1] 200 275 #200 farmers; 275 variables evaluated
 
 #############################################################    
 ########## DATA TYPE CONVERSION #####-----
@@ -147,7 +151,7 @@ ggplot(data=a, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_Binary) #[1] 200 355 #200 farmers; 355 variables retained
+dim(per_data_Binary) #[1] 200 282 #200 farmers; 282 variables retained
 
 #############################################################    
 ############# ZERO AND NEAR ZERO VARIANCE PREDICTORS -----
@@ -174,7 +178,7 @@ nzv_factors<-as.data.frame(c(colnames(nzv_factors)))%>%
 ## Remove nzv variables from data
 per_data_Filterednzv<- per_data_Binary[, -nzv_list]
 
-dim(per_data_Filterednzv) #[1] 200 245 #200 farmers; 245 variables retained
+dim(per_data_Filterednzv) #[1] 200 210 #200 farmers; 210 variables retained
 
 b<-as.data.frame(c(colnames(per_data_Filterednzv)))%>%
   rename("column_name_new"="c(colnames(per_data_Filterednzv))")%>%
@@ -182,7 +186,8 @@ b<-as.data.frame(c(colnames(per_data_Filterednzv)))%>%
   mutate(category_1= case_when(
     column_name_new== "year_assessment.2023"~"biophysical_context",
     column_name_new== "read_write.3"~"human_capital",
-    TRUE~category_1))%>%
+   # grepl("^crop_type.", column_name_new) ~"farm_management_characteristics",
+    TRUE~category_1))
   group_by(category_1) %>%
   mutate(column_name_new_count = n()) %>%
   tally()%>%
@@ -197,7 +202,7 @@ ggplot(data=b, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_Filterednzv) #[1] 200 245 #200 farmers; 245 variables retained
+dim(per_data_Filterednzv) #[1] 200 210 #200 farmers; 210 variables retained
 
 write.csv(per_data_Filterednzv,"per_data_Filterednzv.csv",row.names=FALSE)
 

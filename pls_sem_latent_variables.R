@@ -36,6 +36,11 @@ constructs_variables <- factors_list%>%
            category_1=="farmers_behaviour"|
            category_1=="financial_capital"|
            category_1=="natural_capital"|
+           category_1=="P&I_context_financial_risk_management"|
+           category_1=="P&I_context_knowledge"|
+           category_1== "P&I_context_land_tenure"|
+           category_1=="social_capital"|
+         
            constructs=="dfs_adoption_binary")
   #filter(constructs=="climate_stress_exposure") #ERROR
   #filter(constructs=="farm_elevation") #ERROR
@@ -55,7 +60,7 @@ sort(unique(constructs_variables$constructs))
 per_data1_analysis<- per_data1%>%
   select(dfs_adoption_binary,any_of(constructs_variables$column_name_new))%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))
-dim(per_data1_analysis)#[1] 200   15
+dim(per_data1_analysis)#[1] 200   106
 str(per_data1_analysis)
 
 #per_data2_analysis<- per_data2%>%
@@ -109,8 +114,6 @@ check_multicollinearity <- function(construct_list, data, threshold = 0.999) {
   
   return(problematic_constructs)
 }
-
-
 
 #########################################################
 ########## Measurements model (also called outer model) ====
@@ -174,14 +177,6 @@ composite_single_measures <- map(
 composite_single_measures
 names(composite_single_measures) <- composite_single_constructs$constructs
 composite_single_measures
-
-##=== STEP 5: Get Observation constructs  ====
-composite_observ <- constructs_variables %>%
-  #inner_join(plssem_constructs, by = "constructs") %>%
-  filter(column_name_new %in% intersect(constructs_variables$column_name_new, colnames(per_data1_analysis)))%>%
-  filter(constructs_type == "observation")
-  
-composite_observ$column_name_new
 
 ##=== STEP 4: Merge Constructs ====
 #reflective_measurement_model <- do.call(seminr::constructs, reflective_measures)
@@ -249,7 +244,7 @@ structural_model
 
 #measurement_model<-constructs(
  # composite("perception_rainfall_timing_variability", c("rainfall_timing_change_perception.startearlier",  "rainfall_timing_change_perception.startlater" ,   "rainfall_timing_change_perception.stopearlier" , 
-                                                        "rainfall_timing_change_perception.stoplater" ,    "rainfall_timing_change_perception.unpredictable"),weights = mode_B),
+                                                       # "rainfall_timing_change_perception.stoplater" ,    "rainfall_timing_change_perception.unpredictable"),weights = mode_B),
 # composite("dfs_adoption_binary",c("dfs_adoption_binary")))
   
 #structural_model <-relationships(
@@ -307,7 +302,7 @@ plot(boot_model, title = "")
 
 #Inspect the outer loading
 
-outer_loading<- as.data.frame(relective_pls_sem_summary$loadings)%>%
+outer_loading<- as.data.frame(pls_sem_summary$loadings)%>%
   tibble::rownames_to_column("factors") %>%
   tidyr::pivot_longer(
     cols = -factors,

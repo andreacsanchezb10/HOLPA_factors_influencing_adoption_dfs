@@ -409,10 +409,10 @@ per_data_clean<-per_data_clean%>%
     is.na(children_attend_school) ~ "0",
     children_attend_school=="1" & num_free_school_meals_perweek==0  ~ "2",
     children_attend_school=="1" & num_free_school_meals_perweek>0  ~ "5",
-    TRUE~ NA))%>%
-  mutate(access_free_school_meals_perweek= case_when(
-    country=="peru" & access_free_school_meals_perweek=="5" ~ "1",
-    TRUE~ access_free_school_meals_perweek))
+    TRUE~ NA))
+ # mutate(access_free_school_meals_perweek= case_when(
+  #  country=="peru" & access_free_school_meals_perweek=="5" ~ "1",
+   # TRUE~ access_free_school_meals_perweek))
 
 ### POLITICAL AND INSTITUTIONAL CONTEXT: Knowledge ----
 per_data_clean<-per_data_clean%>%

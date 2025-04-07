@@ -16,7 +16,6 @@ per_global_choices<-read.csv("per_global_choices.csv",sep=",")
 factors_list <- read_excel("factors_list.xlsx",sheet = "factors_list")%>%
   filter(category_1!="xxx")
 
-  filter(is.na(remove))
 factors_list$category_1[grepl("^P&I context", factors_list$category_1)] <- "P&I context"
 factors_list$category_1[grepl("^P&I context", factors_list$category_1)] <- paste0(
   factors_list$category_1[grepl("^P&I context", factors_list$category_1)],"_",  factors_list$category_2[grepl("^P&I context", factors_list$category_1)])
