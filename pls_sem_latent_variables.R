@@ -4,19 +4,22 @@ library(readxl)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-per_data0<- read.csv("per_data0.csv",sep=",")#all correlated factors
-per_data1<- read.csv("per_data1.csv",sep=",") #data1
-per_data2<- read.csv("per_data2.csv",sep=",") #data2
+#per_data0<- read.csv("per_data0.csv",sep=",")#all correlated factors
+per_data1<- read.csv("per_data_Filterednzv.csv",sep=",") #data1
+#per_data2<- read.csv("per_data2.csv",sep=",") #data2
 
-factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")
-factors_list$category_1[grepl("^Farm management characteristics", factors_list$category_1)] <- "Farm management characteristics"
-factors_list$category_1[grepl("^Financial capital", factors_list$category_1)] <- "Financial capital"
+sort(unique(per_data1$year_assessment.2023))
+factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
+  filter(category_1!="xxx")%>%
+  filter(is.na(peru_remove))%>%
+  mutate(column_name_new=case_when(
+    column_name_new == "year_assessment"~ "year_assessment.2023",
+    TRUE~column_name_new))
 factors_list$category_1[grepl("^P&I context", factors_list$category_1)] <- "P&I context"
 factors_list$category_1[grepl("^P&I context", factors_list$category_1)] <- paste0(
   factors_list$category_1[grepl("^P&I context", factors_list$category_1)],"_",  factors_list$category_2[grepl("^P&I context", factors_list$category_1)])
 factors_list$category_1[grepl("^P&I context_knowledge", factors_list$category_1)] <- "P&I context_knowledge"
 
-plssem_constructs<-read_excel("factors_list.xlsx",sheet = "plssem_constructs")
 
 per_outcomes<-factors_list%>%
   filter(category_1=="outcome")
@@ -28,35 +31,38 @@ per_outcomes<-per_outcomes$column_name_new
 #############################################################
 # Get column names
 constructs_variables <- factors_list%>%
-  select(category_1,constructs, column_name_new)%>%
-  filter(category_1=="Biophysical context"|
-           category_1=="Human capital"|
-           constructs== "dfs_adoption_binary"|
-           category_1=="Social capital")%>%
-  #CHECK THIS PROBLEMS TOMORROW
-  #filter(constructs!="household_head_demographic")%>%
-  filter(constructs!="labour")%>%
-  left_join(plssem_constructs%>%select(constructs, constructs_type), by= "constructs")
+  select(category_1,constructs, column_name_new,constructs, constructs_type,weights)%>%
+  filter(category_1=="biophysical_context"|
+           category_1=="farmers_behaviour"|
+           category_1=="financial_capital"|
+           category_1=="natural_capital"|
+           constructs=="dfs_adoption_binary")
+  #filter(constructs=="climate_stress_exposure") #ERROR
+  #filter(constructs=="farm_elevation") #ERROR
+  filter(constructs=="perception_rainfall_timing_variability") #ERROR
+  
+sort(unique(constructs_variables$constructs))
+#[1] ""                ""                         "" "soil_erosion"                          
+#[5] "soil_quality"                           "soil_slope"                             "year_assessment"                       
+ 
+#per_data0_analysis<- per_data0%>%
+  #  select(any_of(constructs_variables$column_name_new))%>%
+  #mutate(across(everything(), ~ as.numeric(as.character(.))))
 
-
-per_data0_analysis<- per_data0%>%
-  select(any_of(constructs_variables$column_name_new))%>%
-  mutate(across(everything(), ~ as.numeric(as.character(.))))
-
-dim(per_data0_analysis) #[1] 200   48
-str(per_data0_analysis)
+  #dim(per_data0_analysis) #[1] 200   48
+  #str(per_data0_analysis)
 
 per_data1_analysis<- per_data1%>%
-  select(any_of(constructs_variables$column_name_new))%>%
+  select(dfs_adoption_binary,any_of(constructs_variables$column_name_new))%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))
-dim(per_data1_analysis)#[1] 200   46
+dim(per_data1_analysis)#[1] 200   15
 str(per_data1_analysis)
 
-per_data2_analysis<- per_data2%>%
-  select(dfs_adoption_binary, any_of(per_data2_selected_factors$selected_factors))%>%
-  mutate(across(everything(), ~ as.numeric(as.character(.))))
-dim(per_data2_analysis)
-str(per_data2_analysis)
+#per_data2_analysis<- per_data2%>%
+#  select(dfs_adoption_binary, any_of(per_data2_selected_factors$selected_factors))%>%
+#  mutate(across(everything(), ~ as.numeric(as.character(.))))
+#dim(per_data2_analysis)
+#str(per_data2_analysis)
 
 #############################################################    
 ########## PLS-SEM ANALYSIS #####-----
@@ -114,8 +120,7 @@ check_multicollinearity <- function(construct_list, data, threshold = 0.999) {
 #display the relationships between the constructs and the indicator variables
 ##=== STEP 1: Merge construct metadata with items ====
 constructs_def <- constructs_variables %>%
-  select(-"constructs_type")%>%
-  inner_join(plssem_constructs, by = "constructs") %>%
+  #inner_join(plssem_constructs, by = "constructs") %>%
   filter(column_name_new %in% intersect(constructs_variables$column_name_new, colnames(per_data1_analysis)))%>%
   group_by(constructs, constructs_type, weights) %>%
   summarise(items = list(column_name_new), .groups = "drop") %>%
@@ -140,7 +145,7 @@ reflective_measures
 ##=== STEP 3: Get Composite constructs multiple items ====
 composite_multi_constructs <- constructs_def %>%
   filter(constructs_type == "composite", n_items > 1)%>%
-  mutate(weights = trimws(weights)) %>%  # remove leading/trailing whitespace
+  mutate(weights = trimws(weights))%>%   # remove leading/trailing whitespace
   filter(weights %in% c("mode_A", "mode_B"))%>%
   mutate(
     item_str = map_chr(items, ~ paste0("'", .x, "'", collapse = ", ")),
@@ -170,14 +175,26 @@ composite_single_measures
 names(composite_single_measures) <- composite_single_constructs$constructs
 composite_single_measures
 
+##=== STEP 5: Get Observation constructs  ====
+composite_observ <- constructs_variables %>%
+  #inner_join(plssem_constructs, by = "constructs") %>%
+  filter(column_name_new %in% intersect(constructs_variables$column_name_new, colnames(per_data1_analysis)))%>%
+  filter(constructs_type == "observation")
+  
+composite_observ$column_name_new
+
 ##=== STEP 4: Merge Constructs ====
-reflective_measurement_model <- do.call(seminr::constructs, reflective_measures)
-reflective_measurement_model
+#reflective_measurement_model <- do.call(seminr::constructs, reflective_measures)
+#reflective_measurement_model
 
-composite_measurement_model<- do.call(seminr::constructs, c(composite_multi_measures, composite_single_measures))
-composite_measurement_model
+#composite_measurement_model<- do.call(seminr::constructs, c(composite_multi_measures, composite_single_measures))
+#composite_measurement_model
 
-measurement_model <- do.call(seminr::constructs, c(  reflective_measures, composite_multi_measures, composite_single_measures))
+measurement_model <- do.call(seminr::constructs, c(  
+  reflective_measures, 
+  composite_multi_measures,
+  composite_single_measures
+  ))
 measurement_model
 
 problematic <- check_multicollinearity(c(  reflective_measures, composite_multi_measures, composite_single_measures), per_data1_analysis)
@@ -210,29 +227,46 @@ problematic
 # paths(from= c(direct_effect2), to="dfs_adoption_binary"))
 #structural_model2
 
-reflective_direct_effect<- purrr::map_chr(reflective_measurement_model, ~ .[1]) %>%
-  unique() %>%
-  setdiff("dfs_adoption_binary")
+#reflective_direct_effect<- purrr::map_chr(reflective_measurement_model, ~ .[1]) %>%
+ # unique() %>%
+  #setdiff("dfs_adoption_binary")
 
-reflective_structural_model <-relationships(
-  paths(from= c(reflective_direct_effect), to="dfs_adoption_binary"))
-reflective_structural_model
-
+#reflective_structural_model <-relationships(
+# paths(from= c(reflective_direct_effect), to="dfs_adoption_binary"))
+#reflective_structural_model
 
 direct_effect<- purrr::map_chr(measurement_model, ~ .[1]) %>%
   unique() %>%
   setdiff("dfs_adoption_binary")
+direct_effect
 
 structural_model <-relationships(
   paths(from= c(direct_effect), to="dfs_adoption_binary"))
+
+
 structural_model
+
+
+#measurement_model<-constructs(
+ # composite("perception_rainfall_timing_variability", c("rainfall_timing_change_perception.startearlier",  "rainfall_timing_change_perception.startlater" ,   "rainfall_timing_change_perception.stopearlier" , 
+                                                        "rainfall_timing_change_perception.stoplater" ,    "rainfall_timing_change_perception.unpredictable"),weights = mode_B),
+# composite("dfs_adoption_binary",c("dfs_adoption_binary")))
+  
+#structural_model <-relationships(
+  #paths(from= "climate_stress_exposure", to="dfs_adoption_binary"),
+# paths(from= "perception_rainfall_timing_variability", to="dfs_adoption_binary"))
+  
+
+#structural_model
 
 #########################################################
 ########## Estimating the PLS-SEM model ====
 #########################################################
+names(per_data1_analysis)
 pls_sem_model <- estimate_pls(data = per_data1_analysis,
-                                        measurement_model = measurement_model,
-                                        structural_model = structural_model)
+                              measurement_model = measurement_model,
+                              structural_model = structural_model)
+
 # Summarize the model results
 pls_sem_summary<- summary(pls_sem_model)
 # Inspect the model’s path coefficients and the R^2 values
@@ -249,12 +283,13 @@ pls_sem_summary$iterations
 #########################################################
 ########## Bootstrapping the model ====
 #########################################################
-boot_model <- bootstrap_model(seminr_model = pls_sem_summary, 
+boot_model <- bootstrap_model(seminr_model = pls_sem_model, 
                                          nboot = 1000, 
                                          cores = 2 ) 
 # Store the summary of the bootstrapped model 
 boot_model_summary <- summary(boot_model,alpha = 0.10)
 boot_model_summary
+plot(boot_model, title = "")
 
 
 #########################################################
