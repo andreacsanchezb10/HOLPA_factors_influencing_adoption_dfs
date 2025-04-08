@@ -826,27 +826,27 @@ per_data_clean<-per_data_clean%>%
   mutate(perceived_shock_count=case_when(household_shock.none==1~ perceived_shock_count-1,TRUE~perceived_shock_count))%>%
   #Absorptive strategies to cope with shock
   mutate(household_shock_recover_activities.5 = NA)%>%
-  mutate(household_shock_strategy_absorptive= case_when(
-    household_shock_recover_activities.5=="1"~ "1", #Reduced area under cultivation
-    household_shock_recover_activities.6=="1"~ "1", #Reduced food consumption
-    household_shock_recover_activities.7=="1"~ "1", #Reduced household expenditure
-    household_shock_recover_activities.9=="1"~ "1", #Sold assets
-    household_shock_recover_activities.12=="1"~ "1", #Taken loans
-    TRUE~"0"))%>%
+  #mutate(household_shock_strategy_absorptive= case_when(
+    #  household_shock_recover_activities.5=="1"~ "1", #Reduced area under cultivation
+    #household_shock_recover_activities.6=="1"~ "1", #Reduced food consumption
+    #household_shock_recover_activities.7=="1"~ "1", #Reduced household expenditure
+    #household_shock_recover_activities.9=="1"~ "1", #Sold assets
+    #household_shock_recover_activities.12=="1"~ "1", #Taken loans
+    #TRUE~"0"))%>%
   #Adaptive strategies to cope with shock
-  mutate(household_shock_strategy_adaptive= case_when(
-    household_shock_recover_activities.2=="1"~ "1", #Diversified on-farm income sources of income
-    household_shock_recover_activities.3=="1"~ "1", #Engage in off-farm income sources
-    household_shock_recover_activities.10=="1"~ "1", #Switched from chemical to organic farming
-    household_shock_recover_activities.11=="1"~ "1", #Switched from organic to chemical farming
-    TRUE~"0"))%>%
+    #mutate(household_shock_strategy_adaptive= case_when(
+    #household_shock_recover_activities.2=="1"~ "1", #Diversified on-farm income sources of income
+    #household_shock_recover_activities.3=="1"~ "1", #Engage in off-farm income sources
+  #household_shock_recover_activities.10=="1"~ "1", #Switched from chemical to organic farming
+  #household_shock_recover_activities.11=="1"~ "1", #Switched from organic to chemical farming
+  # TRUE~"0"))%>%
   #Transformative strategies to cope with shock
-  mutate(household_shock_recover_activities.4 = NA)%>%
-  mutate(household_shock_strategy_transformative= case_when(
-    household_shock_recover_activities.1=="1"~ "1", #Accessed insurance or risk management mechanisms
-    household_shock_recover_activities.4=="1"~ "1", #Migrated
-    household_shock_recover_activities.8=="1"~ "1", #Relied on institutional support
-    TRUE~"0"))%>%
+  #mutate(household_shock_recover_activities.4 = NA)%>%
+  #mutate(household_shock_strategy_transformative= case_when(
+   # household_shock_recover_activities.1=="1"~ "1", #Accessed insurance or risk management mechanisms
+    #household_shock_recover_activities.4=="1"~ "1", #Migrated
+    #household_shock_recover_activities.8=="1"~ "1", #Relied on institutional support
+    #TRUE~"0"))%>%
   #Number of activities to cope with shocks
   mutate(across(starts_with("household_shock_recover_activities."), ~ as.numeric(as.character(.))))%>%
   mutate(household_shock_strategy_count = rowSums(as.matrix(select(., starts_with("household_shock_recover_activities."))), na.rm = TRUE))%>%
