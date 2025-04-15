@@ -11,7 +11,7 @@ library(reshape2)
 library(psych)
 
 per_data_clean<- read.csv("per_data_clean.csv",sep=",")
-global_survey<-read.csv("global_survey.csv",sep=",")
+global_survey<-read.csv("h_global_survey.csv",sep=",")
 per_global_choices<-read.csv("per_global_choices.csv",sep=",")
 factors_list <- read_excel("factors_list.xlsx",sheet = "factors_list")%>%
   filter(category_1!="xxx")

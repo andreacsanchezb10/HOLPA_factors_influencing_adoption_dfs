@@ -1,6 +1,5 @@
 library(dplyr)
 library(readxl)
-library(caret)
 library(reshape2)
 library(summarytools)
 library(corrplot)
@@ -41,7 +40,7 @@ rownames(per_data_analysis) <- per_data_analysis$kobo_farmer_id
 per_data_analysis<- per_data_analysis%>%
   dplyr::select(-kobo_farmer_id)
 
-dim(per_data_analysis) #[1] 200 292 #200 farmers; 292 variables evaluated
+dim(per_data_analysis) #200 farmers; 289 variables evaluated
 
 #############################################################    
 ########## DATA TYPE CONVERSION #####-----
@@ -65,7 +64,6 @@ per_data_analysis<- per_data_analysis%>%
   mutate(across(all_of(columns_continuous), as.numeric))
 
 table(per_data_analysis$crop_type)
-
 
 #############################################################    
 ############# CREATING DUMMY VARIABLES -----
@@ -142,18 +140,16 @@ ggplot(data=a, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_Binary) #[1] 200 306 #200 farmers; 306 variables retained
+dim(per_data_Binary) #[1] 200 303 #200 farmers; 303 variables retained
 
 
 write.csv(per_data_Binary,"per_data_Binary.csv",row.names=FALSE)
-
-
 
 #############################################################    
 ############# DATA DISTRIBUTION EXAMINATION -----
 #############################################################
 library(e1071)
-columns_continuous <- names(per_data_Filterednzv)[sapply(per_data_Filterednzv, is.numeric)]
+columns_continuous <- names(per_data_Binary)[sapply(per_data_Binary, is.numeric)]
 columns_continuous
 
 # === Identify factors with skewed, kurtoise, normal distribution ===
@@ -189,8 +185,7 @@ normality_summary_ks_z <- function(x) {
 }
 
 # Apply to all numeric variables
-columns_continuous <- names(per_data_Filterednzv)[sapply(per_data_Filterednzv, is.numeric)]
-ks_z_results <- sapply(per_data_Filterednzv[columns_continuous], normality_summary_ks_z)
+ks_z_results <- sapply(per_data_Binary[columns_continuous], normality_summary_ks_z)
 
 # Format as a data frame
 ks_z_df <- as.data.frame(t(ks_z_results))
