@@ -4,11 +4,11 @@ library(readxl)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-per_data<- read.csv("per_data_Filterednzv.csv",sep=",") #data1
-sort(unique(per_data$year_assessment.2023))
+per_data1<- read.csv("per_data1.csv",sep=",") #data1
+per_data1_selected_factors<- read.csv("per_data1_selected_factors.csv",sep=",")
+
 
 factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
-  filter(category_1!="xxx")%>%
   filter(is.na(peru_remove))
 
 per_outcomes<-factors_list%>%
@@ -21,7 +21,15 @@ per_structural_model<-read_excel("factors_list.xlsx",sheet = "structural_model")
 #############################################################    
 ########## SELECTED FACTORS #####-----
 #############################################################
-# Get column names
+##=== Select most important factors ----
+data1_selected_factors<-per_data1_selected_factors%>%
+  left_join(factors_list%>%select(category_1,constructs,constructs_type,weights,column_name_new),by=c("all_selected"="column_name_new"))
+sort(unique(data1_selected_factors$constructs))
+
+per_data1_analysis<- per_data1%>%
+  select(dfs_adoption_binary,all_of(per_data1_selected_factors$all_selected))
+
+
 ##=== Direct effect to adoption ----
 per_constructs_direct <-per_structural_model%>%
   filter(type == "direct")%>%
@@ -31,7 +39,6 @@ per_constructs_direct
 per_constructs_direct <- per_constructs_direct[!is.na(per_constructs_direct)]
 per_constructs_direct
 per_constructs_direct <- c(per_constructs_direct, "dfs_adoption_binary")
-
 per_constructs_direct
 
 per_constructs_factors_direct <- factors_list%>%
@@ -46,7 +53,7 @@ per_constructs_factors_direct
 
 sort(unique(per_constructs_factors_direct$constructs))
 
-per_data_analysis_direct<- per_data%>%
+per_data_analysis_direct<- per_data1_analysis%>%
   select(dfs_adoption_binary,any_of(per_constructs_factors_direct$column_name_new))%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))
   select(-all_of(c("high_cost_roof_material",
@@ -54,7 +61,7 @@ per_data_analysis_direct<- per_data%>%
                    "support_provider.farmer_organization",
                    "support_provider.local_government")))
 
-dim(per_data_analysis_direct)#[1] 200   69
+dim(per_data_analysis_direct)#[1] 200   27
 str(per_data_analysis_direct$household_shock_recover_activities.3)
 
 apply(per_data_analysis_direct, 2, function(x) var(as.numeric(x), na.rm = TRUE))
