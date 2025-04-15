@@ -8,15 +8,9 @@ library(corrplot)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
-  filter(category_1!="xxx")
+factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")
 sort(unique(factors_list$peru_remove))
 sort(unique(factors_list$category_1))
-
-factors_list$category_1[grepl("^P&I context", factors_list$category_1)] <- "P&I context"
-factors_list$category_1[grepl("^P&I context", factors_list$category_1)] <- paste0(
-  factors_list$category_1[grepl("^P&I context", factors_list$category_1)],"_",  factors_list$category_2[grepl("^P&I context", factors_list$category_1)])
-factors_list$category_1[grepl("^P&I context_knowledge", factors_list$category_1)] <- "P&I context_knowledge"
 
 per_data_clean<- read.csv("per_data_clean.csv",sep=",")
 sort(unique(per_data_clean$soil_erosion_perception))
@@ -47,7 +41,7 @@ rownames(per_data_analysis) <- per_data_analysis$kobo_farmer_id
 per_data_analysis<- per_data_analysis%>%
   dplyr::select(-kobo_farmer_id)
 
-dim(per_data_analysis) #[1] 200 345 #200 farmers; 345 variables evaluated
+dim(per_data_analysis) #[1] 200 292 #200 farmers; 292 variables evaluated
 
 #############################################################    
 ########## DATA TYPE CONVERSION #####-----
@@ -148,71 +142,96 @@ ggplot(data=a, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_Binary) #[1] 200 359 #200 farmers; 359 variables retained
+dim(per_data_Binary) #[1] 200 306 #200 farmers; 306 variables retained
 
 
-per_remove_list<- intersect(factors_list$column_name_new[factors_list$peru_remove %in%c("irrelevant", "redundant",  "remove"  )],colnames(per_data_Binary))
-per_remove_list
+write.csv(per_data_Binary,"per_data_Binary.csv",row.names=FALSE)
 
-per_data_Binary<- per_data_Binary%>%
-  dplyr::select(-all_of(per_remove_list))
-
-
-dim(per_data_Binary) #[1] 200 286 #200 farmers; 286 variables retained
 
 
 #############################################################    
-############# ZERO AND NEAR ZERO VARIANCE PREDICTORS -----
+############# DATA DISTRIBUTION EXAMINATION -----
 #############################################################
-#In some situations, the data generating mechanism can create predictors that only have a 
-#single unique value (i.e. a “zero-variance predictor”). For many models (excluding tree-based models),
-#this may cause the model to crash or the fit to be unstable.
-#Similarly, predictors might have only a handful of unique values that occur with very low frequencies.
-## frequency ratio: would be near one for well-behaved predictors and very large for highly-unbalanced data.
-## percent of unique values: is the number of unique values divided by the total number of samples (times 100)
-#that approaches zero as the granularity of the data increases
-nzv <- caret::nearZeroVar(per_data_Binary, saveMetrics= TRUE) 
-nzv # the variables with nzv== TRUE should be remove
+library(e1071)
+columns_continuous <- names(per_data_Filterednzv)[sapply(per_data_Filterednzv, is.numeric)]
+columns_continuous
 
-nzv_list <- nearZeroVar(per_data_Binary)
+# === Identify factors with skewed, kurtoise, normal distribution ===
+library(moments)
 
-nzv_factors<- per_data_Binary[, nzv_list]
-print(nzv_factors)
-view(dfSummary(nzv_factors))
-nzv_factors<-as.data.frame(c(colnames(nzv_factors)))%>%
-  rename("column_name_new"="c(colnames(nzv_factors))")%>%
-  left_join(factors_list%>%select(category_1,column_name_new,constructs,constructs_type), by="column_name_new")
+# Function to compute skewness, kurtosis, and K-S test, including Z-values
+normality_summary_ks_z <- function(x) {
+  x <- na.omit(x)
+  n <- length(x)
+  if (n < 8) return(rep(NA, 7))  # Z for kurtosis requires n ≥ 8
+  
+  # Central moments
+  skew <- skewness(x)
+  kurt <- kurtosis(x)
+  
+  # Z-score for skewness: under normality, SE = sqrt(6/n)
+  z_skew <- skew / sqrt(6 / n)
+  
+  # Z-score for kurtosis: under normality, SE = sqrt(24/n)
+  z_kurt <- (kurt - 3) / sqrt(24 / n)  # Excess kurtosis (kurtosis - 3)
+  
+  # K-S test against standard normal
+  x_scaled <- scale(x)
+  ks <- ks.test(x_scaled, "pnorm")
+  
+  return(c(Skewness = skew,
+           Z_Skewness = z_skew,
+           Kurtosis = kurt,
+           Z_Kurtosis = z_kurt,
+           KS_Statistic = ks$statistic,
+           KS_P_value = ks$p.value,
+           N = n))
+}
 
-## Remove nzv variables from data
-per_data_Filterednzv<- per_data_Binary[, -nzv_list]
+# Apply to all numeric variables
+columns_continuous <- names(per_data_Filterednzv)[sapply(per_data_Filterednzv, is.numeric)]
+ks_z_results <- sapply(per_data_Filterednzv[columns_continuous], normality_summary_ks_z)
 
-dim(per_data_Filterednzv) #[1] 200 214 #200 farmers; 214 variables retained
+# Format as a data frame
+ks_z_df <- as.data.frame(t(ks_z_results))
+ks_z_df$Variable <- rownames(ks_z_df)
+rownames(ks_z_df) <- NULL
 
-b<-as.data.frame(c(colnames(per_data_Filterednzv)))%>%
-  rename("column_name_new"="c(colnames(per_data_Filterednzv))")%>%
-  left_join(factors_list%>%select(category_1,column_name_new,constructs,constructs_type), by="column_name_new")%>%
-  mutate(category_1= case_when(
-    column_name_new== "year_assessment.2023"~"biophysical_context",
-    #column_name_new== "read_write.3"~"human_capital",
-   # grepl("^crop_type.", column_name_new) ~"farm_management_characteristics",
-    TRUE~category_1))%>%
-  group_by(category_1) %>%
-  mutate(column_name_new_count = n()) %>%
-  tally()%>%
-  filter(category_1!="xxx")
+# Arrange by most extreme Z_Skewness or Z_Kurtosis
+ks_z_df <- ks_z_df %>%
+  arrange(desc(abs(Z_Skewness)))
 
-ggplot(data=b, aes(x=n, y=category_1, fill= category_1)) +
-  geom_bar(stat="identity")+
-  geom_text(aes(label = n), 
-            hjust = -0.2, # Adjust position of the label to the right of the bar
-            size = 4) +
-  theme_minimal() +
-  labs(x = "Number of factors", y = "Category") +
-  theme(legend.position = "none")
+highly_skewed <- names(ks_z_df[abs(ks_z_df$Skewness) > 1])
 
-dim(per_data_Filterednzv) #[1] 200 209 #200 farmers; 209 variables retained
 
-write.csv(per_data_Filterednzv,"per_data_Filterednzv.csv",row.names=FALSE)
+
+
+## Histogram plots for each numerical variable
+plot_list <- lapply(highly_skewed, function(col) {
+  ggplot(per_data_Filterednzv, aes(x = .data[[col]])) +
+    geom_histogram(bins = 30, fill = "steelblue", color = "black", alpha = 0.7) +
+    labs(title = col) +
+    theme_minimal()
+})
+
+histogram_plot <- wrap_plots(plot_list) + plot_annotation(title = "Histograms of skewed Variables")
+print(histogram_plot)
+
+# === Log-transform variables with skewed distribution >1 ===
+
+#Log transform the skewed variables (use log1p to avoid issues with 0s)
+per_data_logTransformed <- per_data_Binary
+per_data_logTransformed[highly_skewed] <- 
+  lapply(per_data_logTransformed[highly_skewed], function(x) log1p(x))
+str(per_data_logTransformed)
+
+# === Scale data ===
+# Center (mean = 0) and scale (sd = 1) the continuous variables:
+per_data_scaled<-per_data_logTransformed
+per_data_scaled[,columns_continuous] = scale(per_data_scaled[,columns_continuous])
+dim(per_data_scaled) #[1] 200 297 #200 farmers; 297 variables retained
+
+
 
 #############################################################    
 ############# SPEARMAN'S  CORRELATION -----
@@ -335,59 +354,37 @@ write.csv(per_data_FilteredRedundant,"per_data0.csv",row.names=FALSE)
 #############################################################  
 ############# SEPARATE CORRELATED FACTORS INTO DIFFERENT DATASETS -----
 #############################################################
-per_data1<- per_data_FilteredRedundant%>%
+per_data1<- per_data_Filterednzv%>%
   select(-c(
     #== Human capital ==
     full_time_farmer, #num_occupation_secondary_list
     
     #== Farm management characteristics ==
-    livestock_sale, #use_percentage_crops_sales
-    main_crops_shrub,#num_main_crops_shrub
-    main_crops_herb, #num_main_crops_herb
-    main_crops_annual,#num_main_crops_annual
-    livestock_exotic_local, #num_farm_products
-    soil_fertility_management_organic,#organic_fertilizer_amount_ha
     sfs_monoculture_annual_adoption, #keep	sfs_monoculture_annual_area
     soil_fertility_management_ecol_practices, #keep num_soil_fertility_ecol_practices
     
     #== Financial capital ==
     income_access_nonfarm, #keep income_amount_nonfarm
-    farm_products.Livestock, #livestock_count_tlu
-    
-    #== Natural capital ==
-    vegetation_cover_bushland, #keep vegetation_diversity_bushland
-    vegetation_cover_forest, #keep vegetation_diversity_forest
-    vegetation_cover_wetland, #keep vegetation_diversity_wetland
-    vegetation_cover_woodlots, #keep vegetation_diversity_woodlots
-    
-    #== P&I context_knowledge ==
+
+        #== P&I context_knowledge ==
     access_info_exchange_consumers, #keep num_info_exchange_consumers
     access_info_exchange_extension, #keep num_info_exchange_extension
     access_info_exchange_farmers, #keep num_info_exchange_farmers
     access_info_exchange_ngo, #keep num_info_exchange_ngo
     access_info_exchange_researchers, #keep num_info_exchange_researchers
     access_info_exchange_traders, #keep num_info_exchange_traders
-    access_info_exchange, #keep  num_info_exchange_sources
     training_participation, #num_training_topics
-    
-    #== P&I context_value chain ==
-    fair_price_livestock, # num_sales_channel_livestock
     
     #== Social capital ==
     influence_nr_frequency, #keep participation_nr_frequency
     
     #== Vulnerability context ==
-    household_shock_strategy, #keep household_shock_strategy_count
+   # household_shock_strategy, #keep household_shock_strategy_count
     
     #== Between categories ==
     crop_type.cacao, #energy_tillage_haverst_type
-    credit_access, #credit_payment_hability
     num_farm_products, #livestock_count_tlu
-    livestockland_area, #livestock_count_tlu
-    use_percentage_livestock_sales, #num_sales_channel_livestock
-    income_sources.livestock, #num_sales_channel_livestock
     district.dist_3, #months_count_water_accessibility_difficulty_flood_year
-    labour_productivity, #farm_size
     cropland_area, #sfs_monoculture_perennial_area
     ))
 
@@ -395,36 +392,23 @@ per_data1_cor<-create_cor_df(per_data1,per_factors_list)
 #plot_correlation_by_category(per_data1_cor)
 plot_correlation_betw_category(per_data1_cor)
 
-dim(per_data1) #[1] 200 191 #200 farmers; 191 variables retained
+dim(per_data1) #[1] 200 167 #200 farmers; 167 variables retained
 any(is.na(per_data1)) #[1] FALSE
 write.csv(per_data1,"per_data1.csv",row.names=FALSE)
 
 sort(unique(per_data1$educat))
-per_data2<- per_data_FilteredRedundant%>%
+per_data2<- per_data_Filterednzv%>%
   select(-c(
     #== Human capital ==
     num_occupation_secondary_list, #full_time_farmer
     
     #== Farm management characteristics ==
-    use_percentage_livestock_sales, #livestock_sale
-    num_main_crops_shrub, #main_crops_shrub
-    num_main_crops_herb, #main_crops_herb, #
-    num_main_crops_annual, #main_crops_annual
-    num_farm_products, #livestock_exotic_local
-    organic_fertilizer_amount_ha, #soil_fertility_management_organic,#
     num_soil_fertility_ecol_practices, #keep soil_fertility_management_ecol_practices
     sfs_monoculture_annual_area, #keep	sfs_monoculture_annual_adoption
     
     #== Financial capital ==
     income_amount_nonfarm, #keep income_access_nonfarm
-    farm_products.Livestock, #livestock_count_tlu
-    
-    #== Natural capital ==
-    vegetation_diversity_bushland, #keep vegetation_cover_bushland
-    vegetation_diversity_forest, #keep vegetation_cover_forest
-    vegetation_diversity_wetland, #keep vegetation_cover_wetland
-    vegetation_diversity_woodlots, #keep vegetation_cover_woodlots
-    
+
     #== P&I context_knowledge
     num_info_exchange_consumers, #keep access_info_exchange_consumers,
     num_info_exchange_extension,  #keep access_info_exchange_extension,
@@ -435,25 +419,15 @@ per_data2<- per_data_FilteredRedundant%>%
     num_info_exchange_sources, #keep access_info_exchange
     num_training_topics, #training_participation
     
-    #== P&I context_value chain ==
-    num_sales_channel_livestock, #fair_price_livestock
-    
     #== Social capital ==
     participation_nr_frequency, #keep influence_nr_frequency
-    
-    #== Vulnerability context ==
-    household_shock_strategy_count, #keep household_shock_strategy
     
     #== Between categories ==
     energy_tillage_haverst_type, #crop_type.cacao 
     credit_payment_hability, #credit_access
     livestock_count_tlu, #num_farm_products
     #livestock_count_tlu, #livestockland_area
-    #num_sales_channel_livestock, #use_percentage_livestock_sales
-    #num_sales_channel_livestock, #use_percentage_livestock_sales, 
-    #num_sales_channel_livestock, #income_sources.livestock 
     months_count_water_accessibility_difficulty_flood_year, #district.dist_3
-    accessibility_waste_collection, #district.dist_3
     farm_size, #labour_productivity #
     sfs_monoculture_perennial_area #cropland_area
     ))
@@ -462,7 +436,7 @@ per_data2_cor<-create_cor_df(per_data2,per_factors_list)
 #plot_correlation_by_category(per_data2_cor)
 plot_correlation_betw_category(per_data2_cor)
 
-dim(per_data2) #[1] 200 193 #200 farmers; 193 variables retained
+dim(per_data2) #[1] 200 164 #200 farmers; 164 variables retained
 any(is.na(per_data2)) #[1] FALSE
 write.csv(per_data2,"per_data2.csv",row.names=FALSE)
 

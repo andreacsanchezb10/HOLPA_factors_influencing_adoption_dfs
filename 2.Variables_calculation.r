@@ -7,8 +7,7 @@ library(geosphere)
 
 
 per_data<- read.csv("per_data.csv",sep=",")
-global_survey<-read.csv("global_survey.csv",sep=",")
-per_global_choices<-read.csv("per_global_choices.csv",sep=",")
+global_survey<-read.csv("H_global_survey.csv",sep=",")
 
 #############################################################    
 ########## DATA TYPE CONVERSION #####-----
@@ -854,6 +853,9 @@ per_data_clean<-per_data_clean%>%
   #Household applied shock coping strategy
   mutate(household_shock_strategy= case_when(household_shock_strategy_count>0~ "1", TRUE~"0")) 
 
+  
+  
+  
   
 write.csv(per_data_clean,"per_data_clean.csv",row.names=FALSE)
 

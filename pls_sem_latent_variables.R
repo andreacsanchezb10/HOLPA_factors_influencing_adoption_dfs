@@ -4,11 +4,9 @@ library(readxl)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-#per_data0<- read.csv("per_data0.csv",sep=",")#all correlated factors
 per_data<- read.csv("per_data_Filterednzv.csv",sep=",") #data1
-#per_data2<- read.csv("per_data2.csv",sep=",") #data2
-
 sort(unique(per_data$year_assessment.2023))
+
 factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
   filter(category_1!="xxx")%>%
   filter(is.na(peru_remove))
@@ -17,21 +15,136 @@ per_outcomes<-factors_list%>%
   filter(category_1=="outcome")
 per_outcomes<-per_outcomes$column_name_new
 
+per_structural_model<-read_excel("factors_list.xlsx",sheet = "structural_model")%>%
+  filter(is.na(remove))
 
 #############################################################    
 ########## SELECTED FACTORS #####-----
 #############################################################
 # Get column names
-per_constructs_variables <- factors_list%>%
-  select(category_1,constructs, column_name_new,constructs, constructs_type,weights)
-  
-sort(unique(per_constructs_variables$constructs))
+##=== Direct effect to adoption ----
+per_constructs_direct <-per_structural_model%>%
+  filter(type == "direct")%>%
+  filter(to=="adoption")
+per_constructs_direct<- unique(per_constructs_direct$from)
+per_constructs_direct
+per_constructs_direct <- per_constructs_direct[!is.na(per_constructs_direct)]
+per_constructs_direct
+per_constructs_direct <- c(per_constructs_direct, "dfs_adoption_binary")
 
-per_data_analysis<- per_data%>%
-  select(dfs_adoption_binary,any_of(per_constructs_variables$column_name_new))%>%
+per_constructs_direct
+
+per_constructs_factors_direct <- factors_list%>%
+  select(category_1,constructs, column_name_new,constructs, constructs_type,weights)%>%
+  filter(constructs %in% c(per_constructs_direct))%>%
+  filter(!column_name_new %in% c("high_cost_roof_material",
+                             "soil_fertility_management_ecol_practices",
+                             "support_provider.farmer_organization",
+                             "support_provider.local_government"))
+  
+per_constructs_factors_direct
+
+sort(unique(per_constructs_factors_direct$constructs))
+
+per_data_analysis_direct<- per_data%>%
+  select(dfs_adoption_binary,any_of(per_constructs_factors_direct$column_name_new))%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))
-dim(per_data_analysis)#[1] 200   205
-str(per_data_analysis)
+  select(-all_of(c("high_cost_roof_material",
+                   "soil_fertility_management_ecol_practices",
+                   "support_provider.farmer_organization",
+                   "support_provider.local_government")))
+
+dim(per_data_analysis_direct)#[1] 200   69
+str(per_data_analysis_direct$household_shock_recover_activities.3)
+
+apply(per_data_analysis_direct, 2, function(x) var(as.numeric(x), na.rm = TRUE))
+
+
+##=== Indirect effect to adoption ----
+per_constructs_indirect<- unique(c(per_structural_model$from,per_structural_model$to))
+per_constructs_indirect
+per_constructs_indirect <- per_constructs_indirect[!is.na(per_constructs_indirect)]
+per_constructs_indirect[per_constructs_indirect == "adoption"] <- "dfs_adoption_binary"
+per_constructs_indirect
+
+per_constructs_factors_indirect <- factors_list%>%
+  select(category_1,constructs, column_name_new,constructs, constructs_type,weights)%>%
+  filter(constructs %in% c(per_constructs_indirect))
+per_constructs_factors_indirect
+sort(unique(per_constructs_factors_indirect$constructs))
+
+per_data_analysis_indirect<- per_data%>%
+  select(dfs_adoption_binary,any_of(per_constructs_factors_indirect$column_name_new))%>%
+  mutate(across(everything(), ~ as.numeric(as.character(.))))
+dim(per_data_analysis_indirect)#[1] 200   94
+str(per_data_analysis_indirect)
+
+
+###########-----OLD --------------  
+    ##=== Biophysical context
+    "climate_stress_exposure",
+    "soil_quality",
+    
+    ##=== Farm management characteristics
+    "chemical_input_use",
+   # "market_orientation",
+     "organic_input_use",
+   
+   ##=== Farmer behaviour
+   "cognitive_knowledge",
+   "cognitive_perceived_benefit",
+   #"cognitive_perceived_risk",
+   "cognitive_perceived_control_agency",
+   "cognitive_perceived_control_practices",
+   "dispositional_environmental_concern",
+   "dispositional_resistance_change",
+   "dispositional_identity_agroecological",
+   "social_descriptive_norm_neighbour_adopter",
+   
+   ##=== Financial capital
+   "assets",
+   "on_farm_income",
+   "non_farm_income",
+   "income_stability",
+  "income_sufficiency",
+  
+   ##=== Human capital
+   "household_head_education",
+   "labour_hired",
+   "labour_household",
+  "gender",
+  
+  ##=== Natural capital
+  "farm_size",
+  
+   ##=== P&I context: Financial risk management
+   "credit_access",
+  
+   ##=== P&I context: Access to knowledge
+   "information_access",
+   "training",
+   "information_access_frequency" ,
+  
+  ##=== P&I context: Land tenure
+  "owned_land",
+  
+  ##=== P&I context: Value chain
+  #"crop_sale_channels",
+  
+  ##=== Physical capital
+  "distance_crop_market",
+  "distance_farm",
+  "distance_main_road",
+  
+   ##=== Social capital
+  "communicate_with_other_farmers",
+  "network_membership",
+  "network_support",
+   
+  ##=== Outcome
+  "dfs_adoption_binary"))
+  
+###########----- --------------  
 
 #############################################################    
 ########## PLS-SEM ANALYSIS #####-----
@@ -41,8 +154,8 @@ library(purrr)
 library(rlang)
 library(psych)
 
-colnames(per_data_analysis)
-describe(per_data_analysis)
+colnames(per_data_analysis_indirect)
+describe(per_data_analysis_indirect)
 
 check_multicollinearity <- function(construct_list, data, threshold = 0.999) {
   problematic_constructs <- list()
@@ -78,6 +191,18 @@ check_multicollinearity <- function(construct_list, data, threshold = 0.999) {
   return(problematic_constructs)
 }
 
+library(ggplot2)
+
+
+
+per_data_analysis_direct %>%
+  #select(indicators_used) %>%
+  tidyr::pivot_longer(everything(), names_to = "variable", values_to = "value") %>%
+  ggplot(aes(x = value)) +
+  facet_wrap(~ variable, scales = "free") +
+  geom_histogram(bins = 10)
+
+
 
 #########################################################
 ########## Measurements model (also called outer model) ====
@@ -85,12 +210,19 @@ check_multicollinearity <- function(construct_list, data, threshold = 0.999) {
 #- The measurement models (also called outer models in PLS-SEM), which describe 
 #the relationships between the latent variables and their measures (i.e., their indicators)
 #display the relationships between the constructs and the indicator variables
-constructs_def <- per_constructs_variables %>%
-  filter(column_name_new %in% intersect(per_constructs_variables$column_name_new, colnames(per_data_analysis)))%>%
+constructs_def_direct <- per_constructs_factors_direct %>%
+  filter(column_name_new %in% intersect(per_constructs_factors_direct$column_name_new, colnames(per_data_analysis_direct)))%>%
   group_by(constructs, constructs_type, weights) %>%
   summarise(items = list(column_name_new), .groups = "drop") %>%
   mutate(n_items = lengths(items))
 
+sort(unique(constructs_def_direct$constructs))
+
+constructs_def_indirect <- per_constructs_factors_indirect %>%
+  filter(column_name_new %in% intersect(per_constructs_factors_indirect$column_name_new, colnames(per_data_analysis_indirect)))%>%
+  group_by(constructs, constructs_type, weights) %>%
+  summarise(items = list(column_name_new), .groups = "drop") %>%
+  mutate(n_items = lengths(items))
 
 build_measurement_model <- function(data_analysis, constructs_variables) {
 ##=== STEP 1: Merge construct metadata with items ====
@@ -147,62 +279,100 @@ measurement_model <- do.call(seminr::constructs, c(
 return(measurement_model)
 }
 
-measurement_model<- build_measurement_model(
-  data_analysis=per_data_analysis,
-  constructs_variables= per_constructs_variables )
-measurement_model
+##=== Measurement model: Direct effect to adoption ----
+measurement_model_direct<- build_measurement_model(
+  data_analysis=per_data_analysis_direct,
+  constructs_variables= per_constructs_factors_direct )
+measurement_model_direct
+
+##=== Measurement model: Indirect effect to adoption ----
+measurement_model_indirect<- build_measurement_model(
+  data_analysis=per_data_analysis_indirect,
+  constructs_variables= per_constructs_factors_indirect )
+measurement_model_indirect
+
+#higher_compositeconstructs <- as.data.frame(
+ # mutate(formula = paste0("composite('access_to_knowledge', c('','',''),orthogotal, mode_B")))
 
 
-problematic <- check_multicollinearity(c(  reflective_measures, composite_multi_measures, composite_single_measures), per_data_analysis)
-problematic
+#problematic <- check_multicollinearity(c(  reflective_measures, composite_multi_measures, composite_single_measures), per_data_analysis)
+#problematic
 
 #########################################################
 ########## Structural model (also called inner model) ====
 #########################################################
-direct_effect<- purrr::map_chr(measurement_model, ~ .[1]) %>%
-  unique() %>%
-  setdiff("dfs_adoption_binary")%>%
-  setdiff("dfs_adoption_area")
+##=== Structural model: Direct effect to adoption ----
+direct_effect<- purrr::map_chr(measurement_model_direct, ~ .[1]) %>%
+  unique() 
+direct_effect
+direct_effect <- intersect(direct_effect, unique(c(per_structural_model$from[per_structural_model$type=="direct"])))
 direct_effect
 
-structural_model <-relationships(
+structural_model_direct <-relationships(
+  paths(from= c(direct_effect), to="dfs_adoption_binary"))
+
+structural_model_direct
+
+##=== Structural model: Indirect effect to adoption ----
+indirect_effect<- per_structural_model%>%
+  filter(type=="indirect")%>%
+  filter(!is.na(to))%>%
+  mutate(formula=paste0("paths(from= '", from, "',to= '", to, "')"))%>%
+  select(formula)
+indirect_effect
+
+indirect_effect <- map(
+  indirect_effect$formula,
+  ~ eval(parse_expr(.x)))
+indirect_effect
+
+
+structural_model_indirect<-do.call(seminr::relationships, c(  
   paths(from= c(direct_effect), to="dfs_adoption_binary"),
-  paths(from=c("on_farm_income","non_farm_income"), to="income"))
+  indirect_effect))
 
-
-structural_model
-
+structural_model_indirect
+structural_model_direct
 #########################################################
 ########## Estimating the PLS-SEM model ====
 #########################################################
-names(per_data_analysis)
-pls_sem_model <- estimate_pls(data = per_data_analysis,
-                              measurement_model = measurement_model,
-                              structural_model = structural_model)
+##=== PLS-SEM model: Direct effect to adoption ----
+pls_sem_model_direct <- estimate_pls(data = per_data_analysis_direct,
+                              measurement_model = measurement_model_direct,
+                              structural_model = structural_model_direct)
+pls_sem_model_direct
 
 # Summarize the model results
-pls_sem_summary<- summary(pls_sem_model)
+pls_sem_summary_direct<- summary(pls_sem_model_direct)
+pls_sem_summary_direct
 # Inspect the model’s path coefficients and the R^2 values
-pls_sem_summary$paths
+pls_sem_summary_direct$paths
 # Inspect the construct reliability metrics 
-pls_sem_summary$reliability
+pls_sem_summary_direct$reliability
 # Inspect descriptive statistics
-pls_sem_summary$descriptives$statistics
+pls_sem_summary_direct$descriptives$statistics
 #- Number of iterations that the PLS-SEM algorithm needed to converge 
 #This number should be lower than the maximum number of iterations (e.g., 300)
-pls_sem_summary$iterations 
-#[1] 1
+pls_sem_summary_direct$iterations 
+#[1] 33
+
+pls_sem_summary_direct$descriptives$statistics$constructs
 
 #########################################################
 ########## Bootstrapping the model ====
 #########################################################
-boot_model <- bootstrap_model(seminr_model = pls_sem_model, 
-                                         nboot = 1000, 
+boot_model_direct <- bootstrap_model(seminr_model = pls_sem_model_direct, 
+                                         nboot = 1000, # for the final result I should use 10,000
                                          cores = 2 ) 
+boot_model_direct
 # Store the summary of the bootstrapped model 
-boot_model_summary <- summary(boot_model,alpha = 0.10)
-boot_model_summary$validity
-plot(boot_model, title = "")
+boot_model_summary_direct <- summary(boot_model_direct,alpha = 0.05)
+boot_model_summary_direct
+boot_model_summary_direct$weights
+boot_model_summary_direct$validity
+boot_model_summary_direct$bootstrapped_paths
+
+plot(boot_model_direct, title = "")
 
 #########################################################
 ########## Assessing the reflective measurement models ====
@@ -218,21 +388,24 @@ plot(boot_model, title = "")
 #researchers should carefully examine the effects of indicator removal on other reliability and validity measures. 
 
 # Extract reflective constructs directly
-reflective_constructs <- unique(measurement_model$reflective[seq(1, length(measurement_model$reflective), 3)])
+reflective_constructs <- unique(measurement_model_direct$reflective[seq(1, length(measurement_model_direct$reflective), 3)])
 reflective_constructs
 
-composite_constructs <- measurement_model[names(measurement_model) == "composite"]
-
+composite_constructs <- measurement_model_direct[names(measurement_model_direct) == "composite"]
+composite_constructs
 composite_by_mode <- function(mode) {
   unique(unlist(lapply(composite_constructs, \(x) x[seq(1, length(x), 3)][x[seq(3, length(x), 3)] == mode])))
 }
 composite_mode_A <- composite_by_mode("A")
 composite_mode_A
 
-reflective_constructs_list<-c(composite_mode_A,reflective_constructs)
+composite_mode_A <- intersect(composite_mode_A, unique(c(per_structural_model$from[per_structural_model$type=="direct"])))
+composite_mode_A
+
+reflective_constructs_list<-c(composite_mode_A)#,reflective_constructs)
 reflective_constructs_list
 
-outer_loading<- as.data.frame(pls_sem_summary$loadings)%>%
+outer_loading<- as.data.frame(pls_sem_summary_direct$loadings)%>%
   tibble::rownames_to_column("factors") %>%
   tidyr::pivot_longer(
     cols = -factors,
@@ -240,7 +413,7 @@ outer_loading<- as.data.frame(pls_sem_summary$loadings)%>%
     values_to = "reliability") %>%
   filter(reliability != 0)%>%
   select(constructs,factors,reliability)%>%
-  left_join(constructs_def%>%select(constructs,constructs_type,weights),by="constructs")%>%
+  left_join(constructs_def_direct%>%select(constructs,constructs_type,weights),by="constructs")%>%
   filter(constructs %in%c(reflective_constructs_list))%>%
   mutate(reliability_assessment= case_when(
     reliability>=0.708~ "Good",
@@ -265,7 +438,7 @@ write.csv(outer_loading,"per_model0_asseessment.relective.step1.csv",row.names=F
 #measurement model (Hair, Hult, Ringle, & Sarstedt, 2022).
 
 #Inspect the indicator reliability
-reliability<-as.data.frame(pls_sem_summary$loadings^2)%>%
+reliability<-as.data.frame(pls_sem_summary_direct$loadings^2)%>%
   tibble::rownames_to_column("factors") %>%
   tidyr::pivot_longer(
     cols = -factors,
@@ -299,9 +472,9 @@ head(reliability)
 #variance that make up the construct (Hair et al., 2022).
 
 # Inspect the composite reliability AND Convergent validity
-internal_consistency_reliability<- as.data.frame(pls_sem_summary$reliability)%>%
+internal_consistency_reliability<- as.data.frame(pls_sem_summary_direct$reliability)%>%
   tibble::rownames_to_column("constructs")%>%
-  left_join(constructs_def%>%select(constructs,constructs_type),by="constructs")%>%
+  left_join(constructs_def_direct%>%select(constructs,constructs_type),by="constructs")%>%
   filter(constructs %in%c(reflective_constructs_list))%>%
   mutate(alpha_assessment= case_when(
     alpha >0.95 ~ "Check for redundancy",
@@ -325,7 +498,7 @@ internal_consistency_reliability<- as.data.frame(pls_sem_summary$reliability)%>%
     AVE >=0.5 ~"Good",
     TRUE~"Please check"))
 
-plot(pls_sem_summary$reliability)
+plot(pls_sem_summary_direct$reliability)
   
 write.csv(internal_consistency_reliability,"per_model0_asseessment.relective.step2.3.csv",row.names=FALSE)
 
@@ -342,13 +515,12 @@ write.csv(internal_consistency_reliability,"per_model0_asseessment.relective.ste
 #satisfaction, and loyalty. In such a setting, an HTMT value above 0.90 would 
 #suggest that discriminant validity is not present. But when constructs are conceptually 
 #more distinct, a lower, more conservative, threshold value is suggested, such as 0.85 (Henseler et al., 2015).
-
-discriminat_validity<- as.data.frame(pls_sem_summary$validity$htmt)%>%
+discriminat_validity<- as.data.frame(pls_sem_summary_direct$validity$htmt)%>%
   tibble::rownames_to_column("constructs1")%>%
-  left_join(constructs_def%>%select(constructs,constructs_type),by=c("constructs1"="constructs"))%>%
+  left_join(constructs_def_direct%>%select(constructs,constructs_type),by=c("constructs1"="constructs"))%>%
   filter(constructs1 %in%c(reflective_constructs_list))%>%
   select(constructs1, all_of(reflective_constructs_list))%>%
-  pivot_longer(-constructs1, names_to = "constructs2", values_to = "correlation") %>%
+  tidyr::pivot_longer(-constructs1, names_to = "constructs2", values_to = "correlation") %>%
   filter(!is.na(correlation),
          constructs1 != constructs2,
          correlation >= 0.85) %>%
@@ -359,18 +531,13 @@ write.csv(internal_consistency_reliability,"per_model0_asseessment.relective.ste
 
 
 # Extract the bootstrapped HTMT 
-boot_model_summary$validity$htmt  ### CHECK HOW TO INTERPRET THIS!!!!!!!
+boot_model_summary_direct$validity$htmt  ### CHECK HOW TO INTERPRET THIS!!!!!!!
 
 #########################################################
 ########## Remove constructs based on reflective measurement assessment ====
 #########################################################
 ##=== PERU ====
-per_reflective_consctructs_remove<- c("district", #keep
-                                     "main_crop",
-                                     "credit_repayment", # keep credit_access
-                                     "distance_transportation",#keep distance_main_road
-                                     "perceived_economic_wellbeing"
-                                     )
+per_reflective_consctructs_remove<- c()
 
 #########################################################
 ########## Assessing the formative measurement models ====
@@ -390,14 +557,13 @@ per_reflective_consctructs_remove<- c("district", #keep
 
 
 
-
+##=== STEP 2: Assess for collinearity issues ====
 ###-- Multicollinearity: VIF
-
-
 # Convert to dataframe
-multicollinearity_vif <- lapply(names(pls_sem_summary$validity$vif_items), function(construct) {
-  factors <- names(pls_sem_summary$validity$vif_items[[construct]])
-  vifs <- as.numeric(pls_sem_summary$validity$vif_items[[construct]])
+pls_sem_summary_direct$validity$vif_items
+multicollinearity_vif <- lapply(names(pls_sem_summary_direct$validity$vif_items), function(construct) {
+  factors <- names(pls_sem_summary_direct$validity$vif_items[[construct]])
+  vifs <- as.numeric(pls_sem_summary_direct$validity$vif_items[[construct]])
   
   tibble(
     construct = construct,
@@ -405,18 +571,21 @@ multicollinearity_vif <- lapply(names(pls_sem_summary$validity$vif_items), funct
     VIF = vifs
   )
 }) %>% bind_rows()%>%
-  left_join(constructs_def%>%select(constructs,constructs_type,weights),by=c("construct"="constructs"))%>%
+  left_join(constructs_def_direct%>%select(constructs,constructs_type,weights),by=c("construct"="constructs"))%>%
   filter(constructs_type=="composite")%>%
   filter(weights=="mode_B")
+
+
+##=== STEP 3: Assess the statistical significance and relevance of the factors weights ====
+
   
 #########################################################
 ########## Remove constructs based on formative measurement assessment ====
 #########################################################
 ##=== PERU ====
 #redundant
-per_formative_consctructs_remove<- c( 
-  "land_tenure_own_area",
-  "total_main_crops_cropland_area"
+per_formative_factor_remove<- c( 
+  "soil_fertility_management_ecol_practices",
   )
 
 
@@ -427,12 +596,12 @@ print(vif_df)
 
 
 
-per_constructs_variables1 <- factors_list%>%
+per_constructs_factors1 <- factors_list%>%
   select(category_1,constructs, column_name_new,constructs, constructs_type,weights)%>%
   filter(!(constructs %in% per_reflective_consctructs_remove))
 
 per_data_analysis1<- per_data_analysis%>%
-  select(dfs_adoption_binary,any_of(per_constructs_variables1$column_name_new))%>%
+  select(dfs_adoption_binary,any_of(per_constructs_factors1$column_name_new))%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))
 dim(per_data_analysis1)#[1] 200   196
 str(per_data_analysis1)
@@ -440,7 +609,7 @@ str(per_data_analysis1)
 
 measurement_model1<- build_measurement_model(
   data_analysis=per_data_analysis1,
-  constructs_variables= per_constructs_variables1 )
+  constructs_variables= per_constructs_factors1 )
 measurement_model1
 
 direct_effect1<- purrr::map_chr(measurement_model1, ~ .[1]) %>%
