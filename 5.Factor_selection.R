@@ -13,6 +13,10 @@ sort(unique(factors_list$category_1))
 per_data_clean<- read.csv("per_data_Binary.csv",sep=",")
 dim(per_data_clean) #200 farmers; 303 factors
 
+per_outcomes<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
+  filter(category_1=="outcome")
+per_outcomes<-per_outcomes$column_name_new
+per_outcomes
 
 #############################################################    
 ########### FACTOR SELECTION ----
@@ -40,7 +44,7 @@ nzv_factors<-as.data.frame(c(colnames(nzv_factors)))%>%
 ## Remove nzv variables from data
 per_data_nzvFiltered<- per_data_clean[, -nzv_list]
 
-dim(per_data_nzvFiltered) #200 farmers; 172 factors retained
+dim(per_data_nzvFiltered) #200 farmers; 206 factors retained
 
 b<-as.data.frame(c(colnames(per_data_nzvFiltered)))%>%
   rename("column_name_new"="c(colnames(per_data_nzvFiltered))")%>%
@@ -133,6 +137,7 @@ str(per_data_nzvFiltered_cor)
 plot_correlation_betw_category(per_data_nzvFiltered_cor)
 
 ##=== STEP 3: REMOVE REDUNDANT AND IRRELEVANT FACTORS ======
+sort(unique(factors_list$peru_remove))
 per_remove_list<- intersect(factors_list$column_name_new[factors_list$peru_remove %in%c("irrelevant", "redundant",  "remove"  )],colnames(per_data_nzvFiltered))
 per_remove_list
 
@@ -142,7 +147,7 @@ per_data_redundantFiltered<- per_data_nzvFiltered%>%
 dim(per_data_redundantFiltered) #200 farmers; 163 factors retained
 names(per_data_redundantFiltered)
 
-##=== STEP 4: CHECK FOR CORRELATION ACROSS FACTORS ======
+##=== STEP 4: CHECK FOR CORRELATION ACROSS RETAINED FACTORS ======
 per_factors_list2 <- as.data.frame(colnames(per_data_redundantFiltered))%>%
   rename("column_name_new"= "colnames(per_data_redundantFiltered)")%>%
   left_join(factors_list%>%select(column_name_new, category_1),by="column_name_new")%>%
@@ -153,303 +158,305 @@ str(per_data_redundantFiltered_cor)
 
 plot_correlation_betw_category(per_data_redundantFiltered_cor)
 
-##=== STEP 5: SEPARATE RELEVANT CORRELATED FACTORS INTO DIFFERENT DATASETS ======
-per_data1<- per_data_redundantFiltered%>%
-  select(-c(
-    #== Human capital ==
-    full_time_farmer, #num_occupation_secondary_list
-    
-    #== Farm management characteristics ==
-    sfs_monoculture_annual_adoption, #keep	sfs_monoculture_annual_area
-    soil_fertility_management_ecol_practices, #keep num_soil_fertility_ecol_practices
-    
-    #== Financial capital ==
-    income_access_nonfarm, #keep income_amount_nonfarm
-    
-    #== P&I context_knowledge ==
-    access_info_exchange_consumers, #keep num_info_exchange_consumers
-    access_info_exchange_extension, #keep num_info_exchange_extension
-    access_info_exchange_farmers, #keep num_info_exchange_farmers
-    access_info_exchange_ngo, #keep num_info_exchange_ngo
-    access_info_exchange_researchers, #keep num_info_exchange_researchers
-    access_info_exchange_traders, #keep num_info_exchange_traders
-    training_participation, #num_training_topics
-    
-    #== Social capital ==
-    influence_nr_frequency, #keep participation_nr_frequency
-    
-    #== Between categories ==
-    crop_type.cacao, #energy_tillage_haverst_type
-    num_farm_products, #livestock_count_tlu
-    district.dist_3, #months_count_water_accessibility_difficulty_flood_year
-    cropland_area, #sfs_monoculture_perennial_area
-  ))
+##=== STEP 5: FUZZY FOREST FACTOR SELECTION ======
+## Advantages
+# - The fuzzy forests algorithm is an extension of random forests designed to obtain less bi-ased feature selection in the presence of correlated features. 
+# - WGCNA takes in the matrix of features and uses the correlation structure to partition the features into distinct groups such that the 
+#correlation between features in the same group is large and the correlation between features in separate groups is small.
+# - Once features have been subdivided into distinct modules, fuzzy forests eliminates features in two steps:
+# a screening step and a selection step. In the screening step, RFE-RF is used on each
+#module to eliminate the least important features within each module. In the selection step, a ﬁnal RFE-RF is used on the surviving features.
+# RFE-RF sequentially eliminates features with the lowest VIMs until a pre-speciﬁed percentage of features remain. 
+# - The screening step of fuzzy forests achieves two goals. First, it reduces the number of features 
+#that have to be analyzed at one time. Second, the ﬁnite sample bias caused by correlated 
+#features is alleviated. In Nicodemus and Malley (2009), it is observed that unimportant 
+#features that are correlated with an important feature are more likely to be chosen at the 
+#root of tree than uncorrelated important features. The high importance of these unimportant 
+#correlated features comes at the cost of the important uncorrelated features. When we analyze 
+#each module separately, features in diﬀerent groups are no longer competing against one another.
 
-per_factors_list3 <- as.data.frame(colnames(per_data1))%>%
-  rename("column_name_new"= "colnames(per_data1)")%>%
-  left_join(factors_list%>%select(column_name_new, category_1),by="column_name_new")%>%
-  filter(category_1!="outcome")
+## Disadvantage
+#- Handle the presence of high correlated factors, but it is sensitive to it.
+#https://bioinformaticsworkbook.org/tutorials/wgcna.html#gsc.tab=0
 
-per_data1_cor<-create_cor_df(per_data1,per_factors_list3)
-plot_correlation_betw_category(per_data1_cor)
+# Load libraries
+library(ggplot2)
+library(mvtnorm)
+library(Matrix)
+library(mt)
 
-dim(per_data1) #200 farmers; 147 factors retained
-any(is.na(per_data1)) #[1] FALSE
-write.csv(per_data1,"per_data1.csv",row.names=FALSE)
 
-per_data2<- per_data_redundantFiltered%>%
-  select(-c(
-    #== Human capital ==
-    num_occupation_secondary_list, #full_time_farmer
-    
-    #== Farm management characteristics ==
-    num_soil_fertility_ecol_practices, #keep soil_fertility_management_ecol_practices
-    sfs_monoculture_annual_area, #keep	sfs_monoculture_annual_adoption
-    
-    #== Financial capital ==
-    income_amount_nonfarm, #keep income_access_nonfarm
-    
-    #== P&I context_knowledge
-    num_info_exchange_consumers, #keep access_info_exchange_consumers,
-    num_info_exchange_extension,  #keep access_info_exchange_extension,
-    num_info_exchange_farmers, #keep access_info_exchange_farmers
-    num_info_exchange_ngo , #keep access_info_exchange_ngo
-    num_info_exchange_researchers,  #keep access_info_exchange_researchers
-    num_info_exchange_traders, #keep access_info_exchange_traders
-
-    #== Social capital ==
-    participation_nr_frequency, #keep influence_nr_frequency
-    
-    #== Between categories ==
-    livestock_count_tlu, #num_farm_products
-    months_count_water_accessibility_difficulty_flood_year, #district.dist_3
-    farm_size, #labour_productivity #
-    sfs_monoculture_perennial_area #cropland_area
-  ))
-
-per_factors_list4 <- as.data.frame(colnames(per_data2))%>%
-  rename("column_name_new"= "colnames(per_data2)")%>%
-  left_join(factors_list%>%select(column_name_new, category_1),by="column_name_new")%>%
-  filter(category_1!="outcome")
-
-per_data2_cor<-create_cor_df(per_data2,per_factors_list4)
-plot_correlation_betw_category(per_data2_cor)
-
-dim(per_data2) #200 farmers; 148 factors retained
-any(is.na(per_data2)) #[1] FALSE
-write.csv(per_data2,"per_data2.csv",row.names=FALSE)
-
-##=== STEP 3: FACTORS PRIORITY BASED ON THEORY ======
-per_data1_factor_highPriority<- intersect(unique(factors_list$column_name_new[str_starts(factors_list$priority, "high")]),colnames(per_data1))
-per_data1_factor_highPriority
-
-per_data1_highPriorityFiltered<-per_data1%>%
-  select(dfs_total_area,dfs_adoption_binary,all_of(per_data1_factor_highPriority))
-  
-dim(per_data1_highPriorityFiltered) #200 farmers; 94 factors retained
-
-per_data2_factor_highPriority<- intersect(unique(factors_list$column_name_new[str_starts(factors_list$priority, "high")]),colnames(per_data2))
-per_data2_factor_highPriority
-
-per_data2_highPriorityFiltered<-per_data2%>%
-  select(dfs_total_area,dfs_adoption_binary,all_of(per_data2_factor_highPriority))
-
-dim(per_data2_highPriorityFiltered) #200 farmers; 95 factors retained
-
-##=== STEP 4: LASSO FACTOR SELECTION ADOPTION BINARY ======
-#https://rpubs.com/Momo2019/1184100
-library(glmnet)
-library(pROC)
-
-lasso_binary <- function(data, target_var, exclude_vars = NULL, n_iter = 100, lambda_seq = 10^seq(2, -2, by = -0.1)) {
-  set.seed(123)
-  # Prepare predictors
-  exclude_vars <- c(target_var, exclude_vars)
-  x_factors <- data[, !(names(data) %in% exclude_vars)]
-  x_factors <- x_factors %>%
+# Reusable function to convert factors to numeric and transpose
+prepare_numeric_matrix <- function(df) {
+  df %>%
     mutate(across(where(is.factor), ~ as.numeric(as.character(.)))) %>%
-    as.matrix()
+    as.matrix() %>%
+    t()
+}
+
+# Function to run WGCNA soft threshold selection
+run_soft_threshold <- function(data_numeric, powers = c(1:10, seq(12, 20, 2)), dataset_name = "Dataset") {
+  sft <- pickSoftThreshold(data_numeric, powerVector = powers, verbose = 5)
+  par(mfrow = c(1, 2))
+  cex1 <- 0.9
   
-  # Prepare binary outcome
-  y_adoptionBinary <- as.numeric(as.character(data[[target_var]]))
+  plot(sft$fitIndices[, 1],
+       -sign(sft$fitIndices[, 3]) * sft$fitIndices[, 2],
+       xlab = "Soft Threshold (power)",
+       ylab = "Scale Free Topology Model Fit, signed R^2",
+       main = paste(dataset_name, " - Scale Independence"))
+  text(sft$fitIndices[, 1],
+       -sign(sft$fitIndices[, 3]) * sft$fitIndices[, 2],
+       labels = powers, cex = cex1, col = "red")
+  abline(h = 0.90, col = "red")
   
-  # Storage
-  selected_vars_list <- list()
-  auc_train_vec <- numeric(n_iter)
-  auc_test_vec <- numeric(n_iter)
+  plot(sft$fitIndices[, 1],
+       sft$fitIndices[, 5],
+       xlab = "Soft Threshold (power)",
+       ylab = "Mean Connectivity",
+       type = "n",
+       main = paste(dataset_name, " - Mean Connectivity"))
+  text(sft$fitIndices[, 1],
+       sft$fitIndices[, 5],
+       labels = powers, cex = cex1, col = "red")
   
-  for (i in 1:n_iter) {
-  set.seed(100 + i)
-  train_idx <- sample(1:nrow(x_factors), nrow(x_factors)/2)
-  test_idx <- setdiff(1:nrow(x_factors), train_idx)
+  return(sft)
+}
+
+# Function to run feature selection algotithms
+run_feature_selection_experiment <- function(factors, adoptionOutcome, picked_power, file_name = "dataset") {
+  library(e1071)
+  library(caret)
+  library(WGCNA)
+  library(randomForest)
+  library(party)
+  library(fuzzyforest)
+  library(tidyr)
+  library(tibble)
   
-  # Cross-validation to select lambda
-  cv_fit <- cv.glmnet(x_factors[train_idx,], y_adoptionBinary[train_idx],
-                      alpha = 1,
-                      lambda = lambda_seq,
-                      nfolds = 10, #10-fold cross validation
-                      family = "binomial",
-                      standardize = TRUE) #scale and normalize the data when needed
-  best_lambda <- cv_fit$lambda.min
+  feature_nums <- c(20:60)
+  times <- 10 #number of runs
   
-  # Final model
-  lasso_fit <- glmnet(x_factors[train_idx,], y_adoptionBinary[train_idx],
-                      alpha = 1,
-                      lambda = best_lambda,
-                      family = "binomial",
-                      standardize = TRUE) #scale and normalize the data when needed
+  acc_ff <- matrix(0, nrow = times, ncol = length(feature_nums))
+  acc_rf <- matrix(0, nrow = times, ncol = length(feature_nums))
+  acc_cf <- matrix(0, nrow = times, ncol = length(feature_nums))
   
-  # Predict probabilities
-  pred_train <- predict(lasso_fit, newx = x_factors[train_idx,], type = "response")
-  pred_test <- predict(lasso_fit, newx = x_factors[test_idx,], type = "response")
+  selected_ff <- list()
+  selected_rf <- list()
+  selected_cf <- list()
   
-  # Compute AUCs
-  auc_train_vec[i] <- auc(roc(y_adoptionBinary[train_idx], pred_train))
-  auc_test_vec[i] <- auc(roc(y_adoptionBinary[test_idx], pred_test))
-  
-  # Extract non-zero predictors
-  coef_vec <- as.matrix(coef(lasso_fit))[-1, , drop = FALSE]  # exclude intercept
-  selected_vars <- rownames(coef_vec)[coef_vec != 0]
-  selected_vars_list[[i]] <- selected_vars
+  for (j in seq_along(feature_nums)) {
+    feats_ff <- c()
+    feats_rf <- c()
+    feats_cf <- c()
+    
+    for (i in 1:times) {
+      set.seed(sample(1:1000, 1))
+      train_index <- createDataPartition(adoptionOutcome, p = 0.7, list = FALSE)
+      train_data <- factors[train_index, ]
+      test_data <- factors[-train_index, ]
+      y_train <- adoptionOutcome[train_index]
+      y_test <- adoptionOutcome[-train_index]
+      
+      # === Fuzzy Forest (with WGCNA) ===
+      WGCNA_params <- WGCNA_control(
+        power = picked_power, 
+        minModuleSize = 30,
+        TOMType = "unsigned", 
+        reassignThreshold = 0.05, 
+        mergeCutHeight = 0.25, 
+        numericLabels = TRUE, 
+        pamRespectsDendro = FALSE)
+      
+      screen_paramsWGCNA <- screen_control(
+        keep_fraction = 0.25,
+        ntree_factor = 2,
+        mtry_factor = 15,
+        min_ntree = 500
+      )
+      
+      select_paramsWGCNA <- select_control(
+        number_selected = 40,
+        drop_fraction = 0.1,
+        ntree_factor = 2,
+        mtry_factor = 15,
+        min_ntree = 500
+      )
+      
+      ff_model <- wff(X = train_data, y = as.factor(y_train),
+                      WGCNA_params = WGCNA_params,
+                      select_params = select_paramsWGCNA,
+                      screen_params = screen_paramsWGCNA)
+      feats_ff_i_all <- ff_model$feature_list[[1]]  # first component
+      feats_ff_i <- feats_ff_i_all[1:min(length(feats_ff_i_all), feature_nums[j])]
+      
+      #feats_ff_i <- ff_model$feature_list[1:feature_nums[j]]
+      
+      #feats_ff_i <- ff_model$feature_list[[1]][1:feature_nums[j]]
+      svm_ff_model <- svm(x = train_data[, feats_ff_i], y = as.factor(y_train), kernel = "linear")
+      pred_ff <- predict(svm_ff_model, newdata = test_data[, feats_ff_i])
+      acc_ff[i, j] <- mean(pred_ff == as.factor(y_test))
+      
+      # === Random Forest ===
+      rf_model <- randomForest(x = train_data, y = as.factor(y_train), importance = TRUE, mtry = floor(sqrt(ncol(train_data))), ntree = 500)
+      imp_rf <- importance(rf_model, type = 1, scale = FALSE)
+      feats_rf_i <- rownames(head(imp_rf[order(imp_rf, decreasing = TRUE), , drop = FALSE], feature_nums[j]))
+      svm_rf_model <- svm(x = train_data[, feats_rf_i], y = as.factor(y_train), kernel = "linear")
+      pred_rf <- predict(svm_rf_model, newdata = test_data[, feats_rf_i])
+      acc_rf[i, j] <- mean(pred_rf == as.factor(y_test))
+      
+      # === Conditional inference Forest ===
+      cf_model <- cforest(as.factor(y_train) ~ ., data = data.frame(train_data, y_train),
+                          controls = cforest_unbiased(ntree = 100, mtry = floor(sqrt(ncol(train_data)))))
+      varimp_cf <- varimp(cf_model, conditional = TRUE)
+      feats_cf_i <- names(sort(varimp_cf, decreasing = TRUE))[1:feature_nums[j]]
+      svm_cf_model <- svm(x = train_data[, feats_cf_i], y = as.factor(y_train), kernel = "linear")
+      pred_cf <- predict(svm_cf_model, newdata = test_data[, feats_cf_i])
+      acc_cf[i, j] <- mean(pred_cf == as.factor(y_test))
+      
+      feats_ff <- c(feats_ff, paste(feats_ff_i, collapse = ","))
+      feats_rf <- c(feats_rf, paste(feats_rf_i, collapse = ","))
+      feats_cf <- c(feats_cf, paste(feats_cf_i, collapse = ","))
+    }
+    
+    selected_ff[[paste0("featNum", feature_nums[j])]] <- feats_ff
+    selected_rf[[paste0("featNum", feature_nums[j])]] <- feats_rf
+    selected_cf[[paste0("featNum", feature_nums[j])]] <- feats_cf
   }
   
-  # Summarize
-  all_selected <- unlist(selected_vars_list)
-  selected_freq <- sort(table(all_selected), decreasing = TRUE)
+  acc_ff_df <- as.data.frame(rbind(acc_ff, colMeans(acc_ff)))
+  acc_rf_df <- as.data.frame(rbind(acc_rf, colMeans(acc_rf)))
+  acc_cf_df <- as.data.frame(rbind(acc_cf, colMeans(acc_cf)))
+  colnames(acc_ff_df) <- colnames(acc_rf_df) <-colnames(acc_cf_df) <- paste0("featNum", feature_nums)
+  rownames(acc_ff_df) <- rownames(acc_rf_df) <- rownames(acc_cf_df) <- c(paste0("acc", 1:times), "acc_mean")
   
-  return(list(
-    auc_train = auc_train_vec,
-    auc_test = auc_test_vec,
-    selected_freq = selected_freq
-  ))
+  # Write to CSV
+  write.csv(acc_ff_df, paste0(file_name, "_accValAllFuzzyForest.csv"))
+  write.csv(acc_rf_df, paste0(file_name, "_accValAllRandomForest.csv"))
+  write.csv(acc_cf_df, paste0(file_name, "_accValAllCForest.csv"))
+  write.csv(as.data.frame(selected_ff), paste0(file_name, "_featureSelectedFuzzyForest.csv"))
+  write.csv(as.data.frame(selected_rf), paste0(file_name, "_featureSelectedRandomForest.csv"))
+  write.csv(as.data.frame(selected_cf), paste0(file_name, "_featureSelectedCForest.csv"))
+  
+  # Return data frames for plotting if needed
+  list(
+    acc_ff_df = acc_ff_df,
+    acc_rf_df = acc_rf_df,
+    acc_cf_df = acc_cf_df,
+    selected_ff = selected_ff,
+    selected_rf = selected_rf,
+    selected_cf = selected_cf
+  )
 }
 
-#per_data_1
-lasso_results_per_data1 <- lasso_binary(per_data1, target_var = "dfs_adoption_binary", exclude_vars = "dfs_total_area")
-per_data1_important_factors<-as.data.frame(head(lasso_results_per_data1$selected_freq, 40))
-head(per_data1_important_factors)
-cat("\nAverage Train AUC:", round(mean(lasso_results_per_data1$auc_train), 3), "\n")
-cat("Average Test AUC:", round(mean(lasso_results_per_data1$auc_test), 3), "\n")
-
-#per_data_2
-lasso_results_per_data2 <- lasso_binary(per_data2, target_var = "dfs_adoption_binary", exclude_vars = "dfs_total_area")
-per_data2_important_factors<-as.data.frame(head(lasso_results_per_data2$selected_freq, 40))
-head(per_data2_important_factors)
-
-cat("\nAverage Train AUC:", round(mean(lasso_results_per_data2$auc_train), 3), "\n")
-cat("Average Test AUC:", round(mean(lasso_results_per_data2$auc_test), 3), "\n")
-
-
-# high_importance per_data_1
-lasso_results_per_highPriority_data1 <- lasso_binary(per_data1_highPriorityFiltered, target_var = "dfs_adoption_binary", exclude_vars = "dfs_total_area")
-per_highPriority_data1_important_factors<-as.data.frame(head(lasso_results_per_highPriority_data1$selected_freq, 40))
-head(per_highPriority_data1_important_factors)
-cat("\nAverage Train AUC:", round(mean(lasso_results_per_highPriority_data1$auc_train), 3), "\n")
-cat("Average Test AUC:", round(mean(lasso_results_per_highPriority_data1$auc_test), 3), "\n")
-
-# Factors in per_highPriority_data1_important_factors but not in per_data1_important_factors
-setdiff(per_highPriority_data1_important_factors$all_selected,per_data1_important_factors$all_selected)
-setdiff(per_data1_important_factors$all_selected,per_highPriority_data1_important_factors$all_selected)
-
-per_data1_selected_factors<-rbind(per_data1_important_factors,per_highPriority_data1_important_factors)%>%
-  distinct(all_selected)
-write.csv(per_data1_selected_factors,"per_data1_selected_factors.csv",row.names=FALSE)
-
-
-# high_importance per_data_2
-lasso_results_per_highPriority_data2 <- lasso_binary(per_data2_highPriorityFiltered, target_var = "dfs_adoption_binary", exclude_vars = "dfs_total_area")
-per_highPriority_data2_important_factors<-as.data.frame(head(lasso_results_per_highPriority_data2$selected_freq, 40))
-head(per_highPriority_data2_important_factors)
-cat("\nAverage Train AUC:", round(mean(lasso_results_per_highPriority_data2$auc_train), 3), "\n")
-cat("Average Test AUC:", round(mean(lasso_results_per_highPriority_data2$auc_test), 3), "\n")
-
-# Factors in per_highPriority_data2_important_factors but not in per_data2_important_factors
-setdiff(per_highPriority_data2_important_factors$all_selected,per_data2_important_factors$all_selected)
-setdiff(per_data2_important_factors$all_selected,per_highPriority_data2_important_factors$all_selected)
-
-per_data2_selected_factors<-rbind(per_data2_important_factors,per_highPriority_data2_important_factors)%>%
-  distinct(all_selected)
-
-write.csv(per_data2_selected_factors,"per_data2_selected_factors.csv",row.names=FALSE)
-
-
-##=== STEP 4: LASSO FACTOR SELECTION ADOPTION INTENSITY ======
-set.seed(123)
-
-##--- Prepare the data 
-x_vars <- per_data_nzvFiltered[, !(names(per_data_nzvFiltered) %in% c("dfs_adoption_binary"))]
-x_vars <- x_vars %>%mutate(across(where(is.factor), ~ as.numeric(as.character(.))))%>%
-  select(-dfs_total_area)
-x_vars<-as.matrix(x_vars)
-class(x_vars)
-# Binary outcome variable
-y_var <- as.numeric(as.character(per_data_nzvFiltered$dfs_adoption_binary))
-y_var
-
-# Parameters
-n_iter <- 100
-lambda_seq <- 10^seq(2, -2, by = -0.1)
-
-# Store selected variables for each iteration
-selected_vars_list <- list()
-rsq_test_vec <- numeric(n_iter)
-rsq_train_vec <- numeric(n_iter)
-
-
-
-# R-squared function
-rsq_fun <- function(actual, predicted) {
-  rss <- sum((predicted - actual)^2)
-  tss <- sum((actual - mean(actual))^2)
-  1 - rss/tss
+# Function to plot accuracy vs number of selected features
+plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,method_name = "Model") {
+  process_df <- function(df, algo_name) {
+    df %>%
+      rename("Run"="X")%>%
+      filter(Run == "acc_mean") %>%
+      pivot_longer(-Run, names_to = "NumFeatures", values_to = "Accuracy") %>%
+      mutate(
+        NumFeatures = as.numeric(gsub("featNum", "", NumFeatures)),
+        algorithm = algo_name
+      )
+  }
+  
+  acc_long <- bind_rows(
+    process_df(acc_ff_df, "Fuzzy Forest"),
+    process_df(acc_rf_df, "Random Forest"),
+    process_df(acc_cf_df, "Conditional Inference Forest")
+  )
+  acc_long_mean<- acc_long%>%
+    group_by(Run, NumFeatures)%>%
+    summarise(Accuracy= mean(Accuracy))%>%
+    ungroup()%>%
+    mutate(algorithm="Mean")%>%
+    rbind(acc_long)
+  
+  ggplot(acc_long_mean, aes(x = NumFeatures, y = Accuracy, color = algorithm)) +
+    geom_line(size = 1) +
+    geom_point(size = 3) +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+    labs(
+      title = method_name,
+      x = "Number of selected factors",
+      y = "Mean classification accuracy (%)",
+      color = "Feature selection algorithm"
+    ) +
+    theme_minimal(base_size = 14)
 }
 
-for (i in 1:n_iter) {
-  set.seed(100 + i)
-  train_idx <- sample(1:nrow(x_vars), nrow(x_vars)/2)
-  test_idx <- setdiff(1:nrow(x_vars), train_idx)
+# Function to extract selected factors frequency
+selected_factors_freq <- function(select_factors_cf,select_factors_ff, select_factors_rf) {
+  process_df <- function(df, algo_name) {
+    df %>%
+      rename("Run"="X")%>%
+      pivot_longer(-Run, names_to = "NumFeatures", values_to = "selected_factors") %>%
+      mutate(algorithm = algo_name)%>%
+      separate_rows(selected_factors, sep = ",")
+  }
   
-  # Cross-validation to select lambda
-  cv_fit <- cv.glmnet(x_vars[train_idx,], y_var[train_idx],
-                      alpha = 1, lambda = lambda_seq,
-                      family = "binomial",
-                      standardize = TRUE)
-  best_lambda <- cv_fit$lambda.min
+  selected_factors <- bind_rows(
+    process_df(select_factors_cf, "Conditional Inference Forest"),
+    process_df(select_factors_ff, "Fuzzy Forest"),
+    process_df(select_factors_rf, "Random Forest")
+  )
   
-  # Final model
-  lasso_fit <- glmnet(x_vars[train_idx,], y_var[train_idx],
-                      alpha = 1, lambda = best_lambda, family = "binomial")
+  selected_factors_freq<- selected_factors%>%
+    group_by(NumFeatures,selected_factors) %>%
+    summarise(frequency = n(), .groups = 'drop')%>%
+    ungroup()
+  return(selected_factors_freq)
   
-  # Predict
-  pred_train <- predict(lasso_fit, newx = x_vars[train_idx,], type = "response")
-  pred_test <- predict(lasso_fit, newx = x_vars[test_idx,], type = "response")
-  
-  # Compute pseudo R² (for classification, use AUC or logloss instead if preferred)
-  rsq_train_vec[i] <- rsq_fun(y_var[train_idx], pred_train)
-  rsq_test_vec[i] <- rsq_fun(y_var[test_idx], pred_test)
-  
- 
-  # Extract non-zero predictors
-  coef_vec <- as.matrix(coef(lasso_fit))[-1, , drop = FALSE]  # exclude intercept
-  selected_vars <- rownames(coef_vec)[coef_vec != 0]
-  selected_vars_list[[i]] <- selected_vars
 }
 
-# Summary: variable selection frequency
-all_selected <- unlist(selected_vars_list)
-selected_freq <- sort(table(all_selected), decreasing = TRUE)
+##=== Run for DFS adoption binary ====
+per_data_numeric <- prepare_numeric_matrix(per_data_redundantFiltered)
+sft <- run_soft_threshold(per_data_numeric, dataset_name = "per_data_redundantFiltered")
+per_picked_power <- 8  # Optionally automate this later
 
-# Show top 20 frequently selected variables
-print("Top selected variables across 10 iterations:")
-print(head(selected_freq, 20))
+per_adoptionBinary <- per_data_redundantFiltered$dfs_adoption_binary
+per_factors <- per_data_redundantFiltered %>% select(-any_of(per_outcomes))
 
-# R-squared summary
+results <- run_feature_selection_experiment(per_factors, per_adoptionBinary, per_picked_power, file_name = "per_data")
 
-cat("Average Train R-squared:", mean(rsq_train_vec), "\n")
-cat("Average Test R-squared:", mean(rsq_test_vec), "\n")
+# Plot accuracy vs number of selected factors
+per_data_acc_ff<- read.csv("per_data_accValAllFuzzyForest.csv",sep=",") 
+per_data_acc_rf<- read.csv("per_data_accValAllRandomForest.csv",sep=",") 
+per_data_acc_cf<- read.csv("per_data_accValAllCForest.csv",sep=",") 
 
+plot_accuracy_vs_features(per_data_acc_ff,per_data_acc_rf, per_data_acc_cf, method_name = "per_data")
 
+## Extract the best 5 factors
+per_data_select_factors_cf<- read.csv("per_data_featureSelectedCForest.csv",sep=",") 
+per_data_select_factors_ff<- read.csv("per_data_featureSelectedCForest.csv",sep=",") 
+per_data_select_factors_rf<- read.csv("per_data_featureSelectedCForest.csv",sep=",") 
 
+per_data_selected_factors_freq<-selected_factors_freq(per_data_select_factors_cf,per_data_select_factors_ff,per_data_select_factors_rf)
+write.csv(per_data_selected_factors_freq, "per_data_selected_factors_freq.csv")
 
+per_data_selected_factors<-per_data_selected_factors_freq%>%
+  filter(NumFeatures=="featNum5")%>%
+  slice_max(order_by = frequency, n = 5)
 
+write.csv(per_data_selected_factors, "per_data_selected_factors.csv")
+
+per_data_selected_factors$selected_factors
+
+create_cor_df <- function(data,selected_factors) {
+  data_num<-data %>% 
+    mutate(across(everything(), as.numeric))%>%
+    select(any_of(per_data_selected_factors$selected_factors))
+  
+  cor_matrix <- cor(data_num,
+                    method = "spearman", use = "pairwise.complete.obs")
+  
+  cor_df <- as.data.frame(cor_matrix) %>%
+    rownames_to_column("factor1") %>%
+    pivot_longer(-factor1, names_to = "factor2", values_to = "spearman_correlation")
+  
+  return(cor_df)
+}
+per_data_selected_factors_cor<-create_cor_df(per_data_redundantFiltered,per_data_selected_factors)
 
