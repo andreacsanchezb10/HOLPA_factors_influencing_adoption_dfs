@@ -40,7 +40,7 @@ rownames(per_data_analysis) <- per_data_analysis$kobo_farmer_id
 per_data_analysis<- per_data_analysis%>%
   dplyr::select(-kobo_farmer_id)
 
-dim(per_data_analysis) #200 farmers; 289 variables evaluated
+dim(per_data_analysis) #200 farmers; 295 variables evaluated
 
 #############################################################    
 ########## DATA TYPE CONVERSION #####-----
@@ -140,7 +140,7 @@ ggplot(data=a, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_Binary) #[1] 200 303 #200 farmers; 303 variables retained
+dim(per_data_Binary) #[1] 200 309 #200 farmers; 309 variables retained
 
 
 write.csv(per_data_Binary,"per_data_Binary.csv",row.names=FALSE)
