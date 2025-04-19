@@ -6,10 +6,11 @@ library(readxl)
 per_factors_list<-read_excel("factors_list.xlsx",sheet = "per_factors_list")%>%
   filter(is.na(peru_remove))
 
-per_outcomes<-per_factors_list%>%
-  filter(category_1=="outcome")
-per_outcomes<-per_outcomes$column_name_new
-per_outcomes
+per_adoptionBinary_outcomes<-read_excel("factors_list.xlsx",sheet = "per_factors_list")%>%
+  filter(category_1=="outcome")%>%
+  filter(str_detect(factor, "adoption"))
+per_adoptionBinary_outcomes<-per_adoptionBinary_outcomes$column_name_new
+per_adoptionBinary_outcomes
 
 per_structural_model<-read_excel("factors_list.xlsx",sheet = "structural_model")
 filter(peru_binary=="peru")
@@ -75,7 +76,6 @@ summary_stats_num <- function(df,numeric_valid_columns,factors_list) {
     left_join(factors_list%>%select(category_1,category_2,constructs,constructs_type,weights,factor, metric, metric_type,column_name_new,description),by="column_name_new")
 }
 
-
 summary_stats_factor <- function(df,factor_valid_columns,categorical_choices,factors_list) {
   df %>%
     #select(-kobo_farmer_id) %>%  # Exclude 'id' column
@@ -111,11 +111,88 @@ summary_stats_factor <- function(df,factor_valid_columns,categorical_choices,fac
 }
 
 #############################################################    
-########## DATA VISUALIZATION #####-----
+########## SUMMARY STATISTICS #####-----
 #############################################################
+##=== ADOPTION BINARY OUTCOME ====
+per_data_adoptionBinary_outcome<- per_data_clean%>%
+  select(all_of(per_adoptionBinary_outcomes))%>%
+  mutate(across(everything(), ~ as.numeric(as.character(.))))%>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "practice",
+    values_to = "adoption"
+  )%>%
+  group_by(practice,adoption)%>%
+  summarise(n_farmers=n(),
+            .groups = "drop") %>%
+  mutate(practice_clean = case_when(
+    practice=="dfs_agroforestry_adoption"~"Agroforestry",
+    practice=="dfs_intercropping_adoption" ~"Intercropping",
+    practice=="dfs_cover_crops_adoption"~"Cover crops",
+    practice=="dfs_crop_rotation_adoption" ~"Crop rotation" ,
+    practice=="dfs_strip_vegetation_adoption"~"Embedded seminatural habitats",
+    
+    practice=="dfs_fallow_adoption" ~"Fallow",
+    practice=="dfs_hedgerows_adoption"~"Hedgerows",
+    practice=="dfs_homegarden_adoption"~"Homegarden",
+    practice=="dfs_adoption_binary"~"Total",
+    
+    TRUE~"NA")) %>%
+    arrange(factor(practice_clean, levels = c("Total", "Homegarden", "Hedgerows",
+                                           "Fallow","Embedded seminatural habitats",
+                                          "Crop rotation","Cover crops","Intercropping", "Agroforestry")))
 
-###### --- NUMERICAL VARIABLES -----
-### Summary statistics
+levels_m_dp_recla<- c("Total", "Homegarden", "Hedgerows",
+                      "Fallow","Embedded seminatural habitats",
+                      "Crop rotation","Cover crops","Intercropping", "Agroforestry")
+
+
+ggplot(per_data_adoptionBinary_outcome, aes(x = n_farmers,y= factor(practice_clean, levels_m_dp_recla), fill = factor(adoption))) +
+  geom_col(position = "stack") + 
+  scale_fill_manual(values = c("0" = "grey70", "1" = "forestgreen"),
+                  labels = c("Not-dopters", "Adopters"),
+                  name = "Adoption status") +
+  scale_x_continuous(expand = c(0, 0),limits = c(0,200),
+                     breaks = c(0,20,40,60,80,100,120,140,160,180,200)) +
+  labs(x = "Number of farmers",
+       y = "")+
+  theme(
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    axis.text.y =element_text(color="black",size=11, family = "sans"),
+    axis.text.x=element_text(color="black",size=11, family = "sans"),
+    axis.title =element_text(color="black",size=13, face = "bold",family = "sans"),
+    panel.border = element_blank(),
+    axis.line = element_line(color="grey50", size= 1),
+    axis.ticks.y=element_blank(),
+    axis.ticks.x=element_line(color="grey50", size= 1),
+    legend.position = "none",
+    panel.background = element_rect(fill = "white"),
+    plot.margin = unit(c(t=0.5,r=0.5,b=0.5,l=0.5), "cm"))
+p_sytems_stages
+  
+  geom_bar(aes(fill = adoption))
+  geom_bar()   # Fill makes proportion bars
+  facet_wrap(~ Practice, ncol = 3, scales = "free_y")   # Facet by practice
+  scale_y_continuous(labels = scales::percent_format()) +
+  
+  labs(
+    x = "Adoption Status",
+    y = "Percentage of Farmers",
+    title = "Distribution of Adoption Status Across Practices"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom"
+  )
+
+head(per_data_adoptionBinary_outcome)
+
+
+##=== SELECTED FACTORS ====
+#--- Numerical factors -----
 columns_numeric <- intersect(per_factors_list$column_name_new[per_factors_list$metric_type == "continuous"], colnames(per_data_adoptionBinary_analysis))
 print(columns_numeric)  # Check if it holds expected values
 
@@ -128,31 +205,7 @@ per_summary_numerical <- summary_stats_num(per_data_adoptionBinary_analysis,colu
 
 sort(unique(per_summary_numerical$factor))
 
-write.csv(per_summary_numerical,"per_summary_numerical.csv",row.names=FALSE)
-
-### Histogram plots for each numerical variable
-plot_list <- lapply(columns_numeric, function(col) {
-  ggplot(per_data_adoptionBinary_analysis, aes(x = .data[[col]])) +
-    geom_histogram(bins = 30, fill = "steelblue", color = "black", alpha = 0.7) +
-    labs(title = col) +
-    theme_minimal()
-})
-
-histogram_plot <- wrap_plots(plot_list) + plot_annotation(title = "Histograms of Numeric Variables")
-print(histogram_plot)
-
-### Boxplot Matrix 
-featurePlot(x = per_data_adoptionBinary_analysis[,columns_numeric], 
-            y = as.factor(per_data_adoptionBinary_analysis$dfs_adoption_binary), 
-            plot = "box", 
-            ## Pass in options to bwplot() 
-            scales = list(y = list(relation="free"),
-                          x = list(rot = 90)),  
-            layout = c(1,3 ))
-
-
-###### --- CATEGORICAL AND BINARY VARIABLES -----
-### Summary statistics
+#--- Categorical and binary factors -----
 per_categorical_choices<-per_global_choices%>%
   mutate(name_new=as.character(name_new),
          name_choice= if_else(is.na(name_new),name_choice,name_new))%>%
