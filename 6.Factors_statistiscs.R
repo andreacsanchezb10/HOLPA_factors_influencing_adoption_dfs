@@ -22,14 +22,10 @@ per_adoptionBinary_selectedFactors<- read.csv("results/per_adoptionBinary_select
   left_join(per_factors_list%>%select(category_1,constructs,factor,constructs_type,weights,column_name_new),by="column_name_new")%>%
   select(category_1,constructs, column_name_new,factor, constructs, constructs_type,weights)%>%
   mutate(country="Peru",
-         outcome= "Adoption binary")
-  rbind(c(category_1="outcome",
-          constructs="dfs_adoption_binary", 
-          column_name_new="dfs_adoption_binary",
-          constructs_type="composite", 
-          weights="mode_A"))%>%
-  filter(constructs!="main_crop")%>%
+         outcome= "Adoption status")
  
+write.csv(per_adoptionBinary_selectedFactors,"results/per_adoptionBinary_selectedFactorsDetails.csv",row.names=FALSE)
+
 sort(unique(per_adoptionBinary_selectedFactors$constructs))
 
 
@@ -38,13 +34,12 @@ sort(unique(per_adoptionBinary_selectedFactors$constructs))
 #############################################################
 ##=== Select most important factors ----
 per_data_adoptionBinary_analysis<- per_data_clean%>%
-  select(kobo_farmer_id,dfs_adoption_binary,
+  select(dfs_adoption_binary,
     all_of(per_adoptionBinary_selectedFactors$column_name_new))
-  mutate(across(everything(), ~ as.numeric(as.character(.))))
 
 names(per_data_adoptionBinary_analysis)
 str(per_data_adoptionBinary_analysis)
-dim(per_data_adoptionBinary_analysis)#[1] 200   22
+dim(per_data_adoptionBinary_analysis)#[1] 200   25
 summary(per_data_adoptionBinary_analysis)
 describe(per_data_adoptionBinary_analysis)
 
@@ -125,6 +120,7 @@ per_data_adoptionBinary_outcome<- per_data_clean%>%
   group_by(practice,adoption)%>%
   summarise(n_farmers=n(),
             .groups = "drop") %>%
+  mutate(percent_farmers= (n_farmers/200)*100)%>%
   mutate(practice_clean = case_when(
     practice=="dfs_agroforestry_adoption"~"Agroforestry",
     practice=="dfs_intercropping_adoption" ~"Intercropping",
@@ -147,21 +143,21 @@ levels_m_dp_recla<- c("Total", "Homegarden", "Hedgerows",
                       "Crop rotation","Cover crops","Intercropping", "Agroforestry")
 
 
-ggplot(per_data_adoptionBinary_outcome, aes(x = n_farmers,y= factor(practice_clean, levels_m_dp_recla), fill = factor(adoption))) +
+ggplot(per_data_adoptionBinary_outcome, aes(x = percent_farmers,y= factor(practice_clean, levels_m_dp_recla), fill = factor(adoption))) +
   geom_col(position = "stack") + 
   scale_fill_manual(values = c("0" = "grey70", "1" = "forestgreen"),
                   labels = c("Not-dopters", "Adopters"),
                   name = "Adoption status") +
-  scale_x_continuous(expand = c(0, 0),limits = c(0,200),
+  scale_x_continuous(expand = c(0, 0),limits = c(0,100),
                      breaks = c(0,20,40,60,80,100,120,140,160,180,200)) +
   labs(x = "Number of farmers",
        y = "")+
   theme(
     panel.grid.major = element_blank(), 
     panel.grid.minor = element_blank(),
-    axis.text.y =element_text(color="black",size=11, family = "sans"),
-    axis.text.x=element_text(color="black",size=11, family = "sans"),
-    axis.title =element_text(color="black",size=13, face = "bold",family = "sans"),
+    axis.text.y =element_text(color="black",size=13, family = "sans"),
+    axis.text.x=element_text(color="black",size=13, family = "sans"),
+    axis.title =element_text(color="black",size=15, face = "bold",family = "sans"),
     panel.border = element_blank(),
     axis.line = element_line(color="grey50", size= 1),
     axis.ticks.y=element_blank(),
@@ -169,28 +165,9 @@ ggplot(per_data_adoptionBinary_outcome, aes(x = n_farmers,y= factor(practice_cle
     legend.position = "none",
     panel.background = element_rect(fill = "white"),
     plot.margin = unit(c(t=0.5,r=0.5,b=0.5,l=0.5), "cm"))
-p_sytems_stages
-  
-  geom_bar(aes(fill = adoption))
-  geom_bar()   # Fill makes proportion bars
-  facet_wrap(~ Practice, ncol = 3, scales = "free_y")   # Facet by practice
-  scale_y_continuous(labels = scales::percent_format()) +
-  
-  labs(
-    x = "Adoption Status",
-    y = "Percentage of Farmers",
-    title = "Distribution of Adoption Status Across Practices"
-  ) +
-  theme_minimal() +
-  theme(
-    strip.text = element_text(face = "bold"),
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "bottom"
-  )
 
-head(per_data_adoptionBinary_outcome)
-
-
+  #930*850
+  #landscape 9.73*8.89
 ##=== SELECTED FACTORS ====
 #--- Numerical factors -----
 columns_numeric <- intersect(per_factors_list$column_name_new[per_factors_list$metric_type == "continuous"], colnames(per_data_adoptionBinary_analysis))
@@ -231,14 +208,11 @@ per_summary_categorical <- summary_stats_factor(per_data_adoptionBinary_analysis
          statistic= paste0(Count," (",Percentage,"%)"))%>%
   select(category_1,factor,name_label,statistic)%>%
   rbind(per_summary_numerical)
-sort(unique(per_summary_categorical$column_name_new2))
+sort(unique(per_summary_categorical$factor))
 
 print(per_summary_categorical)  # Check if it holds expected values
 sort(unique(per_summary_categorical$factor))
 write.csv(per_summary_categorical,"results/per_summary_selectedFactors.csv",row.names=FALSE)
-
-
-
 
 
 
@@ -272,10 +246,12 @@ theme_overall <- theme(
   strip.placement.y = "outside",
   axis.title.y = element_blank(),
   axis.title.x = element_text(color="black", size=13, family = "sans", face = "bold", vjust = -1),
-  axis.text.x = element_text(color="black", size=12, family = "sans"),
+  #axis.text.x = element_text(color="black", size=12, family = "sans"),
+  axis.text.x.bottom = element_text(color="black", size=12, family = "sans"),
   plot.background = element_rect(fill = "White", color = "White"),
   panel.background = element_blank(),
-  axis.line = element_line(colour = "black")
+  axis.line = element_line(colour = "black"),
+  legend.position="none"
 )
 
 
@@ -285,10 +261,11 @@ ggplot(per_adoptionBinary_selectedFactors, aes(x = outcome, y = factor)) +
   facet_grid2(vars(category_1),
               scales= "free", space='free_y', switch = "y",
               strip = overall_strips)+
+  labs(x = "",
+       y = "")+
   theme_overall
-  labs(
-    y = "Ucayali, Peru")
-  
+
+  #landscape 5.71*11.09
   
   facet_wrap(~category_1, ncol = 1, scales = "free_y")              # <<< THIS
   theme_minimal() +

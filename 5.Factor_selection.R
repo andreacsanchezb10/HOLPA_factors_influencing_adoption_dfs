@@ -174,7 +174,7 @@ per_redundant_list
 per_data_redundantFiltered<- per_data_nzvFiltered%>%
   dplyr::select(-all_of(per_redundant_list))
 
-dim(per_data_redundantFiltered) #200 farmers; 153 factors retained
+dim(per_data_redundantFiltered) #200 farmers; 152 factors retained
 names(per_data_redundantFiltered)
 
 c<-as.data.frame(c(colnames(per_data_redundantFiltered)))%>%
@@ -197,7 +197,7 @@ ggplot(data=c, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_redundantFiltered) #[1] 200 153 #200 farmers; 2 outcomes, 151 factors retained
+dim(per_data_redundantFiltered) #[1] 200 152 #200 farmers; 2 outcomes, 150 factors retained
 
 ##=== STEP 4: CHECK FOR CORRELATION ACROSS RETAINED FACTORS ======
 per_factors_list2 <- as.data.frame(colnames(per_data_redundantFiltered))%>%
@@ -442,7 +442,7 @@ plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,method_name
           axis.text =element_text(color="black",size=14, family = "sans"),
           legend.text = element_text(color="black",size=14, family = "sans"),
           legend.title = element_text(color="black",size=14, family = "sans", face = "bold"),
-          legend.position = c(0.85, 0.8),
+          legend.position = c(0.85, 0.9),
           plot.margin = unit(c(t=0.5,r=0.5,b=0.5,l=0.5), "cm"))
 }
 
@@ -489,7 +489,7 @@ plot_accuracy_vs_features(per_adoptionBinary_acc_ff,per_adoptionBinary_acc_rf, p
                           method_name = "A) Peru: Adoption Binary")
 #1600*1000
 
-## Extract the best 21 factors
+## Extract the best 23 factors
 per_adoptionBinary_selectFactors_cf<- read.csv("per_data_featureSelectedCForest.csv",sep=",") 
 per_adoptionBinary_selectFactors_ff<- read.csv("per_data_featureSelectedCForest.csv",sep=",") 
 per_adoptionBinary_selectFactors_rf<- read.csv("per_data_featureSelectedCForest.csv",sep=",") 
@@ -500,11 +500,10 @@ per_adoptionBinary_selectedFactors_freq<-selected_factors_freq(per_adoptionBinar
 write.csv(per_adoptionBinary_selectedFactors_freq, "per_adoptionBinary_selectedFactors_freq.csv")
 
 per_adoptionBinary_selectedFactors<-per_adoptionBinary_selectedFactors_freq%>%
-  filter(NumFeatures=="featNum21")%>%
-  slice_max(order_by = frequency, n = 21)
+  filter(NumFeatures=="featNum23")%>%
+  slice_max(order_by = frequency, n = 23)
 
 write.csv(per_adoptionBinary_selectedFactors, "results/per_adoptionBinary_selectedFactors.csv")
-
 
 create_cor_df <- function(data,selected_factors) {
   data_num<-data %>% 
