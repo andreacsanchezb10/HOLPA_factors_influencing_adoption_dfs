@@ -7,40 +7,41 @@ library(ggplot2)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-factors_list<-read_excel("factors_list.xlsx",sheet = "per_factors_list")
+factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")
 sort(unique(factors_list$category_1))
 
-per_data_clean<- read.csv("per_data_Binary.csv",sep=",")
-dim(per_data_clean) #200 farmers; 309 factors
+per_data_analysis<-  read.csv("per_data_Binary.csv",sep=",")
+dim(per_data_analysis) #200 farmers; 18 outcomes; 271 factors
+#[1] 200 289
 
-per_outcomes<-read_excel("factors_list.xlsx",sheet = "per_factors_list")%>%
+per_outcomes<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
   filter(category_1=="outcome")
 per_outcomes<-per_outcomes$column_name_new
 per_outcomes
 
 #############################################################    
 ########### FACTOR SELECTION ----
-############################################################# 
+#############################################################
 ##=== STEP 1: REMOVE IRRELEVANT FACTORS ======
 sort(unique(factors_list$peru_remove))
-per_irrelevant_list<- intersect(factors_list$column_name_new[factors_list$peru_remove %in%c("irrelevant")],colnames(per_data_clean))
+per_irrelevant_list<- intersect(factors_list$column_name_new[factors_list$peru_remove %in%c("irrelevant")],colnames(per_data_analysis))
 per_irrelevant_list
 
-per_data_irrelevantFiltered<- per_data_clean%>%
-  dplyr::select(-all_of(per_irrelevant_list))
+per_data_irrelevantFiltered<- per_data_analysis%>%
+  dplyr::select(-all_of(per_irrelevant_list))%>%
+  dplyr::select(-"year_assessment.2023")
 
-dim(per_data_irrelevantFiltered) #200 farmers; 261 variables retained
+dim(per_data_irrelevantFiltered) #200 farmers; 244 variables retained
 names(per_data_irrelevantFiltered)
-sort(unique(per_data_irrelevantFiltered))
-a<-as.data.frame(c(colnames(per_data_irrelevantFiltered)))%>%
+
+b<-as.data.frame(c(colnames(per_data_irrelevantFiltered)))%>%
   rename("column_name_new"="c(colnames(per_data_irrelevantFiltered))")%>%
   left_join(factors_list%>%select(category_1,column_name_new,constructs,constructs_type), by="column_name_new")%>%
   group_by(category_1) %>%
   mutate(column_name_new_count = n()) %>%
-  tally()%>%
-  filter(category_1!="xxx")
+  tally()
 
-ggplot(data=a, aes(x=n, y=category_1, fill= category_1)) +
+ggplot(data=b, aes(x=n, y=category_1, fill= category_1)) +
   geom_bar(stat="identity")+
   geom_text(aes(label = n), 
             hjust = -0.2, # Adjust position of the label to the right of the bar
@@ -49,8 +50,8 @@ ggplot(data=a, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_irrelevantFiltered) #200 farmers; 18 outcomes, 243 factors retained
-#[1] 200 261
+dim(per_data_irrelevantFiltered) #200 farmers; 18 outcomes, 226 factors retained
+#[1] 200 244
 
 ##=== STEP 2: REMOVE ZERO AND NEAR ZERO VARIANCE FACTORS ======
 #In some situations, the data generating mechanism can create predictors that only have a 
@@ -60,7 +61,7 @@ dim(per_data_irrelevantFiltered) #200 farmers; 18 outcomes, 243 factors retained
 ## frequency ratio: would be near one for well-behaved predictors and very large for highly-unbalanced data.
 ## percent of unique values: is the number of unique values divided by the total number of samples (times 100)
 #that approaches zero as the granularity of the data increases
-nzv <- caret::nearZeroVar(per_data_clean, saveMetrics= TRUE) 
+nzv <- caret::nearZeroVar(per_data_irrelevantFiltered, saveMetrics= TRUE) 
 nzv # the variables with nzv== TRUE should be remove
 
 nzv_list <- nearZeroVar(per_data_irrelevantFiltered)
@@ -76,17 +77,16 @@ nzv_factors
 per_data_nzvFiltered<- per_data_irrelevantFiltered[, -nzv_list]
 per_data_nzvFiltered
 
-dim(per_data_nzvFiltered) #200 farmers; 190 variables retained
+dim(per_data_nzvFiltered) #200 farmers; 178 variables retained
 
-b<-as.data.frame(c(colnames(per_data_nzvFiltered)))%>%
+c<-as.data.frame(c(colnames(per_data_nzvFiltered)))%>%
   rename("column_name_new"="c(colnames(per_data_nzvFiltered))")%>%
   left_join(factors_list%>%select(category_1,column_name_new,constructs,constructs_type), by="column_name_new")%>%
   group_by(category_1) %>%
   mutate(column_name_new_count = n()) %>%
-  tally()%>%
-  filter(category_1!="xxx")
+  tally()
 
-ggplot(data=b, aes(x=n, y=category_1, fill= category_1)) +
+ggplot(data=c, aes(x=n, y=category_1, fill= category_1)) +
   geom_bar(stat="identity")+
   geom_text(aes(label = n), 
             hjust = -0.2, # Adjust position of the label to the right of the bar
@@ -95,8 +95,8 @@ ggplot(data=b, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_nzvFiltered) #200 farmers; 5 outcomes, 185 factors retained
-#[1] 200 190
+dim(per_data_nzvFiltered) #200 farmers; 5 outcomes, 173 factors retained
+#[1] 200 178
 
 ##=== STEP 3: CHECK FOR CORRELATION ACROSS FACTORS ======
 library(tidyverse)
@@ -172,23 +172,29 @@ per_redundant_list<- intersect(factors_list$column_name_new[factors_list$peru_re
 per_redundant_list
 
 per_data_redundantFiltered<- per_data_nzvFiltered%>%
-  dplyr::select(-all_of(per_redundant_list))
+  dplyr::select(-all_of(per_redundant_list))%>%
+  dplyr::select(-"province.prov2",
+                -"district.dist_1",-"district.dist_2",-"district.dist_3",-"district.dist_4",
+                -"marital_status.1",-"marital_status.5",
+                -"crop_type.frutales" #to avoid multicollinearity
+                )
 
-dim(per_data_redundantFiltered) #200 farmers; 152 factors retained
+dim(per_data_redundantFiltered) #200 farmers; 148 factors retained
 names(per_data_redundantFiltered)
 
-c<-as.data.frame(c(colnames(per_data_redundantFiltered)))%>%
+d<-as.data.frame(c(colnames(per_data_redundantFiltered)))%>%
   rename("column_name_new"="c(colnames(per_data_redundantFiltered))")%>%
   left_join(factors_list%>%select(category_1,column_name_new,constructs,constructs_type), by="column_name_new")%>%
   mutate(category_1= case_when(
-    column_name_new== "year_assessment.2023"~"biophysical_context",
+    column_name_new %in% c("crop_type.camucamu","crop_type.cacao","crop_type.frutales")~"farm_management_characteristics",
+    column_name_new %in% c("marital_status.2","marital_status.3","read_write.3")~"human_capital",
+    
     TRUE~category_1))%>%
   group_by(category_1) %>%
   mutate(column_name_new_count = n()) %>%
-  tally()%>%
-  filter(category_1!="xxx")
+  tally()
 
-ggplot(data=c, aes(x=n, y=category_1, fill= category_1)) +
+ggplot(data=d, aes(x=n, y=category_1, fill= category_1)) +
   geom_bar(stat="identity")+
   geom_text(aes(label = n), 
             hjust = -0.2, # Adjust position of the label to the right of the bar
@@ -197,7 +203,8 @@ ggplot(data=c, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_redundantFiltered) #[1] 200 152 #200 farmers; 2 outcomes, 150 factors retained
+dim(per_data_redundantFiltered)#200 farmers; 1 outcomes, 147 factors retained
+#[1] 200 148
 
 ##=== STEP 4: CHECK FOR CORRELATION ACROSS RETAINED FACTORS ======
 per_factors_list2 <- as.data.frame(colnames(per_data_redundantFiltered))%>%
@@ -209,6 +216,8 @@ per_data_redundantFiltered_cor<-create_cor_df(per_data_redundantFiltered,per_fac
 str(per_data_redundantFiltered_cor)
 
 plot_correlation_betw_category(per_data_redundantFiltered_cor)
+sort(unique(per_data_redundantFiltered$district))
+sort(unique(per_data_redundantFiltered$crop_type))
 
 ##=== STEP 5: FUZZY FOREST FACTOR SELECTION ======
 ## Advantages
@@ -489,7 +498,7 @@ plot_accuracy_vs_features(per_adoptionBinary_acc_ff,per_adoptionBinary_acc_rf, p
                           method_name = "A) Peru: Adoption Binary")
 #1600*1000
 
-## Extract the best 23 factors
+## Extract the best 21 factors
 per_adoptionBinary_selectFactors_cf<- read.csv("per_data_featureSelectedCForest.csv",sep=",") 
 per_adoptionBinary_selectFactors_ff<- read.csv("per_data_featureSelectedCForest.csv",sep=",") 
 per_adoptionBinary_selectFactors_rf<- read.csv("per_data_featureSelectedCForest.csv",sep=",") 
@@ -500,10 +509,21 @@ per_adoptionBinary_selectedFactors_freq<-selected_factors_freq(per_adoptionBinar
 write.csv(per_adoptionBinary_selectedFactors_freq, "per_adoptionBinary_selectedFactors_freq.csv")
 
 per_adoptionBinary_selectedFactors<-per_adoptionBinary_selectedFactors_freq%>%
-  filter(NumFeatures=="featNum23")%>%
-  slice_max(order_by = frequency, n = 23)
+  filter(NumFeatures=="featNum21")%>%
+  slice_max(order_by = frequency, n = 21)%>%
+  left_join(factors_list%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
 write.csv(per_adoptionBinary_selectedFactors, "results/per_adoptionBinary_selectedFactors.csv")
+
+# Select only the selected factors from database
+
+per_data_adoptionBinary_selectedFactors<- per_data_analysis%>%
+  select(dfs_adoption_binary,
+    all_of(per_adoptionBinary_selectedFactors$selected_factors))
+  
+dim(per_data_adoptionBinary_selectedFactors)#[1] 200   24; 23 factors
+
+write.csv(per_data_adoptionBinary_selectedFactors, "results/per_data_adoptionBinary_selectedFactors.csv")
 
 create_cor_df <- function(data,selected_factors) {
   data_num<-data %>% 

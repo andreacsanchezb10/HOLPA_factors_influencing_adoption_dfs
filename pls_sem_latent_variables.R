@@ -9,51 +9,35 @@ library(ggplot2)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-per_factors_list<-read_excel("factors_list.xlsx",sheet = "per_factors_list")%>%
+per_factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
   filter(is.na(peru_remove))
-
-per_outcomes<-per_factors_list%>%
-  filter(category_1=="outcome")
-per_outcomes<-per_outcomes$column_name_new
-per_outcomes
 
 per_structural_model<-read_excel("factors_list.xlsx",sheet = "structural_model")%>%
   filter(country=="peru_status")
 
-per_data_clean<- read.csv("per_data_Binary.csv",sep=",")
+per_measurement_model<- read_excel("factors_list.xlsx",sheet = "measurement_model")%>%
+  select(category_1,constructs, column_name_new,constructs,factor, constructs_type,weights,country)%>%
+  filter(country=="peru")
 
-per_adoptionBinary_selectedFactors<- read.csv("results/per_adoptionBinary_selectedFactors.csv",sep=",")%>%
-  rename("column_name_new"="selected_factors")%>%
-  left_join(per_factors_list%>%select(category_1,constructs,factor,constructs_type,weights,column_name_new),by="column_name_new")%>%
-  select(category_1,constructs, column_name_new,constructs,factor, constructs_type,weights)%>%
-  rbind(c(category_1="outcome",
-          constructs="dfs_adoption_binary", 
-          column_name_new="dfs_adoption_binary",
-          factor="Adoption status",
-          
-          constructs_type="composite", 
-          
-          weights="mode_A"))%>%
-  filter(constructs!="main_crop")
-sort(unique(per_adoptionBinary_selectedFactors$constructs))
-                                          
-
+sort(unique(per_measurement_model$constructs))
+                                        
 #############################################################    
 ########## SELECTED FACTORS #####-----
 #############################################################
-##=== Select most important factors ----
-per_data_adoptionBinary_analysis<- per_data_clean%>%
-  select(#dfs_adoption_binary,
-    all_of(per_adoptionBinary_selectedFactors$column_name_new))%>%
+per_data_adoptionBinary_analysis<- read.csv("results/per_data_adoptionBinary_selectedFactors.csv",sep=",")%>%
+  dplyr::select(-X)%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))
-  
+class(per_data_adoptionBinary_analysis)
+
 names(per_data_adoptionBinary_analysis)
 str(per_data_adoptionBinary_analysis)
-dim(per_data_adoptionBinary_analysis)#[1] 200   25
+dim(per_data_adoptionBinary_analysis)#[1] 200   24
 summary(per_data_adoptionBinary_analysis)
 describe(per_data_adoptionBinary_analysis)
 
 apply(per_data_adoptionBinary_analysis, 2, function(x) var(as.numeric(x), na.rm = TRUE))
+
+
 
 #############################################################    
 ########## PLS-SEM MODEL ANALYSIS #####-----
@@ -108,16 +92,16 @@ per_data_adoptionBinary_analysis %>%
 #- The measurement models (also called outer models in PLS-SEM), which describe 
 #the relationships between the latent variables and their measures (i.e., their indicators)
 #display the relationships between the constructs and the indicator variables
-per_constructs_def <- per_adoptionBinary_selectedFactors %>%
-  filter(column_name_new %in% intersect(per_adoptionBinary_selectedFactors$column_name_new, colnames(per_data_adoptionBinary_analysis)))%>%
+per_constructs_def <- per_measurement_model %>%
+  filter(column_name_new %in% intersect(per_measurement_model$column_name_new, colnames(per_data_adoptionBinary_analysis)))%>%
   group_by(category_1,constructs, constructs_type, weights) %>%
   summarise(items = list(column_name_new), .groups = "drop") %>%
   mutate(n_items = lengths(items))
 
 sort(unique(per_constructs_def$constructs))
 
-#constructs_def_indirect <- per_adoptionBinary_selectedFactors %>%
-#  filter(column_name_new %in% intersect(per_adoptionBinary_selectedFactors$column_name_new, colnames(per_data_analysis_indirect)))%>%
+#constructs_def_indirect <- per_measurement_model %>%
+#  filter(column_name_new %in% intersect(per_measurement_model$column_name_new, colnames(per_data_analysis_indirect)))%>%
 #  group_by(constructs, constructs_type, weights) %>%
 #  summarise(items = list(column_name_new), .groups = "drop") %>%
 #  mutate(n_items = lengths(items))
@@ -179,10 +163,10 @@ return(measurement_model)
 }
 
 ## ==== STEP 6: Measurement model: Direct effect to adoption ====
-per_measurement_model<- build_measurement_model(
+per_measurement_model.formula<- build_measurement_model(
   data_analysis=per_data_adoptionBinary_analysis,
-  constructs_variables= per_adoptionBinary_selectedFactors )
-per_measurement_model
+  constructs_variables= per_measurement_model )
+per_measurement_model.formula
 
 
 #problematic <- check_multicollinearity(c(  reflective_measures, composite_multi_measures, composite_single_measures), per_data_analysis)
@@ -193,7 +177,7 @@ per_measurement_model
 ##=== SPECIFYING THE STRUCTURAL MODELS (Also called inner models) ======
 #################################################################################
 ##=== MODEL 1: Direct effect to adoption ----
-per_direct_effect<- purrr::map_chr(per_measurement_model, ~ .[1]) %>%
+per_direct_effect<- purrr::map_chr(per_measurement_model.formula, ~ .[1]) %>%
   unique() 
 per_direct_effect <- per_direct_effect[per_direct_effect != "dfs_adoption_binary"]
 
@@ -221,14 +205,12 @@ per_structural_model_indirect<-do.call(seminr::relationships, c(
 
 per_structural_model_indirect
 
-
-
 #################################################################################
 ##===  Estimating the PLS-SEM model: Direct effect ======
 #################################################################################
-##=== STEP 1: PLS-SEM model ----
+## STEP 1: PLS-SEM model ----
 per_pls_sem_model_direct <- estimate_pls(data = per_data_adoptionBinary_analysis,
-                              measurement_model = per_measurement_model,
+                              measurement_model = per_measurement_model.formula,
                               structural_model = per_structural_model_direct)
 per_pls_sem_model_direct
 
@@ -244,11 +226,11 @@ per_pls_sem_summary_direct$descriptives$statistics
 #- Number of iterations that the PLS-SEM algorithm needed to converge 
 #This number should be lower than the maximum number of iterations (e.g., 300)
 per_pls_sem_summary_direct$iterations 
-#[1] 33
+#[1] 1
 
 per_pls_sem_summary_direct$descriptives$statistics$constructs
 
-##=== STEP 2: Bootstrapping the model ----
+## STEP 2: Bootstrapping the model ----
 per_boot_model_direct <- bootstrap_model(seminr_model = per_pls_sem_model_direct, 
                                          nboot = 10000, # for the final result I should use 10,000
                                          cores = 2 ) 
@@ -260,7 +242,7 @@ per_boot_model_summary_direct$weights
 per_boot_model_summary_direct$validity
 per_boot_model_summary_direct$bootstrapped_paths
 
-plot(boot_model_direct, title = "")
+plot(per_boot_model_direct, title = "")
 
 
 #################################################################################
@@ -268,7 +250,7 @@ plot(boot_model_direct, title = "")
 #################################################################################
 ## STEP 1: PLS-SEM model ----
 per_pls_sem_model_indirect <- estimate_pls(data = per_data_adoptionBinary_analysis,
-                                     measurement_model = per_measurement_model,
+                                     measurement_model = per_measurement_model.formula,
                                      structural_model = per_structural_model_indirect)
 per_pls_sem_model_indirect
 

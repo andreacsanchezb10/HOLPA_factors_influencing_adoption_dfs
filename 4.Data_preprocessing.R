@@ -8,13 +8,12 @@ library(corrplot)
 ########## UPLOAD DATA #####-----
 #############################################################
 factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")
-sort(unique(factors_list$peru_remove))
 sort(unique(factors_list$category_1))
 
 per_data_clean<- read.csv("per_data_clean.csv",sep=",")
 sort(unique(per_data_clean$soil_erosion_perception))
-per_summary_categorical<-read.csv("per_summary_categorical.csv",sep=",") #645
-per_summary_numerical<-read.csv("per_summary_numerical.csv",sep=",")  #106 factors
+per_summary_categorical<-read.csv("per_summary_categorical.csv",sep=",") #541
+per_summary_numerical<-read.csv("per_summary_numerical.csv",sep=",")  #80 factors
 
 factors_category<-per_summary_numerical%>%dplyr::select(column_name_new, category_1,category_2)%>%
   rbind(per_summary_categorical%>%dplyr::select(column_name_new,category_1,category_2))%>%
@@ -40,7 +39,27 @@ rownames(per_data_analysis) <- per_data_analysis$kobo_farmer_id
 per_data_analysis<- per_data_analysis%>%
   dplyr::select(-kobo_farmer_id)
 
-dim(per_data_analysis) #200 farmers; 295 variables evaluated
+dim(per_data_analysis) #200 farmers; 275 variables evaluated
+
+a<-as.data.frame(c(colnames(per_data_analysis)))%>%
+  rename("column_name_new"="c(colnames(per_data_analysis))")%>%
+  left_join(factors_list%>%select(category_1,factor,column_name_new,constructs,constructs_type), by="column_name_new")%>%
+  group_by(category_1) %>%
+  mutate(column_name_new_count = n()) %>%
+  tally()
+
+ggplot(data=a, aes(x=n, y=category_1, fill= category_1)) +
+  geom_bar(stat="identity")+
+  geom_text(aes(label = n), 
+            hjust = -0.2, # Adjust position of the label to the right of the bar
+            size = 4) +
+  theme_minimal() +
+  labs(x = "Number of factors", y = "Category") +
+  theme(legend.position = "none")
+
+dim(per_data_analysis) #200 farmers; 18 outcomes; 257 variables; 
+#[1] 200 275
+
 
 #############################################################    
 ########## DATA TYPE CONVERSION #####-----
@@ -120,7 +139,7 @@ cols_to_remove
 per_data_Binary <- per_data_Binary %>%
   dplyr::select(-all_of(cols_to_remove))
 
-a<-as.data.frame(c(colnames(per_data_Binary)))%>%
+b<-as.data.frame(c(colnames(per_data_Binary)))%>%
   rename("column_name_new"="c(colnames(per_data_Binary))")%>%
   left_join(factors_list%>%
               dplyr::select(category_1,column_name_new), by="column_name_new")%>%
@@ -131,7 +150,7 @@ a<-as.data.frame(c(colnames(per_data_Binary)))%>%
   mutate(column_name_new_count = n()) %>%
   tally()%>%filter(category_1!="xxx")
 
-ggplot(data=a, aes(x=n, y=category_1, fill= category_1)) +
+ggplot(data=b, aes(x=n, y=category_1, fill= category_1)) +
   geom_bar(stat="identity")+
   geom_text(aes(label = n), 
             hjust = -0.2, # Adjust position of the label to the right of the bar
@@ -140,10 +159,16 @@ ggplot(data=a, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_Binary) #[1] 200 309 #200 farmers; 309 variables retained
+dim(per_data_Binary) #200 farmers; 18 outcomes; 271 factors
+#[1] 200 289
 
+per_data_Binary
 
 write.csv(per_data_Binary,"per_data_Binary.csv",row.names=FALSE)
+
+
+
+#####################OLD########################
 
 #############################################################    
 ############# DATA DISTRIBUTION EXAMINATION -----
@@ -326,182 +351,7 @@ plot_correlation_by_category(per_data_cor)
 plot_correlation_betw_category(per_data_cor)
 
 #############################################################
-############# REMOVE REDUNDANT FACTORS -----
-#############################################################
-per_redundant_factors<- read_excel("factors_list.xlsx",sheet = "per_redundant_factors")%>%
-  dplyr::select(removed)
-per_redundant_factors<-per_redundant_factors$removed
-per_redundant_factors
-
-per_data_FilteredRedundant<-per_data_Filterednzv%>%
-  dplyr::select(-dplyr::any_of(per_redundant_factors))
-sort(unique(per_data_FilteredRedundant$num_adults_total))
-
-
-per_data_FilteredRedundant_cor<-create_cor_df(per_data_FilteredRedundant,per_factors_list)
-str(per_data_FilteredRedundant_cor)
-sort(unique(per_data_FilteredRedundant_cor$factor1))
-
-plot_correlation_by_category(per_data_FilteredRedundant_cor)
-
-write.csv(per_data_FilteredRedundant,"per_data0.csv",row.names=FALSE)
-
-#############################################################  
-############# SEPARATE CORRELATED FACTORS INTO DIFFERENT DATASETS -----
-#############################################################
-per_data1<- per_data_Filterednzv%>%
-  select(-c(
-    #== Human capital ==
-    full_time_farmer, #num_occupation_secondary_list
-    
-    #== Farm management characteristics ==
-    sfs_monoculture_annual_adoption, #keep	sfs_monoculture_annual_area
-    soil_fertility_management_ecol_practices, #keep num_soil_fertility_ecol_practices
-    
-    #== Financial capital ==
-    income_access_nonfarm, #keep income_amount_nonfarm
-
-        #== P&I context_knowledge ==
-    access_info_exchange_consumers, #keep num_info_exchange_consumers
-    access_info_exchange_extension, #keep num_info_exchange_extension
-    access_info_exchange_farmers, #keep num_info_exchange_farmers
-    access_info_exchange_ngo, #keep num_info_exchange_ngo
-    access_info_exchange_researchers, #keep num_info_exchange_researchers
-    access_info_exchange_traders, #keep num_info_exchange_traders
-    training_participation, #num_training_topics
-    
-    #== Social capital ==
-    influence_nr_frequency, #keep participation_nr_frequency
-    
-    #== Vulnerability context ==
-   # household_shock_strategy, #keep household_shock_strategy_count
-    
-    #== Between categories ==
-    crop_type.cacao, #energy_tillage_haverst_type
-    num_farm_products, #livestock_count_tlu
-    district.dist_3, #months_count_water_accessibility_difficulty_flood_year
-    cropland_area, #sfs_monoculture_perennial_area
-    ))
-
-per_data1_cor<-create_cor_df(per_data1,per_factors_list)
-#plot_correlation_by_category(per_data1_cor)
-plot_correlation_betw_category(per_data1_cor)
-
-dim(per_data1) #[1] 200 167 #200 farmers; 167 variables retained
-any(is.na(per_data1)) #[1] FALSE
-write.csv(per_data1,"per_data1.csv",row.names=FALSE)
-
-sort(unique(per_data1$educat))
-per_data2<- per_data_Filterednzv%>%
-  select(-c(
-    #== Human capital ==
-    num_occupation_secondary_list, #full_time_farmer
-    
-    #== Farm management characteristics ==
-    num_soil_fertility_ecol_practices, #keep soil_fertility_management_ecol_practices
-    sfs_monoculture_annual_area, #keep	sfs_monoculture_annual_adoption
-    
-    #== Financial capital ==
-    income_amount_nonfarm, #keep income_access_nonfarm
-
-    #== P&I context_knowledge
-    num_info_exchange_consumers, #keep access_info_exchange_consumers,
-    num_info_exchange_extension,  #keep access_info_exchange_extension,
-    num_info_exchange_farmers, #keep access_info_exchange_farmers
-    num_info_exchange_ngo , #keep access_info_exchange_ngo
-    num_info_exchange_researchers,  #keep access_info_exchange_researchers
-    num_info_exchange_traders, #keep access_info_exchange_traders
-    num_info_exchange_sources, #keep access_info_exchange
-    num_training_topics, #training_participation
-    
-    #== Social capital ==
-    participation_nr_frequency, #keep influence_nr_frequency
-    
-    #== Between categories ==
-    energy_tillage_haverst_type, #crop_type.cacao 
-    credit_payment_hability, #credit_access
-    livestock_count_tlu, #num_farm_products
-    #livestock_count_tlu, #livestockland_area
-    months_count_water_accessibility_difficulty_flood_year, #district.dist_3
-    farm_size, #labour_productivity #
-    sfs_monoculture_perennial_area #cropland_area
-    ))
-
-per_data2_cor<-create_cor_df(per_data2,per_factors_list)
-#plot_correlation_by_category(per_data2_cor)
-plot_correlation_betw_category(per_data2_cor)
-
-dim(per_data2) #[1] 200 164 #200 farmers; 164 variables retained
-any(is.na(per_data2)) #[1] FALSE
-write.csv(per_data2,"per_data2.csv",row.names=FALSE)
-
-
-
-############################# OLD CODE ####################
-############################################################
-############# GET DIFFERENT DATABASES WITHOUT CORRELATED VARIABLES -----
-#############################################################
-create_uncorrelated_datasets <- function(data, cor_df, correlation_col = "spearman_correlation", threshold = 0.8) {
-  # Filter for correlated pairs above threshold and exclude self-pairs
-  cor_pairs <- cor_df %>%
-    filter(factor1 != factor2) %>%
-    filter(abs(!!sym(correlation_col)) >= threshold)%>%
-    filter(category_1.factor1 == category_1.factor2)
-  
-  
-  # Initialize a list of variable sets — starting with all variables
-  base_vars <- colnames(data)
-  datasets <- list()
-  
-  # Remove duplicated pairs (i.e., treat (A,B) same as (B,A))
-  cor_pairs_unique <- cor_pairs %>%
-    rowwise() %>%
-    mutate(pair_id = paste(sort(c(factor1, factor2)), collapse = "_")) %>%
-    distinct(pair_id, .keep_all = TRUE)
-  
-  # Generate all possible combinations by choosing one variable per pair to keep
-  pair_options <- cor_pairs_unique %>%
-    mutate(option1 = factor1,
-           option2 = factor2)
-  
-  # Recursive function to generate combinations
-  generate_sets <- function(pairs, current_vars = base_vars) {
-    if (nrow(pairs) == 0) return(list(current_vars))
-    
-    this_pair <- pairs[1, ]
-    rest_pairs <- pairs[-1, ]
-    
-    # Option 1: keep factor1, remove factor2
-    opt1 <- setdiff(current_vars, this_pair$factor2)
-    opt1_sets <- generate_sets(rest_pairs, opt1)
-    
-    # Option 2: keep factor2, remove factor1
-    opt2 <- setdiff(current_vars, this_pair$factor1)
-    opt2_sets <- generate_sets(rest_pairs, opt2)
-    
-    return(c(opt1_sets, opt2_sets))
-  }
-  
-  # Generate all combinations of variables
-  variable_sets <- generate_sets(pair_options)
-  
-  # Convert to unique list (some combinations may be duplicated)
-  unique_variable_sets <- unique(variable_sets)
-  
-  # Build the datasets
-  dataset_list <- map(unique_variable_sets, ~ data[, .x, drop = FALSE])
-  names(dataset_list) <- paste0("uncorrelated_set_", seq_along(dataset_list))
-  
-  return(dataset_list)
-}
-
-
-uncorrelated_datasets <- create_uncorrelated_datasets(per_data_FilteredRedundant, per_data_FilteredRedundant_cor)
-head(uncorrelated_datasets[[1]])
-
-
-
-#############################################################    
+############################################################    
 ############# STANDARDIZATION OF CONTINUES VARIABLES -----
 #############################################################
 library(e1071)
@@ -610,520 +460,3 @@ table(per_data_sewkm$dfs_adoption_binary, res$cluster[,12])
 length(which(res$W[,7] > 0)) #4 principles
 which(res$W[,7] > 0)
 
-
-
-#############################################################    
-#############FEATURE SELECTION MIXOMICS -----
-#############################################################
-## install BiocManager if not installed 
-library(mixOmics) # import the mixOmics library
-X <- per_data_Filterednzv%>%
-  dplyr::select(-dfs_adoption_binary,-kobo_farmer_id)%>%
-mutate(across(everything(), as.numeric))
-X<-as.matrix(X)
-class(X)
-Y <- per_data_Filterednzv$dfs_adoption_binary
-
-Y <- as.numeric(as.character(per_data_Filterednzv$dfs_adoption_binary))
-Y
-
-#PLS-DA
-result.plsda.srbct <- plsda(X, Y) # run the method
-plotIndiv(result.plsda.srbct) # plot the samples
-plotVar(result.plsda.srbct) # plot the variables
-plotLoadings(result.plsda.srbct, method = 'mean', contrib = 'max')  
-
-selectVar(result.plsda.srbct, comp = 2)$name 
-
-
-#sPLS-DA
-splsda.result <- splsda(X, Y, keepX = c(60,40)) # run the method
-plotIndiv(splsda.result) # plot the samples
-plotVar(splsda.result) # plot the variables
-
-# extract the variables used to construct the first latent component
-selectVar(splsda.result, comp = 2)$name 
-# depict weight assigned to each of these variables
-plotLoadings(splsda.result, method = 'mean', contrib = 'max')  
-
- 
-
-
-
-
-#############################################################    
-############# EXAMINE DATA DIMENSION REDUCTION -----
-#############################################################
-# https://www.sthda.com/english/articles/31-principal-component-methods-in-r-practical-guide/115-famd-factor-analysis-of-mixed-data-in-r-essentials/
-library("FactoMineR")
-library("factoextra")
-
-?MFA
-# === Biophysical contexts ===
-biophysical_context <- intersect(factors_category$column_name_new[factors_category$category_1=="Biophysical context"], colnames(per_data_analysis_Filterednzv))
-res.famd.biophysical_context <- FAMD(per_data_analysis_Filterednzv%>%dplyr::select(all_of(biophysical_context)), graph = FALSE)
-
-#Eigenvalues / Variances
-#The proportion of variances retained by the different dimensions (axes) can be extracted using 
-#the function get_eigenvalue() [factoextra package] as follow:
-#get_eigenvalue(res.famd): Extract the eigenvalues/variances retained by each dimension (axis).
-eig.val.biophysical_context <- get_eigenvalue(res.famd.biophysical_context)
-head(eig.val.biophysical_context)
-
-#The function fviz_eig() or fviz_screeplot() [factoextra package] can be used to draw the 
-#scree plot (the percentages of inertia explained by each FAMD dimensions):
-#fviz_eig(res.famd): Visualize the eigenvalues/variances.
-fviz_screeplot(res.famd.biophysical_context)
-
-#Graph of variables
-#All variables
-#The function get_mfa_var() [in factoextra] is used to extract the results for variables. 
-#By default, this function returns a list containing the coordinates, the cos2 and the contribution of all variables:
-#get_famd_var(res.famd): Extract the results for quantitative and qualitative variables.
-var.biophysical_context <- get_famd_var(res.famd.biophysical_context)
-var.biophysical_context
-# Coordinates of variables: variable coordinates in the component space (like loadings)
-(var.biophysical_context$coord)
-# Cos2: quality of representation on the factore map
-(var.biophysical_context$cos2)
-# Contributions to the  dimensions: how much each variable contributes to each dimension (%)
-(var.biophysical_context$contrib)
-
-#The following figure shows the correlation between variables - both quantitative and qualitative variables -
-#and the principal dimensions, as well as, the contribution of variables to the dimensions 1 and 2. 
-#The following functions [in the factoextra package] are used:
-#fviz_famd_var() to plot both quantitative and qualitative variables
-#fviz_famd_ind(res.famd), fviz_famd_var(res.famd): Visualize the results for individuals and variables, respectively.
-# Plot of variables
-# Contribution to the  dimensions
-fviz_famd_var(res.famd.biophysical_context, repel = TRUE)
-fviz_contrib(res.famd.biophysical_context, "var", axes = 1)
-fviz_contrib(res.famd.biophysical_context, "var", axes = 2)
-fviz_contrib(res.famd.biophysical_context, "var", axes = 3)
-fviz_contrib(res.famd.biophysical_context, "var", axes = 4)
-fviz_famd_var(res.famd.biophysical_context, repel = TRUE, col.var = "contrib")
-
-# === Farm management characteristics ===
-farm_characteristics <- intersect(factors_category$column_name_new[grepl("^Farm management characteristics", factors_category$category_1)], colnames(per_data_analysis_Filterednzv))
-res.famd.farm_characteristics<-FAMD(per_data_analysis_Filterednzv%>%dplyr::select(all_of(farm_characteristics)), graph = FALSE)
-
-eig.val.farm_characteristics <- get_eigenvalue(res.famd.farm_characteristics)
-head(eig.val.farm_characteristics)
-
-fviz_screeplot(res.famd.farm_characteristics)
-
-var.farm_characteristics <- get_famd_var(res.famd.farm_characteristics)
-var.farm_characteristics
-(var.farm_characteristics$coord)
-(var.farm_characteristics$cos2)
-(var.farm_characteristics$contrib)
-
-fviz_famd_var(res.famd.farm_characteristics, repel = TRUE)
-fviz_contrib(res.famd.farm_characteristics, "var", axes = 1)
-fviz_contrib(res.famd.farm_characteristics, "var", axes = 2)
-fviz_contrib(res.famd.farm_characteristics, "var", axes = 3)
-fviz_contrib(res.famd.farm_characteristics, "var", axes = 4)
-fviz_famd_var(res.famd.farm_characteristics, repel = TRUE, col.var = "contrib")
-
-# === Farmer behaviour ===
-farmer_behaviour <- intersect(factors_category$column_name_new[grepl("^Farmers' behaviour", factors_category$category_1)], colnames(per_data_analysis_Filterednzv))
-res.famd.farmer_behaviour<-FAMD(per_data_analysis_Filterednzv%>%dplyr::select(all_of(farmer_behaviour)), graph = FALSE)
-
-eig.val.farmer_behaviour <- get_eigenvalue(res.famd.farmer_behaviour)
-head(eig.val.farmer_behaviour)
-
-fviz_screeplot(res.famd.farmer_behaviour)
-
-var.farmer_behaviour <- get_famd_var(res.famd.farmer_behaviour)
-var.farmer_behaviour
-(var.farmer_behaviour$coord)
-(var.farmer_behaviour$cos2)
-(var.farmer_behaviour$contrib)
-
-fviz_famd_var(res.famd.farmer_behaviour, repel = TRUE)
-fviz_contrib(res.famd.farmer_behaviour, "var", axes = 1)
-fviz_contrib(res.famd.farmer_behaviour, "var", axes = 2)
-fviz_contrib(res.famd.farmer_behaviour, "var", axes = 3)
-fviz_contrib(res.famd.farmer_behaviour, "var", axes = 4)
-fviz_famd_var(res.famd.farmer_behaviour, repel = TRUE, col.var = "contrib")
-
-### Cognitive factors 
-#-> perceived control: 
-#agroecol_perspective_7: Power and freedom to solve problems collectively	5= Completely agree; 4= Somewhat agree; 3= Neutral; 2= Somewhat disagree; 1= Completely disagree; 0= I don't know	categorical	ordinal	
-#->	perceived benefit (financial)	
-#agroecol_perspective_12: "Perception of agroecological farming as a business decision	"	5= Completely agree; 4= Somewhat agree; 3= Neutral; 2= Somewhat disagree; 1= Completely disagree; 0= I don't know	
-#->		perceived benefits (environmental)
-#agroecol_perspective_2: Perceived benefit of being in nature	5= Completely agree; 4= Somewhat agree; 3= Neutral; 2= Somewhat disagree; 1= Completely disagree; 0= I don't know	
-
-### Social factor 
-#->	descriptive norm	
-#agroecol_perspective_3: Perceived community care for nature	5= Completely agree; 4= Somewhat agree; 3= Neutral; 2= Somewhat disagree; 1= Completely disagree; 0= I don't know	
-
-### Dispositional factors 
-#->	environmental concern	
-#agroecol_perspective_1: Care for nature	5= Completely agree; 4= Somewhat agree; 3= Neutral; 2= Somewhat disagree; 1= Completely disagree; 0= I don't know	
-#->	farming objective (environmental)	
-#agroecol_perspective_4: Care for land and nature on the farm	5= Completely agree; 4= Somewhat agree; 3= Neutral; 2= Somewhat disagree; 1= Completely disagree; 0= I don't know	
-#->	identity	
-#agroecol_perspective_5: Identification as an agroecological farmer	5= Completely agree; 4= Somewhat agree; 3= Neutral; 2= Somewhat disagree; 1= Completely disagree; 0= I don't know	
-#->	moral concern	
-#agroecol_perspective_10: Preference for locally produced food	5= Completely agree; 4= Somewhat agree; 3= Neutral; 2= Somewhat disagree; 1= Completely disagree; 0= I don't know	
-#->	resistance to change	
-#agroecol_perspective_13: Perception of current farming systems	5= Completely agree; 4= Somewhat agree; 3= Neutral; 2= Somewhat disagree; 1= Completely disagree; 0= I don't know	
-
-
-# === Financial capital ===
-financial_capital<- intersect(factors_category$column_name_new[grepl("^Financial capital", factors_category$category_1)], colnames(per_data_analysis_Filterednzv))
-res.famd.financial_capital<-FAMD(per_data_analysis_Filterednzv%>%dplyr::select(all_of(financial_capital)), graph = FALSE)
-
-eig.val.financial_capital <- get_eigenvalue(res.famd.financial_capital)
-head(eig.val.financial_capital)
-
-fviz_screeplot(res.famd.financial_capital)
-
-var.financial_capital <- get_famd_var(res.famd.financial_capital)
-var.financial_capital
-(var.financial_capital$coord)
-(var.financial_capital$cos2)
-(var.financial_capital$contrib)
-
-fviz_famd_var(res.famd.financial_capital, repel = TRUE)
-fviz_contrib(res.famd.financial_capital, "var", axes = 1)
-fviz_contrib(res.famd.financial_capital, "var", axes = 2)
-fviz_contrib(res.famd.financial_capital, "var", axes = 3)
-fviz_contrib(res.famd.financial_capital, "var", axes = 4)
-fviz_famd_var(res.famd.financial_capital, repel = TRUE, col.var = "contrib")
-
-### Income 
-#->	sources	
-#income_sources.casual_labour
-#income_sources.livestock
-
-# === Human capital ===
-human_capital<- intersect(factors_category$column_name_new[grepl("^Human capital", factors_category$category_1)], colnames(per_data_analysis_Filterednzv))
-res.famd.human_capital<-FAMD(per_data_analysis_Filterednzv%>%dplyr::select(all_of(human_capital)), graph = FALSE)
-
-eig.val.human_capital <- get_eigenvalue(res.famd.human_capital)
-head(eig.val.human_capital)
-
-
-fviz_screeplot(res.famd.human_capital)
-
-var.human_capital <- get_famd_var(res.famd.human_capital)
-var.human_capital
-(var.human_capital$coord)
-(var.human_capital$cos2)
-(var.human_capital$contrib)
-
-fviz_famd_var(res.famd.human_capital, repel = TRUE)
-fviz_contrib(res.famd.human_capital, "var", axes = 1)
-fviz_contrib(res.famd.human_capital, "var", axes = 2)
-fviz_contrib(res.famd.human_capital, "var", axes = 3)
-fviz_contrib(res.famd.human_capital, "var", axes = 4)
-fviz_famd_var(res.famd.human_capital, repel = TRUE, col.var = "contrib")
-
-### Household
-#-> demographic
-#education_level_female_finished: Level of education of most household female	0= none or no female living the household; 1= primary; 2= secondary; 3= post-secondary	
-#education_level_male_finished: Level of education of most household male	0= none or no male living in household; 1= primary; 2= secondary; 3= post-secondary	
-#education_level_household_finished: Level of education of most household members	0= none; 1= primary; 2= secondary; 3= post-secondary	
-
-#-> food security
-#access_diversified_food: food security	Level of access to diversified food	5= Good access. 4= Fairly good. 3= Moderate access. 2= Limited access. 1= No access at all.	
-#access_healthy_food: food security	Level of access to healthy food	5= Good access. 4= Fairly good. 3= Moderate access. 2= Limited access. 1= No access at all.	
-#access_seasonal_food: food security	Level of access to seasonal food	5= Good access. 4= Fairly good. 3= Moderate access. 2= Limited access. 1= No access at all.	
-#access_traditional_food: food security	Level of access to traditional food	5= Good access. 4= Fairly good. 3= Moderate access. 2= Limited access. 1= No access at all.	
-
-# === Natural capital ===
-natural_capital<- intersect(factors_category$column_name_new[grepl("^Natural capital", factors_category$category_1)], colnames(per_data_analysis_Filterednzv))
-res.famd.natural_capital<-FAMD(per_data_analysis_Filterednzv%>%dplyr::select(all_of(natural_capital)), graph = FALSE)
-
-eig.val.natural_capital <- get_eigenvalue(res.famd.natural_capital)
-head(eig.val.natural_capital)
-
-fviz_screeplot(res.famd.natural_capital)
-
-var.natural_capital <- get_famd_var(res.famd.natural_capital)
-var.natural_capital
-(var.natural_capital$coord)
-(var.natural_capital$cos2)
-(var.natural_capital$contrib)
-
-fviz_famd_var(res.famd.natural_capital, repel = TRUE)
-fviz_contrib(res.famd.natural_capital, "var", axes = 1)
-fviz_contrib(res.famd.natural_capital, "var", axes = 2)
-fviz_contrib(res.famd.natural_capital, "var", axes = 3)
-fviz_contrib(res.famd.natural_capital, "var", axes = 4)
-fviz_famd_var(res.famd.natural_capital, repel = TRUE, col.var = "contrib")
-
-per_data_analysis_FAMD <- per_data_analysis_Filterednzv %>%
-  # === Biophysical context ===
-  dplyr::mutate(
-    rainfall_timing_perception_index = 
-      as.numeric(as.character(rainfall_timing_change_perception.stopearlier)) +
-      as.numeric(as.character(rainfall_timing_change_perception.stoplater)) +
-      as.numeric(as.character(rainfall_timing_change_perception.startearlier)) +
-      as.numeric(as.character(rainfall_timing_change_perception.startlater)))%>%
-  select(-c(rainfall_timing_change_perception.stopearlier,
-            rainfall_timing_change_perception.stoplater,
-            rainfall_timing_change_perception.startearlier,
-            rainfall_timing_change_perception.startlater))%>%
-  # === Financial capital ===
-  #Remove redundant factors: num_income_sources provide an summary for income sources
-  select(-c(income_sources.casual_labour,
-            income_sources.livestock))
-
-
-dim(per_data_analysis_FAMD) #[1] 200 216 #200 farmers; 216 variables evaluated
-
-
-
-
-#############################################################    
-############# IDENTIFYING CORRELATED FACTORS -----
-#############################################################
-#cor1 The correlation metric between two continuous features: Defaults to pearson
-#cor2 The correlation metric between one categorical feature and one cont feature: Defaults to biserial
-#cor3 The correlation metric between two categorical features: Defaults to Cramers-V
-library("TangledFeatures")
-library(tibble)
-library(tidyr)
-
-per_cor_matrix<- GeneralCor(per_data_analysis_Filterednzv, cor1 = "pearson", cor2 = "polychoric", cor3 = "spearman")
-per_cor_df<-as.data.frame(per_cor_matrix)
-per_highCor_pairs <- which(abs(per_cor_matrix) >= 0.8 & lower.tri(per_cor_matrix), arr.ind = TRUE)
-
-
-# Create a readable data frame with factor names and correlation values
-per_highCor_df <- data.frame(
-  factor1 = rownames(per_cor_matrix)[per_highCor_pairs[, 1]],
-  factor2 = colnames(per_cor_matrix)[per_highCor_pairs[, 2]],
-  correlation = per_cor_matrix[per_highCor_pairs])%>%
-  left_join(factors_list%>%select(metric_type,column_name_new), by=c("factor1"="column_name_new"))%>%
-  left_join(factors_list%>%select(metric_type,column_name_new), by=c("factor2"="column_name_new"))%>%
-  mutate(metric_type.x= ifelse(is.na(metric_type.x),"binary",metric_type.x),
-         metric_type.y= ifelse(is.na(metric_type.y),"binary",metric_type.y))
-         
-# === Pearson Correlation ===
-pearson_highCor_matrix <- function(highCor_df) {
-  
-pearson_highCor_matrix <- highCor_df %>%
-  filter(metric_type.x == "continuous" & metric_type.y == "continuous") %>%
-  select(factor1, factor2, correlation) %>%
-  pivot_wider(names_from = factor2, values_from = correlation) %>%
-  column_to_rownames(var = "factor1") %>%
-  as.matrix()
-
-# Get all row and column names to make the matrix square
-pearson_all_names <- union(rownames(pearson_highCor_matrix), colnames(pearson_highCor_matrix))
-
-# Create a full square matrix filled with NA
-pearson_full_square_matrix <- matrix(NA, nrow = length(pearson_all_names), ncol = length(pearson_all_names),dimnames = list(pearson_all_names, pearson_all_names))
-pearson_full_square_matrix[rownames(pearson_highCor_matrix), colnames(pearson_highCor_matrix)] <- pearson_highCor_matrix
-pearson_full_square_matrix[lower.tri(pearson_full_square_matrix)] <- t(pearson_full_square_matrix)[lower.tri(pearson_full_square_matrix)]
-diag(pearson_full_square_matrix) <- 1
-return(pearson_full_square_matrix)
-}
-
-# === Polychoric Correlation ===
-polychoric_highCor_matrix <- function(highCor_df) {
-polychoric_highCor_matrix <- highCor_df %>%
-  filter(metric_type.x == "categorical" & metric_type.y == "continuous"|
-           metric_type.x == "continuous" & metric_type.y == "categorical"|
-           metric_type.x == "binary" & metric_type.y == "continuous"|
-           metric_type.x == "continuous" & metric_type.y == "binary") %>%
-  select(factor1, factor2, correlation) %>%
-  pivot_wider(names_from = factor2, values_from = correlation) %>%
-  column_to_rownames(var = "factor1") %>%
-  as.matrix()
-
-# Get all row and column names to make the matrix square
-polychoric_all_names <- union(rownames(polychoric_highCor_matrix), colnames(polychoric_highCor_matrix))
-polychoric_all_names
-# Create a full square matrix filled with NA
-polychoric_full_square_matrix <- matrix(NA, nrow = length(polychoric_all_names), ncol = length(polychoric_all_names),dimnames = list(polychoric_all_names, polychoric_all_names))
-polychoric_full_square_matrix[rownames(polychoric_highCor_matrix), colnames(polychoric_highCor_matrix)] <- polychoric_highCor_matrix
-
-polychoric_full_square_matrix[lower.tri(polychoric_full_square_matrix)] <- t(polychoric_full_square_matrix)[lower.tri(polychoric_full_square_matrix)]
-diag(polychoric_full_square_matrix) <- 1
-return(polychoric_full_square_matrix)
-}
-
-# === Spearman Correlation ===
-spearman_highCor_matrix <- function(highCor_df) {
-  
-spearman_highCor_matrix <- highCor_df %>%
-  filter(metric_type.x == "categorical" & metric_type.y == "binary"|
-           metric_type.x == "binary" & metric_type.y == "categorical"|
-           metric_type.x == "categorical" & metric_type.y == "categorical"|
-           metric_type.x == "binary" & metric_type.y == "binary") %>%
-  select(factor1, factor2, correlation) %>%
-  pivot_wider(names_from = factor2, values_from = correlation) %>%
-  column_to_rownames(var = "factor1") %>%
-  as.matrix()
-
-# Get all row and column names to make the matrix square
-spearman_all_names <- union(rownames(spearman_highCor_matrix), colnames(spearman_highCor_matrix))
-spearman_all_names
-# Create a full square matrix filled with NA
-spearman_full_square_matrix <- matrix(NA, nrow = length(spearman_all_names), ncol = length(spearman_all_names),dimnames = list(spearman_all_names, spearman_all_names))
-spearman_full_square_matrix[rownames(spearman_highCor_matrix), colnames(spearman_highCor_matrix)] <- spearman_highCor_matrix
-
-spearman_full_square_matrix[lower.tri(spearman_full_square_matrix)] <- t(spearman_full_square_matrix)[lower.tri(spearman_full_square_matrix)]
-diag(spearman_full_square_matrix) <- 1
-
-return(spearman_full_square_matrix)
-}
-
-# Plot using corrplot
-per_pearson_full_square_matrix<-pearson_highCor_matrix(per_highCor_df)
-jpeg("plots/per_pearson_highCor.jpg", width = 1000, height = 900, units = "px", res = 150)
-corrplot(per_pearson_full_square_matrix, addCoef.col = 'black',method = "circle",type = "upper", 
-         tl.cex = 0.7, tl.col = "black",na.label = "NA",order = 'alphabet')
-dev.off()
-
-per_polychoric_full_square_matrix<-polychoric_highCor_matrix(per_highCor_df)
-jpeg("plots/per_polychoric_highCor.jpg", width = 2500, height = 2500, units = "px", res = 150)
-corrplot(per_polychoric_full_square_matrix,method = "circle",type = "upper", 
-         tl.cex = 1.1, tl.col = "black",na.label = " ",order = 'alphabet')
-dev.off()
-
-per_spearman_full_square_matrix<-spearman_highCor_matrix(per_highCor_df)
-jpeg("plots/per_spearman_highCor.jpg", width = 2500, height = 2500, units = "px", res = 150)
-corrplot(per_spearman_full_square_matrix,method = "circle",type = "upper", 
-         tl.cex = 1.1, tl.col = "black",na.label = " ",order = 'alphabet')
-dev.off()
-
-#REMOVE REDUNDANT/HIGHLY CORRELATED FACTORS:
-per_data_analysis_FilteredCor<-per_data_analysis_Filterednzv%>%
-  select(-c(
-    "district.dist_1" ,#keep crop_type.cacao
-    "district.dist_2" ,#keep crop_type.frutales
-    "district.dist_3", #keep accessibility_waste_collection and months_count_water_accessibility_difficulty_flood_year
-    "sfp_total_area", ##TO CHECK IF I INCLUDE OR NOT THIS FACTOR keep dfs_adoption_binary
-    "dfs_total_area",
-    "distance_public_transport",#keep distance_main_road
-    "income_amount_total", # keep income_amount_onfarm COR=0.9924182
-    "land_tenure_hold_status",#keep male_land_tenure_hold_proportion
-    "cropland_area" #keep sfs_monoculture_perennial_area, 
-  ))
-
-per_adoptionBinary1<- per_data_analysis_FilteredCor%>%
-  select(-c(access_info_exchange_consumers, #keep num_info_exchange_consumers
-            access_info_exchange_extension, #keep num_info_exchange_extension
-            access_info_exchange_farmers, #keep num_info_exchange_farmers
-            access_info_exchange_ngo, #keep num_info_exchange_ngo
-            access_info_exchange_researchers, #keep num_info_exchange_researchers
-            access_info_exchange_traders, #keep num_info_exchange_traders
-            access_info_exchange, #keep  num_info_exchange_sources
-            household_shock_strategy, #keep household_shock_strategy_count
-            income_access_nonfarm, #keep income_amount_nonfarm
-            vegetation_cover_bushland, #keep vegetation_diversity_bushland
-            vegetation_cover_forest, #keep vegetation_diversity_forest
-            vegetation_cover_wetland, #keep vegetation_diversity_wetland
-            vegetation_cover_woodlots, #keep vegetation_diversity_woodlots
-            soil_fertility_management_ecol_practices, #keep num_soil_fertility_ecol_practices
-            organic_fertilizer_amount_ha, #keep soil_fertility_management_organic
-            sfs_monoculture_annual_adoption, #keep	sfs_monoculture_annual_area
-            influence_nr_frequency #keep participation_nr_frequency
-            
-  ))
-
-dim(per_adoptionBinary1) #[1] 200 195 #200 farmers; 195 variables retained
-any(is.na(per_adoptionBinary1))
-
-per_adoptionBinary2<- per_data_analysis_FilteredCor%>%
-  select(-c(num_info_exchange_consumers, #keep access_info_exchange_consumers,  
-            num_info_exchange_extension,  #keep access_info_exchange_extension,
-            num_info_exchange_farmers, #keep access_info_exchange_farmers
-            num_info_exchange_ngo , #keep access_info_exchange_ngo
-            num_info_exchange_researchers,  #keep access_info_exchange_researchers
-            num_info_exchange_traders, #keep access_info_exchange_traders
-            num_info_exchange_sources, #keep access_info_exchange
-            household_shock_strategy_count, #keep household_shock_strategy
-            income_amount_nonfarm, #keep income_access_nonfarm
-            vegetation_diversity_bushland, #keep vegetation_cover_bushland
-            vegetation_diversity_forest, #keep vegetation_cover_forest
-            vegetation_diversity_wetland, #keep vegetation_cover_wetland
-            vegetation_diversity_woodlots, #keep vegetation_cover_woodlots
-            num_soil_fertility_ecol_practices, #keep soil_fertility_management_ecol_practices
-            soil_fertility_management_organic, #keep organic_fertilizer_amount_ha
-            sfs_monoculture_annual_area, #keep	sfs_monoculture_annual_adoption
-            participation_nr_frequency #keep influence_nr_frequency
-            
-  ))
-
-dim(per_adoptionBinary2) #[1] 200 195 #200 farmers; 195 variables retained
-any(is.na(per_adoptionBinary2))
-
-##CHECK CORRELATION AGAIN
-per_cor_matrix<- GeneralCor(per_adoptionBinary1, cor1 = "pearson", cor2 = "polychoric", cor3 = "spearman")
-per_cor_df<-as.data.frame(per_cor_matrix)
-per_highCor_pairs <- which(abs(per_cor_matrix) >= 0.8 & lower.tri(per_cor_matrix), arr.ind = TRUE)
-
-
-# Create a readable data frame with factor names and correlation values
-per_highCor_df <- data.frame(
-  factor1 = rownames(per_cor_matrix)[per_highCor_pairs[, 1]],
-  factor2 = colnames(per_cor_matrix)[per_highCor_pairs[, 2]],
-  correlation = per_cor_matrix[per_highCor_pairs])%>%
-  left_join(factors_list%>%select(metric_type,column_name_new), by=c("factor1"="column_name_new"))%>%
-  left_join(factors_list%>%select(metric_type,column_name_new), by=c("factor2"="column_name_new"))%>%
-  mutate(metric_type.x= ifelse(is.na(metric_type.x),"binary",metric_type.x),
-         metric_type.y= ifelse(is.na(metric_type.y),"binary",metric_type.y))
-
-# Plot using corrplot
-per_pearson_full_square_matrix<-pearson_highCor_matrix(per_highCor_df)
-jpeg("plots/per_pearson_highCor_adoptionBinary1.jpg", width = 1000, height = 900, units = "px", res = 150)
-corrplot(per_pearson_full_square_matrix, addCoef.col = 'black',method = "circle",type = "upper", 
-         tl.cex = 0.7, tl.col = "black",na.label = "NA",order = 'alphabet')
-dev.off()
-
-per_polychoric_full_square_matrix<-polychoric_highCor_matrix(per_highCor_df)
-jpeg("plots/per_polychoric_highCor_adoptionBinary1.jpg", width = 2500, height = 2500, units = "px", res = 150)
-corrplot(per_polychoric_full_square_matrix,method = "circle",type = "upper", 
-         tl.cex = 1.1, tl.col = "black",na.label = " ",order = 'alphabet')
-dev.off()
-
-per_spearman_full_square_matrix<-spearman_highCor_matrix(per_highCor_df)
-jpeg("plots/per_spearman_highCor_adoptionBinary1.jpg", width = 2500, height = 2500, units = "px", res = 150)
-corrplot(per_spearman_full_square_matrix,method = "circle",type = "upper", 
-         tl.cex = 1.1, tl.col = "black",na.label = " ",order = 'alphabet')
-dev.off()
-
-#############################################################    
-############# CENTERING AND SCALING -----
-#############################################################
-#Only for continuous variables
-#per_adoptionBinary1
-columns_continuous <- intersect(per_summary_numerical$column_name_new, colnames(per_adoptionBinary1))
-# Center (mean = 0) and scale (sd = 0.5) the continuous variables:
-per_adoptionBinary1[,columns_continuous] = 0.5*scale(per_adoptionBinary1[,columns_continuous])
-dim(per_adoptionBinary1) #[1] 200 200 #200 farmers; 200 variables retained
-write.csv(per_adoptionBinary1,"per_data_adoptionBinary1.csv",row.names=FALSE)
-
-#per_adoptionBinary2
-columns_continuous <- intersect(per_summary_numerical$column_name_new, colnames(per_adoptionBinary2))
-# Center (mean = 0) and scale (sd = 0.5) the continuous variables:
-per_adoptionBinary2[,columns_continuous] = 0.5*scale(per_adoptionBinary2[,columns_continuous])
-dim(per_adoptionBinary2) #[1] 200 200 #200 farmers; 200 variables retained
-write.csv(per_adoptionBinary2,"per_data_adoptionBinary2.csv",row.names=FALSE)
-
-
-############################################################# 
-##NO TOCAR----
-adoption_binary <- per_adoptionBinary1$dfs_adoption_binary
-
-factors_binary <- per_adoptionBinary1[ , !(names(per_adoptionBinary1) %in% c("dfs_adoption_binary"))] # Remove target from feature matrix
-factors_binary <- as.matrix(do.call(cbind, factors_binary))
-factors_binary <- as.data.frame(factors_binary)
-  dplyr::select(-dfs_total_area)%>%
-  dplyr::select(-all_of(unique(highCor1$data1)))
-  dplyr::select(-"dfs_agroforestry_adoption",
-                -"dfs_homegarden_adoption"  ,       
-                -"dfs_intercropping_adoption")
-
-# Create a data frame with target and predictors
-data <- data.frame(target = adoption_binary, factors_binary)
-
-write.csv(data,"data.csv",row.names=FALSE)

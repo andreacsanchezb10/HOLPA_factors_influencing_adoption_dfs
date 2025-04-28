@@ -13,13 +13,7 @@ library(psych)
 per_data_clean<- read.csv("per_data_clean.csv",sep=",")
 global_survey<-read.csv("h_global_survey.csv",sep=",")
 per_global_choices<-read.csv("per_global_choices.csv",sep=",")
-factors_list <- read_excel("factors_list.xlsx",sheet = "factors_list")%>%
-  filter(category_1!="xxx")
-
-factors_list$category_1[grepl("^P&I context", factors_list$category_1)] <- "P&I context"
-factors_list$category_1[grepl("^P&I context", factors_list$category_1)] <- paste0(
-  factors_list$category_1[grepl("^P&I context", factors_list$category_1)],"_",  factors_list$category_2[grepl("^P&I context", factors_list$category_1)])
-factors_list$category_1[grepl("^P&I context_knowledge", factors_list$category_1)] <- "P&I context_knowledge"
+factors_list <- read_excel("factors_list.xlsx",sheet = "factors_list")
 
 #############################################################
 ########## FUNCTIONS TO CALCULATE SUMMARY STATISTICS #####-----

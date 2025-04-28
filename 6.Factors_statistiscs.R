@@ -3,29 +3,26 @@ library(readxl)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-per_factors_list<-read_excel("factors_list.xlsx",sheet = "per_factors_list")%>%
+per_factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
   filter(is.na(peru_remove))
 
-per_adoptionBinary_outcomes<-read_excel("factors_list.xlsx",sheet = "per_factors_list")%>%
+per_adoptionBinary_outcomes<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
   filter(category_1=="outcome")%>%
   filter(str_detect(factor, "adoption"))
 per_adoptionBinary_outcomes<-per_adoptionBinary_outcomes$column_name_new
 per_adoptionBinary_outcomes
 
 per_structural_model<-read_excel("factors_list.xlsx",sheet = "structural_model")
-filter(peru_binary=="peru")
 
 per_data_clean<- read.csv("per_data_Binary.csv",sep=",")
 
 per_adoptionBinary_selectedFactors<- read.csv("results/per_adoptionBinary_selectedFactors.csv",sep=",")%>%
   rename("column_name_new"="selected_factors")%>%
   left_join(per_factors_list%>%select(category_1,constructs,factor,constructs_type,weights,column_name_new),by="column_name_new")%>%
-  select(category_1,constructs, column_name_new,factor, constructs, constructs_type,weights)%>%
+  select(category_1,constructs, column_name_new,factor, constructs, constructs_type,weights)
   mutate(country="Peru",
          outcome= "Adoption status")
  
-write.csv(per_adoptionBinary_selectedFactors,"results/per_adoptionBinary_selectedFactorsDetails.csv",row.names=FALSE)
-
 sort(unique(per_adoptionBinary_selectedFactors$constructs))
 
 
@@ -33,13 +30,12 @@ sort(unique(per_adoptionBinary_selectedFactors$constructs))
 ########## SELECTED FACTORS #####-----
 #############################################################
 ##=== Select most important factors ----
-per_data_adoptionBinary_analysis<- per_data_clean%>%
-  select(dfs_adoption_binary,
-    all_of(per_adoptionBinary_selectedFactors$column_name_new))
+per_data_adoptionBinary_analysis<- read.csv("results/per_data_adoptionBinary_selectedFactors.csv",sep=",")%>%
+  dplyr::select(-X)
 
 names(per_data_adoptionBinary_analysis)
 str(per_data_adoptionBinary_analysis)
-dim(per_data_adoptionBinary_analysis)#[1] 200   25
+dim(per_data_adoptionBinary_analysis)#[1] 200   22
 summary(per_data_adoptionBinary_analysis)
 describe(per_data_adoptionBinary_analysis)
 
@@ -109,8 +105,8 @@ summary_stats_factor <- function(df,factor_valid_columns,categorical_choices,fac
 ########## SUMMARY STATISTICS #####-----
 #############################################################
 ##=== ADOPTION BINARY OUTCOME ====
-per_data_adoptionBinary_outcome<- per_data_clean%>%
-  select(all_of(per_adoptionBinary_outcomes))%>%
+per_data_adoptionBinary_outcome<- per_data_adoptionBinary_analysis%>%
+  select(dfs_adoption_binary)%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))%>%
   pivot_longer(
     cols = everything(),
@@ -122,21 +118,9 @@ per_data_adoptionBinary_outcome<- per_data_clean%>%
             .groups = "drop") %>%
   mutate(percent_farmers= (n_farmers/200)*100)%>%
   mutate(practice_clean = case_when(
-    practice=="dfs_agroforestry_adoption"~"Agroforestry",
-    practice=="dfs_intercropping_adoption" ~"Intercropping",
-    practice=="dfs_cover_crops_adoption"~"Cover crops",
-    practice=="dfs_crop_rotation_adoption" ~"Crop rotation" ,
-    practice=="dfs_strip_vegetation_adoption"~"Embedded seminatural habitats",
-    
-    practice=="dfs_fallow_adoption" ~"Fallow",
-    practice=="dfs_hedgerows_adoption"~"Hedgerows",
-    practice=="dfs_homegarden_adoption"~"Homegarden",
     practice=="dfs_adoption_binary"~"Total",
-    
     TRUE~"NA")) %>%
-    arrange(factor(practice_clean, levels = c("Total", "Homegarden", "Hedgerows",
-                                           "Fallow","Embedded seminatural habitats",
-                                          "Crop rotation","Cover crops","Intercropping", "Agroforestry")))
+    arrange(factor(practice_clean, levels = c("Total")))
 
 levels_m_dp_recla<- c("Total", "Homegarden", "Hedgerows",
                       "Fallow","Embedded seminatural habitats",
