@@ -163,10 +163,10 @@ return(measurement_model)
 }
 
 ## ==== STEP 6: Measurement model: Direct effect to adoption ====
-per_measurement_model.formula<- build_measurement_model(
+per_measurement_model_direct<- build_measurement_model(
   data_analysis=per_data_adoptionBinary_analysis,
   constructs_variables= per_measurement_model )
-per_measurement_model.formula
+per_measurement_model_direct
 
 
 #problematic <- check_multicollinearity(c(  reflective_measures, composite_multi_measures, composite_single_measures), per_data_analysis)
@@ -176,8 +176,8 @@ per_measurement_model.formula
 #################################################################################
 ##=== SPECIFYING THE STRUCTURAL MODELS (Also called inner models) ======
 #################################################################################
-##=== MODEL 1: Direct effect to adoption ----
-per_direct_effect<- purrr::map_chr(per_measurement_model.formula, ~ .[1]) %>%
+##=== Direct effect on adoption ----
+per_direct_effect<- purrr::map_chr(per_measurement_model_direct, ~ .[1]) %>%
   unique() 
 per_direct_effect <- per_direct_effect[per_direct_effect != "dfs_adoption_binary"]
 
@@ -186,31 +186,12 @@ per_structural_model_direct <-relationships(
 
 per_structural_model_direct
 
-##=== MODEL 2: Indirect effect to adoption ----
-per_indirect_effect<- per_structural_model%>%
-  filter(path_type=="indirect")%>%
-  filter(!is.na(to))%>%
-  mutate(formula=paste0("paths(from= '", from, "',to= '", to, "')"))%>%
-  select(formula)
-per_indirect_effect
-
-per_indirect_effect <- map(
-  per_indirect_effect$formula,
-  ~ eval(parse_expr(.x)))
-per_indirect_effect
-
-per_structural_model_indirect<-do.call(seminr::relationships, c(  
- paths(from= c(per_direct_effect), to="dfs_adoption_binary"),
- per_indirect_effect))
-
-per_structural_model_indirect
-
 #################################################################################
-##===  Estimating the PLS-SEM model: Direct effect ======
+##===  Estimating the PLS-SEM model: Direct effect on adoption ======
 #################################################################################
 ## STEP 1: PLS-SEM model ----
 per_pls_sem_model_direct <- estimate_pls(data = per_data_adoptionBinary_analysis,
-                              measurement_model = per_measurement_model.formula,
+                              measurement_model = per_measurement_model_direct,
                               structural_model = per_structural_model_direct)
 per_pls_sem_model_direct
 
@@ -244,45 +225,6 @@ per_boot_model_summary_direct$bootstrapped_paths
 
 plot(per_boot_model_direct, title = "")
 
-
-#################################################################################
-##===  Estimating the PLS-SEM model: Indirect effect ======
-#################################################################################
-## STEP 1: PLS-SEM model ----
-per_pls_sem_model_indirect <- estimate_pls(data = per_data_adoptionBinary_analysis,
-                                     measurement_model = per_measurement_model.formula,
-                                     structural_model = per_structural_model_indirect)
-per_pls_sem_model_indirect
-
-# Summarize the model results
-per_pls_sem_summary_indirect<- summary(per_pls_sem_model_indirect)
-per_pls_sem_summary_indirect
-# Inspect the model’s path coefficients and the R^2 values
-per_pls_sem_summary_indirect$paths
-# Inspect the construct reliability metrics 
-per_pls_sem_summary_indirect$reliability
-# Inspect descriptive statistics
-per_pls_sem_summary_indirect$descriptives$statistics
-#- Number of iterations that the PLS-SEM algorithm needed to converge 
-#This number should be lower than the maximum number of iterations (e.g., 300)
-per_pls_sem_summary_indirect$iterations 
-#[1] 4
-
-
-## STEP 2: Bootstrapping the model ----
-per_boot_model_indirect <- bootstrap_model(seminr_model = per_pls_sem_model_indirect, 
-                                     nboot = 10000, # for the final result I should use 10,000
-                                     cores = 2 ) 
-per_boot_model_indirect
-# Store the summary of the bootstrapped model 
-per_boot_model_summary_indirect <- summary(per_boot_model_indirect,alpha = 0.01)
-per_boot_model_summary_indirect
-per_boot_model_summary_indirect$bootstrapped_weights
-
-plot(per_boot_model_indirect, title = "")
-
-
-
 #########################################################
 ##===  Assessing the reflective measurement models ====
 #########################################################
@@ -297,11 +239,11 @@ plot(per_boot_model_indirect, title = "")
 #researchers should carefully examine the effects of indicator removal on other reliability and validity measures. 
 
 # Extract reflective constructs directly
-per_measurement_model
-per_reflective_constructs <- unique(per_measurement_model$reflective[seq(1, length(per_measurement_model$reflective), 3)])
+per_measurement_model_direct
+per_reflective_constructs <- unique(per_measurement_model_direct$reflective[seq(1, length(per_measurement_model_direct$reflective), 3)])
 per_reflective_constructs
 
-per_composite_constructs <- per_measurement_model[names(per_measurement_model) == "composite"]
+per_composite_constructs <- per_measurement_model_direct[names(per_measurement_model_direct) == "composite"]
 per_composite_constructs
 composite_by_mode <- function(mode) {
   unique(unlist(lapply(per_composite_constructs, \(x) x[seq(1, length(x), 3)][x[seq(3, length(x), 3)] == mode])))
@@ -312,9 +254,9 @@ per_composite_mode_A
 per_reflective_constructs_list<-c(per_composite_mode_A)#,reflective_constructs)
 per_reflective_constructs_list
 
-per_pls_sem_summary_indirect$loadings
+per_pls_sem_summary_direct$loadings
 
-per_assessment.mmr.step1<- as.data.frame(per_pls_sem_summary_indirect$loadings)%>%
+per_assessment.mmr.step1<- as.data.frame(per_pls_sem_summary_direct$loadings)%>%
   tibble::rownames_to_column("factors") %>%
   tidyr::pivot_longer(
     cols = -factors,
@@ -349,7 +291,7 @@ write.csv(per_assessment.mmr.step1,"results/per_assessment.mmr.step1.csv",row.na
 #measurement model (Hair, Hult, Ringle, & Sarstedt, 2022).
 
 #Inspect the indicator reliability
-per_reliability<-as.data.frame(per_pls_sem_summary_indirect$loadings^2)%>%
+per_reliability<-as.data.frame(per_pls_sem_summary_direct$loadings^2)%>%
   tibble::rownames_to_column("factors") %>%
   tidyr::pivot_longer(
     cols = -factors,
@@ -383,7 +325,7 @@ head(per_reliability)
 #variance that make up the construct (Hair et al., 2022).
 
 # Inspect the composite reliability AND Convergent validity
-per_assessment.mmr.step2.3<- as.data.frame(per_pls_sem_summary_indirect$reliability)%>%
+per_assessment.mmr.step2.3<- as.data.frame(per_pls_sem_summary_direct$reliability)%>%
   tibble::rownames_to_column("constructs")%>%
   left_join(per_constructs_def%>%select(category_1,constructs,constructs_type),by="constructs")%>%
   filter(constructs %in%c(per_reflective_constructs_list))%>%
@@ -409,7 +351,7 @@ per_assessment.mmr.step2.3<- as.data.frame(per_pls_sem_summary_indirect$reliabil
     AVE >=0.5 ~"Good",
     TRUE~"Please check"))
 
-plot(per_pls_sem_summary_indirect$reliability)
+plot(per_pls_sem_summary_direct$reliability)
   
 write.csv(per_assessment.mmr.step2.3,"results/per_assessment.mmr.step2.3.csv",row.names=FALSE)
 
@@ -426,7 +368,7 @@ write.csv(per_assessment.mmr.step2.3,"results/per_assessment.mmr.step2.3.csv",ro
 #satisfaction, and loyalty. In such a setting, an HTMT value above 0.90 would 
 #suggest that discriminant validity is not present. But when constructs are conceptually 
 #more distinct, a lower, more conservative, threshold value is suggested, such as 0.85 (Henseler et al., 2015).
-per_assessment.mmr.step4<- as.data.frame(per_pls_sem_summary_indirect$validity$htmt)%>%
+per_assessment.mmr.step4<- as.data.frame(per_pls_sem_summary_direct$validity$htmt)%>%
   tibble::rownames_to_column("constructs1")%>%
   left_join(per_constructs_def%>%select(constructs,constructs_type),by=c("constructs1"="constructs"))%>%
   filter(constructs1 %in%c(per_reflective_constructs_list))%>%
@@ -442,9 +384,9 @@ write.csv(per_assessment.mmr.step4,"results/per_assessment.mmr.step4.csv",row.na
 
 
 # Extract the bootstrapped HTMT 
-per_boot_model_summary_indirect <- summary(per_boot_model_indirect,alpha = 0.1)
+per_boot_model_summary_direct <- summary(per_boot_model_direct,alpha = 0.1)
 
-per_boot_model_summary_indirect$bootstrapped_HTMT  ### CHECK HOW TO INTERPRET THIS!!!!!!!
+per_boot_model_summary_direct$bootstrapped_HTMT  ### CHECK HOW TO INTERPRET THIS!!!!!!!
 
 #########################################################
 ##===  Assessing the formative measurement models ====
@@ -452,11 +394,11 @@ per_boot_model_summary_indirect$bootstrapped_HTMT  ### CHECK HOW TO INTERPRET TH
 ## STEP 1: Assess for collinearity issues ====
 ###-- Multicollinearity: VIF
 # Convert to dataframe
-per_pls_sem_summary_indirect$validity$vif_items
+per_pls_sem_summary_direct$validity$vif_items
 
-per_assessment.mmf.step1 <- lapply(names(per_pls_sem_summary_indirect$validity$vif_items), function(construct) {
-  factors <- names(per_pls_sem_summary_indirect$validity$vif_items[[construct]])
-  vifs <- as.numeric(per_pls_sem_summary_indirect$validity$vif_items[[construct]])
+per_assessment.mmf.step1 <- lapply(names(per_pls_sem_summary_direct$validity$vif_items), function(construct) {
+  factors <- names(per_pls_sem_summary_direct$validity$vif_items[[construct]])
+  vifs <- as.numeric(per_pls_sem_summary_direct$validity$vif_items[[construct]])
   
   tibble(
     construct = construct,
@@ -472,19 +414,144 @@ per_assessment.mmf.step1 <- lapply(names(per_pls_sem_summary_indirect$validity$v
 
 ## STEP 2: Assess the statistical significance and relevance of the factors weights ====
 # Store the summary of the bootstrapped model 
-per_boot_model_summary_indirect <- summary(per_boot_model_indirect,alpha = 0.05)
+per_boot_model_summary_direct <- summary(per_boot_model_direct,alpha = 0.05)
  
  
 # Inspect the bootstrapping results for indicator weights 
 #CHECK: if T Stats is >1.96
-per_boot_model_summary_indirect$bootstrapped_weights
+per_boot_model_summary_direct$bootstrapped_weights
 
 per_assessment.mmf.step2
-per_assessment.mmf.step2<- as.data.frame(per_boot_model_summary_indirect$bootstrapped_weights)
-
+per_assessment.mmf.step2<- as.data.frame(per_boot_model_summary_direct$bootstrapped_weights)
 
 # Inspect the boostrapping results for the outer loadings
-per_boot_model_summary_indirect$bootstrapped_loadings
+per_boot_model_summary_direct$bootstrapped_loadings
+
+#########################################################
+##===  Adjusting for binary outcome using logistic regression----
+#########################################################
+## STEP 1: Extract the latent constructs ====
+per_pls_sem_model_direct.construct_scores<-as.data.frame(per_pls_sem_model_direct$construct_scores)
+
+head(per_pls_sem_model_direct.construct_scores)
+normalize_min_max <- function(x) {
+  (x - min(x)) / (max(x) - min(x))
+}
+
+## STEP 2: Normalized the latent constructs ====
+# Apply normalization to all latent variables (columns)
+latent_scores_normalized <- as.data.frame(lapply(per_pls_sem_model_direct.construct_scores, normalize_min_max))
+
+# Check the first rows of normalized latent scores
+head(latent_scores_normalized)
+
+## STEP 3: Extract the normalized latent constructs and the original values for observed variables ====
+# Extract all observed variables from the measurement model
+per_measurement_model_direct
+per_reflective_constructs <- unique(per_measurement_model_direct$reflective[seq(1, length(per_measurement_model_direct$reflective), 3)])
+per_reflective_constructs
+
+per_reflective_constructs <- unique(per_measurement_model_direct$composite[seq(1, length(per_measurement_model$reflective), 3)])
+per_reflective_constructs
+
+per_composite_constructs <- per_measurement_model_direct[names(per_measurement_model_direct) == "composite"]
+per_composite_constructs
+composite_by_mode <- function(mode) {
+  unique(unlist(lapply(per_composite_constructs, \(x) x[seq(1, length(x), 3)][x[seq(3, length(x), 3)] == mode])))
+}
+per_composite_mode_A <- composite_by_mode("A")
+per_composite_mode_A
+
+per_reflective_constructs_list<-c(per_composite_mode_A)#,reflective_constructs)
+per_reflective_constructs_list
+
+per_observed_vars<-per_data_adoptionBinary_analysis%>%
+  select(all_of(per_reflective_constructs_list))
+names(per_observed_vars)
+
+
+#Extract the latent constructs
+per_composite_mode_B <- composite_by_mode("B")
+per_composite_mode_B
+
+per_data_logistic_regression_direct<- per_pls_sem_model_direct.construct_scores%>%
+  select(all_of(per_composite_mode_B))%>%
+  cbind(per_observed_vars)
+
+## STEP 4: Apply the logistic regression model ====
+#https://stats.oarc.ucla.edu/r/dae/logit-regression/
+per_logit_model <- glm(dfs_adoption_binary ~ ., 
+                   data = per_data_logistic_regression_direct, 
+                   family = binomial(link = "logit"))
+summary(per_logit_model)
+
+exp(coef(per_logit_model))
+per_logit_model.results<-as.data.frame(exp(cbind(OR = coef(per_logit_model), confint(per_logit_model))))
+
+
+
+
+
+
+
+
+
+
+###########desde aca el nuevo procedimiento #########
+##=== MODEL 2: Indirect effect to adoption NOT APPLY ----
+per_indirect_effect<- per_structural_model%>%
+  filter(path_type=="indirect")%>%
+  filter(!is.na(to))%>%
+  mutate(formula=paste0("paths(from= '", from, "',to= '", to, "')"))%>%
+  select(formula)
+per_indirect_effect
+
+per_indirect_effect <- map(
+  per_indirect_effect$formula,
+  ~ eval(parse_expr(.x)))
+per_indirect_effect
+
+per_structural_model_indirect<-do.call(seminr::relationships, c(  
+  paths(from= c(per_direct_effect), to="dfs_adoption_binary"),
+  per_indirect_effect))
+
+per_structural_model_indirect
+
+
+#################################################################################
+##===  Estimating the PLS-SEM model: Indirect effect ======
+#################################################################################
+## STEP 1: PLS-SEM model ----
+per_pls_sem_model_indirect <- estimate_pls(data = per_data_adoptionBinary_analysis,
+                                           measurement_model = per_measurement_model.formula,
+                                           structural_model = per_structural_model_indirect)
+per_pls_sem_model_indirect
+
+# Summarize the model results
+per_pls_sem_summary_indirect<- summary(per_pls_sem_model_indirect)
+per_pls_sem_summary_indirect
+# Inspect the model’s path coefficients and the R^2 values
+per_pls_sem_summary_indirect$paths
+# Inspect the construct reliability metrics 
+per_pls_sem_summary_indirect$reliability
+# Inspect descriptive statistics
+per_pls_sem_summary_indirect$descriptives$statistics
+#- Number of iterations that the PLS-SEM algorithm needed to converge 
+#This number should be lower than the maximum number of iterations (e.g., 300)
+per_pls_sem_summary_indirect$iterations 
+#[1] 4
+
+## STEP 2: Bootstrapping the model ----
+per_boot_model_indirect <- bootstrap_model(seminr_model = per_pls_sem_model_indirect, 
+                                           nboot = 10000, # for the final result I should use 10,000
+                                           cores = 2 ) 
+per_boot_model_indirect
+# Store the summary of the bootstrapped model 
+per_boot_model_summary_indirect <- summary(per_boot_model_indirect,alpha = 0.01)
+per_boot_model_summary_indirect
+per_boot_model_summary_indirect$bootstrapped_weights
+
+plot(per_boot_model_indirect, title = "")
 
 
 #########################################################
@@ -561,13 +628,13 @@ per_assessment.sm.step3
 per_pls_sem_summary_direct$fSquare  
 per_pls_sem_summary_indirect$fSquare  
 
-  
+
 ## STEP 4: Assess the model's predictive power ====
 # Generate the model predictions
 per_predict_model_indirect <- predict_pls(model = per_pls_sem_model_indirect, 
-                                    technique = predict_DA, 
-                                    noFolds = 10, 
-                                    reps = 20) # Summarize the prediction results sum_predict_corp_rep_ext <- summary(predict_corp_rep_ext)
+                                          technique = predict_DA, 
+                                          noFolds = 10, 
+                                          reps = 20) # Summarize the prediction results sum_predict_corp_rep_ext <- summary(predict_corp_rep_ext)
 
 # Summarize the prediction results
 per_predict_model_indirect
@@ -587,9 +654,6 @@ per_predict_summary_indirect
 #PLS out of sample: dfs_adoption_binary: RMSE= 0.313
 #LM out of sample: dfs_adoption_binary: RMSE= 0.318
 #PLS out of sample is lower than LM out of sample, so we conclude that the model has a high predictive power.
-
-
-
 
 
 
