@@ -491,9 +491,6 @@ per_data<-per_data %>%
   select(-matches("-desc$"),
          -matches("^_"),
          -matches("^sheet_id"))
-         #None responses
-         -"livestock_health_practice/none",
-         -"livestock_practices/none")
 print(colnames(per_data))
 
 #####################################

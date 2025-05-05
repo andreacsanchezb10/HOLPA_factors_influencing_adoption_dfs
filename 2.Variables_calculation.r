@@ -513,28 +513,28 @@ per_data_clean<-per_data_clean%>%
 per_data_clean<-per_data_clean%>%
   #Perception of price fairness: crops
   mutate(fair_price_crops= case_when(
-    farm_products.Crops =="0"~ "6", #does not produce 
-    use_percentage_crops_sales=="0"~ "6", #does not produce 
+    farm_products.Crops =="0"~ "0", #does not produce 
+    use_percentage_crops_sales=="0"~ "0", #does not produce 
     TRUE~ fair_price_crops))%>%
   #Perception of price fairness: livestock
   mutate(fair_price_livestock= case_when(
-    farm_products.Livestock =="0"~ "6", #does not produce 
+    farm_products.Livestock =="0"~ "0", #does not produce 
     use_percentage_livestock_sales=="0"~ "6", #does not produce 
     TRUE~ fair_price_livestock))%>%
   #Perception of price fairness: fish
   mutate(fair_price_fish= case_when(
-    farm_products.Fish =="0"~ "6", #does not produce 
+    farm_products.Fish =="0"~ "0", #does not produce 
     use_percentage_fish_sales=="0"~ "6", #does not produce 
     TRUE~ fair_price_fish))%>%
   #Perception of price fairness: wood
   mutate(fair_price_wood= case_when(
-    farm_products.Trees =="0"~ "6", #does not produce 
-    use_percentage_trees_sales=="0"~ "6", #does not produce 
+    farm_products.Trees =="0"~ "0", #does not produce 
+    use_percentage_trees_sales=="0"~ "0", #does not produce 
     TRUE~ fair_price_wood))%>%
   #Perception of price fairness: honey
   mutate(fair_price_honey= case_when(
-    farm_products.Honey =="0"~ "6", #does not produce 
-    use_percentage_honey_sales=="0"~ "6", #does not produce 
+    farm_products.Honey =="0"~ "0", #does not produce 
+    use_percentage_honey_sales=="0"~ "0", #does not produce 
     TRUE~ fair_price_honey))%>%
   #Crop sales channel
   mutate(across(starts_with("sales_channel_crops."), ~ as.numeric(as.character(.))))%>%
@@ -853,8 +853,8 @@ per_data_clean<-per_data_clean%>%
   #Household applied shock coping strategy
   mutate(household_shock_strategy= case_when(household_shock_strategy_count>0~ "1", TRUE~"0")) 
 
-  
-  
+  per_data_clean$nearest_distance_dfs_km
+
   
   
 write.csv(per_data_clean,"per_data_clean.csv",row.names=FALSE)

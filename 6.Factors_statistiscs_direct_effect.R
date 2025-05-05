@@ -3,16 +3,16 @@ library(readxl)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-per_factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
+factors_list_analysis<-read_excel("factors_list.xlsx",sheet = "factors_list_analysis")
   filter(is.na(peru_remove))
 
 per_structural_model<-read_excel("factors_list.xlsx",sheet = "structural_model")
 
 per_data_clean<- read.csv("per_data_Binary.csv",sep=",")
 
-per_adoptionBinary_selectedFactors<- read.csv("results/per_adoptionBinary_selectedFactors.csv",sep=",")%>%
+per_adoptionBinary_selectedFactors<- read.csv("results/direct/per_adoption_binary_selectedFactors.csv",sep=",")%>%
   rename("column_name_new"="selected_factors")%>%
-  left_join(per_factors_list%>%select(category_1,constructs,factor,constructs_type,weights,column_name_new),by="column_name_new")%>%
+  left_join(factors_list_analysis%>%select(category_1,constructs,factor,constructs_type,weights,column_name_new),by="column_name_new")%>%
   select(category_1,constructs, column_name_new,factor, constructs, constructs_type,weights)
   mutate(country="Peru",
          outcome= "Adoption status")
@@ -58,7 +58,7 @@ summary_stats_num <- function(df,numeric_valid_columns,factors_list) {
     select(all_of(numeric_valid_columns))%>%
     describe(.)%>%
     tibble::rownames_to_column("column_name_new") %>%
-    left_join(factors_list%>%select(category_1,category_2,constructs,constructs_type,weights,factor, metric, metric_type,column_name_new,description),by="column_name_new")
+    left_join(factors_list%>%select(category_1,sub_category,constructs,constructs_type,weights,factor, metric, metric_type,column_name_new,description),by="column_name_new")
 }
 
 summary_stats_factor <- function(df,factor_valid_columns,categorical_choices,factors_list) {
@@ -90,7 +90,7 @@ summary_stats_factor <- function(df,factor_valid_columns,categorical_choices,fac
       column_name_new %in%c("fair_price_crops") &is.na(name_choice)~ "Farmers without crop production",
       column_name_new2=="ethnicity"~name_choice,
       TRUE ~ label_choice))%>%
-    left_join(factors_list%>%select(category_1,category_2,category_3,factor, metric, metric_type,categorical_type,column_name_new,description),by="column_name_new")%>%
+    left_join(factors_list%>%select(category_1,sub_category,category_3,factor, metric, metric_type,categorical_type,column_name_new,description),by="column_name_new")%>%
     filter(!is.na(metric_type))%>%
     distinct(column_name_new2, name_choice, Count, .keep_all = TRUE)
 }
@@ -148,13 +148,13 @@ ggplot(per_data_adoptionBinary_outcome, aes(x = percent_farmers,y= factor(practi
   #landscape 9.73*8.89
 ##=== SELECTED FACTORS ====
 #--- Numerical factors -----
-columns_numeric <- intersect(per_factors_list$column_name_new[per_factors_list$metric_type == "continuous"], colnames(per_data_adoptionBinary_analysis))
+columns_numeric <- intersect(factors_list_analysis$column_name_new[factors_list_analysis$metric_type %in% c("continuous","categorical")], colnames(per_data_adoptionBinary_analysis))
 print(columns_numeric)  # Check if it holds expected values
 
-per_summary_numerical <- summary_stats_num(per_data_adoptionBinary_analysis,columns_numeric,per_factors_list)%>%
+per_summary_numerical <- summary_stats_num(per_data_adoptionBinary_analysis,columns_numeric,factors_list_analysis)%>%
   mutate(mean=round(mean,1),
          sd=round(sd,1),
-         statistic= paste0(mean," (",sd,") [",min,"-",max,"]"),
+         statistic= paste0(mean," (",sd,") [",min,", ",max,"]"),
          name_label=NA)%>%
   select(category_1,factor,name_label,statistic)
 
@@ -171,7 +171,7 @@ per_categorical_choices<-per_global_choices%>%
 
 ### For factor and binary variables
 #(select_one)
-columns_factor_so <- intersect(per_factors_list$column_name_new[per_factors_list$metric_type %in%c("categorical","binary")], colnames(per_data_adoptionBinary_analysis))
+columns_factor_so <- intersect(factors_list_analysis$column_name_new[factors_list_analysis$metric_type %in%c("categorical","binary")], colnames(per_data_adoptionBinary_analysis))
 print(columns_factor_so)  # Check if it holds expected values
 
 #(select_multiple)

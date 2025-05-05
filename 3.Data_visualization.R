@@ -24,7 +24,7 @@ summary_stats_num <- function(df,numeric_valid_columns) {
   select(all_of(numeric_valid_columns))%>%
     describe(.)%>%
     tibble::rownames_to_column("column_name_new") %>%
-    left_join(factors_list%>%select(category_1,category_2,constructs,constructs_type,weights,factor, metric, metric_type,column_name_new,description),by="column_name_new")
+    left_join(factors_list%>%select(category_1,sub_category,constructs,constructs_type,weights,factor, metric, metric_type,column_name_new,description),by="column_name_new")
 }
 
 
@@ -57,7 +57,7 @@ summary_stats_factor <- function(df,factor_valid_columns,categorical_choices,fac
       column_name_new %in%c("fair_price_crops") &is.na(name_choice)~ "Farmers without crop production",
       column_name_new2=="ethnicity"~name_choice,
       TRUE ~ label_choice))%>%
-    left_join(factors_list%>%select(category_1,category_2,category_3,factor, metric, metric_type,categorical_type,column_name_new,description),by="column_name_new")%>%
+    left_join(factors_list%>%select(category_1,sub_category,category_3,factor, metric, metric_type,categorical_type,column_name_new,description),by="column_name_new")%>%
     filter(!is.na(metric_type))%>%
     distinct(column_name_new2, name_choice, Count, .keep_all = TRUE)
 }

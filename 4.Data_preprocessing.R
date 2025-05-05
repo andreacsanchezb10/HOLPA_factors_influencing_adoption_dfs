@@ -15,8 +15,8 @@ sort(unique(per_data_clean$soil_erosion_perception))
 per_summary_categorical<-read.csv("per_summary_categorical.csv",sep=",") #541
 per_summary_numerical<-read.csv("per_summary_numerical.csv",sep=",")  #80 factors
 
-factors_category<-per_summary_numerical%>%dplyr::select(column_name_new, category_1,category_2)%>%
-  rbind(per_summary_categorical%>%dplyr::select(column_name_new,category_1,category_2))%>%
+factors_category<-per_summary_numerical%>%dplyr::select(column_name_new, category_1,sub_category)%>%
+  rbind(per_summary_categorical%>%dplyr::select(column_name_new,category_1,sub_category))%>%
   distinct()
 
 sort(unique(per_data_clean$province))
@@ -39,7 +39,7 @@ rownames(per_data_analysis) <- per_data_analysis$kobo_farmer_id
 per_data_analysis<- per_data_analysis%>%
   dplyr::select(-kobo_farmer_id)
 
-dim(per_data_analysis) #200 farmers; 275 variables evaluated
+dim(per_data_analysis) #200 farmers; 274 variables evaluated
 
 a<-as.data.frame(c(colnames(per_data_analysis)))%>%
   rename("column_name_new"="c(colnames(per_data_analysis))")%>%
@@ -57,8 +57,8 @@ ggplot(data=a, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_analysis) #200 farmers; 18 outcomes; 257 factors; 
-#[1] 200 275
+dim(per_data_analysis) #200 farmers; 18 outcomes; 256 factors; 
+#[1] 200 274
 
 
 #############################################################    
@@ -159,8 +159,8 @@ ggplot(data=b, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_Binary) #200 farmers; 18 outcomes; 271 factors
-#[1] 200 289
+dim(per_data_Binary) #200 farmers; 18 outcomes; 270 factors
+#[1] 200 288
 
 write.csv(per_data_Binary,"per_data_Binary.csv",row.names=TRUE)
 
