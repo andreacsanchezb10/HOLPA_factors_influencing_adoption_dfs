@@ -6,12 +6,6 @@ library(readxl)
 per_factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
   filter(is.na(peru_remove))
 
-per_adoptionBinary_outcomes<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
-  filter(category_1=="outcome")%>%
-  filter(str_detect(factor, "adoption"))
-per_adoptionBinary_outcomes<-per_adoptionBinary_outcomes$column_name_new
-per_adoptionBinary_outcomes
-
 per_structural_model<-read_excel("factors_list.xlsx",sheet = "structural_model")
 
 per_data_clean<- read.csv("per_data_Binary.csv",sep=",")
