@@ -10,7 +10,7 @@ library(ggplot2)
 ########## UPLOAD DATA #####-----
 #############################################################
 per_factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
-  filter(is.na(peru_remove))
+  filter(is.na(peru_remove_adoption_status))
 
 per_structural_model<-read_excel("factors_list.xlsx",sheet = "structural_model")%>%
   filter(country=="peru_status")
@@ -24,10 +24,11 @@ sort(unique(per_measurement_model$constructs))
 #############################################################    
 ########## SELECTED FACTORS #####-----
 #############################################################
-per_data_adoptionBinary_analysis<- read.csv("results/per_data_adoptionBinary_selectedFactors.csv",sep=",")%>%
+per_data_adoptionBinary_analysis<- read.csv("results/per_data_adoptionBinary_selectedFactors.csv",sep=",")
+rownames(per_data_adoptionBinary_analysis) <- per_data_adoptionBinary_analysis$X
+per_data_adoptionBinary_analysis<- per_data_adoptionBinary_analysis%>%
   dplyr::select(-X)%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))
-class(per_data_adoptionBinary_analysis)
 
 names(per_data_adoptionBinary_analysis)
 str(per_data_adoptionBinary_analysis)
@@ -36,8 +37,6 @@ summary(per_data_adoptionBinary_analysis)
 describe(per_data_adoptionBinary_analysis)
 
 apply(per_data_adoptionBinary_analysis, 2, function(x) var(as.numeric(x), na.rm = TRUE))
-
-
 
 #############################################################    
 ########## PLS-SEM MODEL ANALYSIS #####-----
@@ -431,6 +430,7 @@ per_boot_model_summary_direct$bootstrapped_loadings
 ##===  Adjusting for binary outcome using logistic regression----
 #########################################################
 ## STEP 1: Extract the latent constructs ====
+per_pls_sem_model_direct$construct_scores
 per_pls_sem_model_direct.construct_scores<-as.data.frame(per_pls_sem_model_direct$construct_scores)
 
 head(per_pls_sem_model_direct.construct_scores)
@@ -477,6 +477,8 @@ per_composite_mode_B
 per_data_logistic_regression_direct<- per_pls_sem_model_direct.construct_scores%>%
   select(all_of(per_composite_mode_B))%>%
   cbind(per_observed_vars)
+write.csv(per_data_logistic_regression_direct, "per_data_logistic_regression_direct.csv")
+
 
 ## STEP 4: Apply the logistic regression model ====
 #https://stats.oarc.ucla.edu/r/dae/logit-regression/

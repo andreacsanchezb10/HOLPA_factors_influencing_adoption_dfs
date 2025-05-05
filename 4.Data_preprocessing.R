@@ -57,7 +57,7 @@ ggplot(data=a, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_analysis) #200 farmers; 18 outcomes; 257 variables; 
+dim(per_data_analysis) #200 farmers; 18 outcomes; 257 factors; 
 #[1] 200 275
 
 
@@ -162,9 +162,7 @@ ggplot(data=b, aes(x=n, y=category_1, fill= category_1)) +
 dim(per_data_Binary) #200 farmers; 18 outcomes; 271 factors
 #[1] 200 289
 
-per_data_Binary
-
-write.csv(per_data_Binary,"per_data_Binary.csv",row.names=FALSE)
+write.csv(per_data_Binary,"per_data_Binary.csv",row.names=TRUE)
 
 
 

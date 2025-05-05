@@ -3,6 +3,8 @@ library(readxl)
 library(dplyr)
 library(caret)
 library(ggplot2)
+library(tidyverse)
+library(corrplot)
 
 #############################################################    
 ########## UPLOAD DATA #####-----
@@ -11,6 +13,10 @@ factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")
 sort(unique(factors_list$category_1))
 
 per_data_analysis<-  read.csv("per_data_Binary.csv",sep=",")
+rownames(per_data_analysis) <- per_data_analysis$X
+per_data_analysis<- per_data_analysis%>%
+  dplyr::select(-X)
+
 dim(per_data_analysis) #200 farmers; 18 outcomes; 271 factors
 #[1] 200 289
 
@@ -23,8 +29,8 @@ per_outcomes
 ########### FACTOR SELECTION ----
 #############################################################
 ##=== STEP 1: REMOVE IRRELEVANT FACTORS ======
-sort(unique(factors_list$peru_remove))
-per_irrelevant_list<- intersect(factors_list$column_name_new[factors_list$peru_remove %in%c("irrelevant")],colnames(per_data_analysis))
+sort(unique(factors_list$peru_remove_adoption_status))
+per_irrelevant_list<- intersect(factors_list$column_name_new[factors_list$peru_remove_adoption_status %in%c("irrelevant")],colnames(per_data_analysis))
 per_irrelevant_list
 
 per_data_irrelevantFiltered<- per_data_analysis%>%
@@ -99,8 +105,6 @@ dim(per_data_nzvFiltered) #200 farmers; 5 outcomes, 173 factors retained
 #[1] 200 178
 
 ##=== STEP 3: CHECK FOR CORRELATION ACROSS FACTORS ======
-library(tidyverse)
-library(corrplot)
 # Function to calculate Spearman's correlation
 create_cor_df <- function(data, factors_list) {
   cor_matrix <- cor(data %>% mutate(across(everything(), as.numeric)),
@@ -167,8 +171,8 @@ str(per_data_nzvFiltered_cor)
 plot_correlation_betw_category(per_data_nzvFiltered_cor)
 
 ##=== STEP 4: REMOVE REDUNDANT FACTORS ======
-sort(unique(factors_list$peru_remove))
-per_redundant_list<- intersect(factors_list$column_name_new[factors_list$peru_remove %in%c( "redundant" )],colnames(per_data_nzvFiltered))
+sort(unique(factors_list$peru_remove_adoption_status))
+per_redundant_list<- intersect(factors_list$column_name_new[factors_list$peru_remove_adoption_status %in%c( "redundant" )],colnames(per_data_nzvFiltered))
 per_redundant_list
 
 per_data_redundantFiltered<- per_data_nzvFiltered%>%
@@ -241,7 +245,6 @@ sort(unique(per_data_redundantFiltered$crop_type))
 #https://bioinformaticsworkbook.org/tutorials/wgcna.html#gsc.tab=0
 
 # Load libraries
-library(ggplot2)
 library(mvtnorm)
 library(Matrix)
 library(mt)
@@ -497,7 +500,6 @@ per_adoptionBinary_acc_cf<- read.csv("per_data_accValAllCForest.csv",sep=",")
 plot_accuracy_vs_features(per_adoptionBinary_acc_ff,per_adoptionBinary_acc_rf, per_adoptionBinary_acc_cf,
                           method_name = "A) Peru: Adoption Binary")
 #1600*1000
-
 ## Extract the best 21 factors
 per_adoptionBinary_selectFactors_cf<- read.csv("per_data_featureSelectedCForest.csv",sep=",") 
 per_adoptionBinary_selectFactors_ff<- read.csv("per_data_featureSelectedCForest.csv",sep=",") 
@@ -516,12 +518,11 @@ per_adoptionBinary_selectedFactors<-per_adoptionBinary_selectedFactors_freq%>%
 write.csv(per_adoptionBinary_selectedFactors, "results/per_adoptionBinary_selectedFactors.csv")
 
 # Select only the selected factors from database
-
 per_data_adoptionBinary_selectedFactors<- per_data_analysis%>%
   select(dfs_adoption_binary,
     all_of(per_adoptionBinary_selectedFactors$selected_factors))
   
-dim(per_data_adoptionBinary_selectedFactors)#[1] 200   24; 23 factors
+dim(per_data_adoptionBinary_selectedFactors)#[1] 200   24 variables; 23 factors
 
 write.csv(per_data_adoptionBinary_selectedFactors, "results/per_data_adoptionBinary_selectedFactors.csv")
 
@@ -535,7 +536,7 @@ create_cor_df <- function(data,selected_factors) {
   
   cor_df <- as.data.frame(cor_matrix) %>%
     rownames_to_column("factor1") %>%
-    pivot_longer(-factor1, names_to = "factor2", values_to = "spearman_correlation")
+    tidyr::pivot_longer(-factor1, names_to = "factor2", values_to = "spearman_correlation")
   
   return(cor_df)
 }
