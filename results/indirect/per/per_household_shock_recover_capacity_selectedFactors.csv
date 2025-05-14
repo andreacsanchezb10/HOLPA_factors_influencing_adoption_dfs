@@ -1,0 +1,7 @@
+"","NumFeatures","selected_factors","frequency","category_1","factor","description"
+"1","featNum5","income_stability",55,"financial_capital","Income stability","How would the farmer rate the stability of the household income over time?"
+"2","featNum5","income_spend_on_food_percentage",50,"financial_capital","Percentage of income spent on food","In the past 7 days, what percentage of the household's income was used to buy food?"
+"3","featNum5","distance_main_road",45,"physical_capital","Distance to main road","Distance to the closest accessible and functioning road suitable for cars (in minutes)."
+"4","featNum5","influence_nr_frequency",35,"social_capital","Household influence in resource governance","To what extent does the household contribute to decision-making in managing the community's land and natural resources?"
+"5","featNum5","num_pest_management_ecol_practices",30,"farm_management_characteristics","Number of ecological practices for pest management","Number of ecological pest management practices used on the farm in the last 12 months."
+"6","featNum5","years_farming_land",30,"natural_capital","Years of farming land","Number of years the household has been farming this land."

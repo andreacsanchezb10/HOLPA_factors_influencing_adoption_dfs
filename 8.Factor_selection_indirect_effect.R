@@ -12,8 +12,8 @@ sort(unique(factors_list_analysis$category_1))
 
 per_data_indirect<-read.csv("per_data_logistic_regression_direct.csv",sep=",")
 rownames(per_data_indirect) <- per_data_indirect$X
-per_data_indirect<-per_data_indirect%>%
-  select(crop_type,governance_capacity)
+per_data_indirect<-per_data_indirect
+  select(governance_capacity)
 
 per_data_analysis<-  read.csv("per_data_Binary.csv",sep=",")
 rownames(per_data_analysis) <- per_data_analysis$X
@@ -21,13 +21,13 @@ per_data_analysis<- per_data_analysis%>%
   dplyr::select(-X)%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))
 
-dim(per_data_analysis) #200 farmers; 18 outcomes; 271 factors
-#[1] 200 289
+dim(per_data_analysis) #200 farmers; 18 outcomes; 269 factors
+#[1] 200 287
 
-per_data_analysis<-per_data_analysis%>%
+per_data_analysis<-per_data_analysis
   cbind(per_data_indirect)
-dim(per_data_analysis) #200 farmers; 18 outcomes; 273 factors
-#[1] 200 291
+dim(per_data_analysis) #200 farmers; 18 outcomes; 269 factors
+#[1] 200 287
 
 #############################################################    
 ########### FACTOR SELECTION ----
@@ -71,12 +71,25 @@ feature_selection <- function(factors_list_analysis,remove_colum, data_analysis)
   return(data_redundantFiltered)
   
   }
+##=== Run household_shock_recover_capacity ----
+per_household_shock_recover_capacity_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_household_shock_recover_capacity",per_data_analysis )
+dim(per_household_shock_recover_capacity_redundantFiltered)#200 farmers; 1 outcomes, 104 factors retained
+#[1] 200 105
+names(per_household_shock_recover_capacity_redundantFiltered)
 
 
+##=== Run for governance_capacity ====
 per_governance_capacity_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_governance_capacity",per_data_analysis )
-dim(per_governance_capacity_redundantFiltered)#200 farmers; 1 outcomes, 135 factors retained
+dim(per_governance_capacity_redundantFiltered)#200 farmers; 1 outcomes, 79 factors retained
+#[1] 200  80
 names(per_governance_capacity_redundantFiltered)
-sort(unique(per_governance_capacity_redundantFiltered$farm_e))
+
+##=== Run for training_participation ====
+per_training_participation_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_training_participation",per_data_analysis )%>%
+  select(-governance_capacity)
+dim(per_training_participation_redundantFiltered)#200 farmers; 1 outcomes, 29 factors retained
+#[1] 200  30
+names(per_training_participation_redundantFiltered)
 
 ##=== STEP 4: CHECK FOR CORRELATION ACROSS FACTORS ======
 # Function to calculate Spearman's correlation
@@ -134,7 +147,20 @@ plot_correlation_betw_category <- function(cor_df) {
   return(plots)
 }
 
-per_per_governance_capacity_factors_list <- as.data.frame(colnames(per_governance_capacity_redundantFiltered))%>%
+##--- Run for household_shock_recover_capacity----
+per_household_shock_recover_capacity_factors_list <- as.data.frame(colnames(per_household_shock_recover_capacity_redundantFiltered))%>%
+  rename("column_name_new"= "colnames(per_household_shock_recover_capacity_redundantFiltered)")%>%
+  left_join(factors_list_analysis%>%select(column_name_new, category_1),by="column_name_new")%>%
+  filter(category_1!="outcome")
+
+per_household_shock_recover_capacity_redundantFiltered_cor<-create_cor_df(per_household_shock_recover_capacity_redundantFiltered,per_household_shock_recover_capacity_factors_list)
+str(per_household_shock_recover_capacity_redundantFiltered_cor)
+
+plot_correlation_betw_category(per_household_shock_recover_capacity_redundantFiltered_cor)
+
+
+##--- Run for governance_capacity----
+per_governance_capacity_factors_list <- as.data.frame(colnames(per_governance_capacity_redundantFiltered))%>%
   rename("column_name_new"= "colnames(per_governance_capacity_redundantFiltered)")%>%
   left_join(factors_list_analysis%>%select(column_name_new, category_1),by="column_name_new")%>%
   filter(category_1!="outcome")
@@ -144,9 +170,20 @@ str(per_per_governance_redundantFiltered_cor)
 
 plot_correlation_betw_category(per_per_governance_redundantFiltered_cor)
 
+##--- Run for training_participation ====
+per_training_participation_factors_list <- as.data.frame(colnames(per_training_participation_redundantFiltered))%>%
+  rename("column_name_new"= "colnames(per_training_participation_redundantFiltered)")%>%
+  left_join(factors_list_analysis%>%select(column_name_new, category_1),by="column_name_new")%>%
+  filter(category_1!="outcome")
+
+per_training_participation_redundantFiltered_cor<-create_cor_df(per_training_participation_redundantFiltered,per_training_participation_factors_list)
+str(per_training_participation_redundantFiltered_cor)
+
+plot_correlation_betw_category(per_training_participation_redundantFiltered_cor)
+
 ##=== STEP 5: FUZZY FOREST FACTOR SELECTION ======
 ## Advantages
-# - The fuzzy forests algorithm is an extension of random forests designed to obtain less bi-ased feature selection in the presence of correlated features. 
+# - The fuzzy forests algorithm is an extension of random forests designed to obtain less biased feature selection in the presence of correlated features. 
 # - WGCNA takes in the matrix of features and uses the correlation structure to partition the features into distinct groups such that the 
 #correlation between features in the same group is large and the correlation between features in separate groups is small.
 # - Once features have been subdivided into distinct modules, fuzzy forests eliminates features in two steps:
@@ -210,7 +247,7 @@ run_soft_threshold <- function(data_numeric, powers = c(1:10, seq(12, 20, 2)), d
 }
 
 # Function to run feature selection algotithms
-feature_selection_algorithms <- function(factors, Outcome, picked_power, file_name = "dataset") {
+feature_selection_continuous_algorithms <- function(factors, Outcome, picked_power, file_name = "dataset") {
   library(e1071)
   library(caret)
   library(WGCNA)
@@ -221,8 +258,8 @@ feature_selection_algorithms <- function(factors, Outcome, picked_power, file_na
   library(tibble)
   library(Metrics)
   
-  feature_nums <- c(20:60)
-  times <- 10 #number of runs
+  feature_nums <- c(10:40)
+  times <- 20 #number of runs
   
   acc_ff <- matrix(0, nrow = times, ncol = length(feature_nums))
   acc_rf <- matrix(0, nrow = times, ncol = length(feature_nums))
@@ -283,14 +320,14 @@ feature_selection_algorithms <- function(factors, Outcome, picked_power, file_na
       # === Random Forest ===
       rf_model <- randomForest(x = train_data, y = y_train, importance = TRUE, mtry = floor(sqrt(ncol(train_data))), ntree = 500)
       imp_rf <- importance(rf_model, type = 1, scale = FALSE)
-      feats_rf_i <- rownames(head(imp_rf[order(imp_rf, decreasing = TRUE), , drop = FALSE], feature_nums[j]))
+      feats_rf_i <- rownames(head(imp_rf[order(imp_rf, decreasing = TRUE), ,drop = FALSE], feature_nums[j]))
       svm_rf_model <- svm(x = train_data[, feats_rf_i], y = y_train, kernel = "linear")
       pred_rf <- predict(svm_rf_model, newdata = test_data[, feats_rf_i])
       acc_rf[i, j] <- rmse(y_test, pred_rf)
       
       # === Conditional inference Forest ===
       cf_model <- cforest(y_train ~ ., data = data.frame(train_data, y_train),
-                          controls = cforest_unbiased(ntree = 100, mtry = floor(sqrt(ncol(train_data)))))
+                           controls = cforest_unbiased(ntree = 100, mtry = floor(sqrt(ncol(train_data)))))
       varimp_cf <- varimp(cf_model, conditional = TRUE)
       feats_cf_i <- names(sort(varimp_cf, decreasing = TRUE))[1:feature_nums[j]]
       svm_cf_model <- svm(x = train_data[, feats_cf_i], y = y_train, kernel = "linear")
@@ -332,8 +369,132 @@ feature_selection_algorithms <- function(factors, Outcome, picked_power, file_na
   )
 }
 
+feature_selection_binary_algorithms <- function(factors, Outcome, picked_power, file_name = "dataset") {
+  library(e1071)
+  library(caret)
+  library(WGCNA)
+  library(randomForest)
+  library(party)
+  library(fuzzyforest)
+  library(tidyr)
+  library(tibble)
+  
+  feature_nums <- c(10:40)
+  times <- 20 #number of runs
+  
+  acc_ff <- matrix(0, nrow = times, ncol = length(feature_nums))
+  acc_rf <- matrix(0, nrow = times, ncol = length(feature_nums))
+  acc_cf <- matrix(0, nrow = times, ncol = length(feature_nums))
+  
+  selected_ff <- list()
+  selected_rf <- list()
+  selected_cf <- list()
+  
+  for (j in seq_along(feature_nums)) {
+    feats_ff <- c()
+    feats_rf <- c()
+    feats_cf <- c()
+    
+    for (i in 1:times) {
+      set.seed(sample(1:1000, 1))
+      train_index <- createDataPartition(Outcome, p = 0.7, list = FALSE)
+      train_data <- factors[train_index, ]
+      test_data <- factors[-train_index, ]
+      y_train <- Outcome[train_index]
+      y_test <- Outcome[-train_index]
+      
+      # === Fuzzy Forest (with WGCNA) ===
+      WGCNA_params <- WGCNA_control(
+        power = picked_power, 
+        minModuleSize = 30,
+        TOMType = "unsigned", 
+        reassignThreshold = 0.05, 
+        mergeCutHeight = 0.25, 
+        numericLabels = TRUE, 
+        pamRespectsDendro = FALSE)
+      
+      screen_paramsWGCNA <- screen_control(
+        keep_fraction = 0.25,
+        ntree_factor = 2,
+        mtry_factor = 15,
+        min_ntree = 500
+      )
+      
+      select_paramsWGCNA <- select_control(
+        number_selected = 40,
+        drop_fraction = 0.1,
+        ntree_factor = 2,
+        mtry_factor = 15,
+        min_ntree = 500
+      )
+      
+      ff_model <- wff(X = train_data, y = as.factor(y_train),
+                      WGCNA_params = WGCNA_params,
+                      select_params = select_paramsWGCNA,
+                      screen_params = screen_paramsWGCNA)
+      feats_ff_i_all <- ff_model$feature_list[[1]]  # first component
+      feats_ff_i <- feats_ff_i_all[1:min(length(feats_ff_i_all), feature_nums[j])]
+      svm_ff_model <- svm(x = train_data[, feats_ff_i], y = as.factor(y_train), kernel = "linear")
+      pred_ff <- predict(svm_ff_model, newdata = test_data[, feats_ff_i])
+      acc_ff[i, j] <- mean(pred_ff == as.factor(y_test))
+      
+      # === Random Forest ===
+      rf_model <- randomForest(x = train_data, y = as.factor(y_train), importance = TRUE, mtry = floor(sqrt(ncol(train_data))), ntree = 500)
+      imp_rf <- importance(rf_model, type = 1, scale = FALSE)
+      summary(imp_rf)  # View NAs
+      which(is.na(imp_rf))  # List variables with NA importance
+      feats_rf_i <- rownames(head(imp_rf[order(imp_rf, decreasing = TRUE), , drop = FALSE], feature_nums[j]))
+      svm_rf_model <- svm(x = train_data[, feats_rf_i], y = as.factor(y_train), kernel = "linear")
+      pred_rf <- predict(svm_rf_model, newdata = test_data[, feats_rf_i])
+      acc_rf[i, j] <- mean(pred_rf == as.factor(y_test))
+      
+      # === Conditional inference Forest ===
+      cf_model <- cforest(as.factor(y_train) ~ ., data = data.frame(train_data, y_train),
+                          controls = cforest_unbiased(ntree = 100, mtry = floor(sqrt(ncol(train_data)))))
+      varimp_cf <- varimp(cf_model, conditional = TRUE)
+      feats_cf_i <- names(sort(varimp_cf, decreasing = TRUE))[1:feature_nums[j]]
+      svm_cf_model <- svm(x = train_data[, feats_cf_i], y = as.factor(y_train), kernel = "linear")
+      pred_cf <- predict(svm_cf_model, newdata = test_data[, feats_cf_i])
+      acc_cf[i, j] <- mean(pred_cf == as.factor(y_test))
+      
+      feats_ff <- c(feats_ff, paste(feats_ff_i, collapse = ","))
+      feats_rf <- c(feats_rf, paste(feats_rf_i, collapse = ","))
+      feats_cf <- c(feats_cf, paste(feats_cf_i, collapse = ","))
+    }
+    
+    selected_ff[[paste0("featNum", feature_nums[j])]] <- feats_ff
+    selected_rf[[paste0("featNum", feature_nums[j])]] <- feats_rf
+    selected_cf[[paste0("featNum", feature_nums[j])]] <- feats_cf
+  }
+  
+  acc_ff_df <- as.data.frame(rbind(acc_ff, colMeans(acc_ff)))
+  acc_rf_df <- as.data.frame(rbind(acc_rf, colMeans(acc_rf)))
+  acc_cf_df <- as.data.frame(rbind(acc_cf, colMeans(acc_cf)))
+  colnames(acc_ff_df) <- colnames(acc_rf_df) <- colnames(acc_cf_df) <- paste0("featNum", feature_nums)
+  rownames(acc_ff_df) <- rownames(acc_rf_df) <- rownames(acc_cf_df) <- c(paste0("acc", 1:times), "acc_mean")
+  
+  # Write to CSV
+  write.csv(acc_ff_df, paste0("results/",file_name, "_accValAllFuzzyForest.csv"))
+  write.csv(acc_rf_df, paste0("results/",file_name, "_accValAllRandomForest.csv"))
+  write.csv(acc_cf_df, paste0("results/",file_name, "_accValAllCForest.csv"))
+  write.csv(as.data.frame(selected_ff), paste0("results/",file_name, "_featureSelectedFuzzyForest.csv"))
+  write.csv(as.data.frame(selected_rf), paste0("results/",file_name, "_featureSelectedRandomForest.csv"))
+  write.csv(as.data.frame(selected_cf), paste0("results/",file_name, "_featureSelectedCForest.csv"))
+  
+  # Return data frames for plotting if needed
+  list(
+    acc_ff_df = acc_ff_df,
+    acc_rf_df = acc_rf_df,
+    acc_cf_df = acc_cf_df,
+    selected_ff = selected_ff,
+    selected_rf = selected_rf,
+    selected_cf = selected_cf
+  )
+}
+
 # Function to plot accuracy vs number of selected features
-plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,method_name = "Model") {
+plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,
+                                      method_name = "Model",xmax) {
   process_df <- function(df, algo_name) {
     df %>%
       rename("Run"="X")%>%
@@ -357,17 +518,24 @@ plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,method_name
     mutate(algorithm="Mean")%>%
     rbind(acc_long)
   
+  max_point <- acc_long_mean %>%
+    filter(algorithm == "Mean") %>%
+    slice_max(order_by = Accuracy, n = 1)
+  
   ggplot(acc_long_mean, aes(x = NumFeatures, y = Accuracy, color = algorithm)) +
     geom_line(size = 1) +
     geom_point(size = 3) +
     scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
     scale_color_manual(values = c("#377EB8", "#4DAF4A","#E41A1C","#984EA3"))+
+    geom_hline(yintercept = max_point$Accuracy, linetype = "dotted", color = "black", size = 1) +
+    geom_vline(xintercept = xmax, linetype = "dotted", color = "black", size = 1) +
     labs(
       title = method_name,
       x = "Number of selected factors",
       y = "Mean classification accuracy (%)",
       color = "Feature selection algorithm"
     ) +
+    
     theme(plot.background = element_rect(fill = "White", color = "White"),
           panel.background = element_blank(),
           axis.line = element_line(colour = "black"),
@@ -381,7 +549,8 @@ plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,method_name
 }
 
 # Function to extract selected factors frequency
-selected_factors_freq <- function(select_factors_cf,select_factors_ff, select_factors_rf) {
+selected_factors_freq <- function(select_factors_cf,
+  select_factors_ff, select_factors_rf) {
   process_df <- function(df, algo_name) {
     df %>%
       rename("Run"="X")%>%
@@ -409,40 +578,173 @@ per_data_governance_capacity_numeric <- prepare_numeric_matrix(per_governance_ca
 sft_data_governance_capacity <- run_soft_threshold(per_data_governance_capacity_numeric, dataset_name = "per_data_nzvFiltered")
 per_data_governance_capacity_picked_power <- 7  # Optionally automate this later
 
-per_governance_capacity <- per_governance_capacity_redundantFiltered$governance_capacity
+per_governance_capacity <- per_governance_capacity_redundantFiltered$influence_nr_frequency
+
 per_governance_capacity
-per_governance_capacity_factors <- per_governance_capacity_redundantFiltered %>% select(-governance_capacity)
+per_governance_capacity_factors <- per_governance_capacity_redundantFiltered %>% select(-influence_nr_frequency)
 per_governance_capacity_factors
 
-per_governance_capacity_results <- feature_selection_algorithms(
+per_governance_capacity_results <- feature_selection_continuous_algorithms(
   per_governance_capacity_factors, per_governance_capacity,
-  per_data_governance_capacity_picked_power, file_name = "indirect/per_governance_capacity")
+  per_data_governance_capacity_picked_power, file_name = "indirect/per/per_influence_nr_frequency")
 
 # Plot accuracy vs number of selected factors
-per_governance_capacity_acc_ff<- read.csv("results/indirect/per_governance_capacity_accValAllFuzzyForest.csv",sep=",") 
-per_governance_capacity_acc_rf<- read.csv("results/indirect/per_governance_capacity_accValAllRandomForest.csv",sep=",") 
-per_governance_capacity_acc_cf<- read.csv("results/indirect/per_governance_capacity_accValAllCForest.csv",sep=",") 
+per_governance_capacity_acc_ff<- read.csv("results/indirect/per/per_influence_nr_frequency_accValAllFuzzyForest.csv",sep=",") 
+per_governance_capacity_acc_rf<- read.csv("results/indirect/per/per_influence_nr_frequency_accValAllRandomForest.csv",sep=",") 
+per_governance_capacity_acc_cf<- read.csv("results/indirect/per/per_influence_nr_frequency_accValAllCForest.csv",sep=",") 
 
 plot_accuracy_vs_features(per_governance_capacity_acc_ff,per_governance_capacity_acc_rf, per_governance_capacity_acc_cf,
-                          method_name = "A) Peru: Governance capacity")
+                          method_name = "A) Peru: Governance capacity",6)
 #1600*1000
 
-per_governance_capaciaty_selectFactors_cf<- read.csv("results/indirect/per_governance_capacity_featureSelectedCForest.csv",sep=",") 
-per_governance_capaciaty_selectFactors_ff<- read.csv("results/indirect/per_governance_capacity_featureSelectedFuzzyForest.csv",sep=",") 
-per_governance_capaciaty_selectFactors_rf<- read.csv("results/indirect/per_governance_capacity_featureSelectedRandomForest.csv",sep=",") 
+per_governance_capacity_selectFactors_cf<- read.csv("results/indirect/per/per_influence_nr_frequency_featureSelectedCForest.csv",sep=",") 
+per_governance_capacity_selectFactors_ff<- read.csv("results/indirect/per/per_influence_nr_frequency_featureSelectedFuzzyForest.csv",sep=",") 
+per_governance_capacity_selectFactors_rf<- read.csv("results/indirect/per/per_influence_nr_frequency_featureSelectedRandomForest.csv",sep=",") 
 
-per_governance_capaciaty_selectedFactors_freq<-selected_factors_freq(per_governance_capaciaty_selectFactors_cf,
-                                                               per_governance_capaciaty_selectFactors_ff,
-                                                               per_governance_capaciaty_selectFactors_rf)
-write.csv(per_governance_capaciaty_selectedFactors_freq, "per_governance_capaciaty_selectedFactors_freq.csv")
+per_governance_capacity_selectedFactors_freq<-selected_factors_freq(per_governance_capacity_selectFactors_cf,
+                                                               per_governance_capacity_selectFactors_ff,
+                                                               per_governance_capacity_selectFactors_rf)
+write.csv(per_governance_capacity_selectedFactors_freq, "results/indirect/per/per_influence_nr_selectedFactors_freq.csv")
 
 ## Extract the best 60 factors
-per_governance_capaciaty_selectedFactors<-per_governance_capaciaty_selectedFactors_freq%>%
-  filter(NumFeatures=="featNum59")%>%
-  slice_max(order_by = frequency, n = 59)%>%
+per_governance_capacity_selectedFactors<-per_governance_capacity_selectedFactors_freq%>%
+  filter(NumFeatures=="featNum6")%>%
+  slice_max(order_by = frequency, n = 6)%>%
   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
-write.csv(per_governance_capaciaty_selectedFactors, "results/per_governance_capaciaty_selectedFactors.csv")
+write.csv(per_governance_capacity_selectedFactors, "results/indirect/per/per_influence_nr_selectedFactors.csv")
+
+# Select only the selected factors from database
+
+per_data_governance_capacity_selectedFactors<- per_data_analysis%>%
+  select(dfs_adoption_binary,
+         all_of(per_adoptionBinary_selectedFactors$selected_factors))
+
+dim(per_data_governance_capacity_selectedFactors)#[1] 200   24; 23 factors
+
+write.csv(per_data_governance_capacity_selectedFactors, "results/indirect/per_data_influence_nr_selectedFactors.csv")
+
+create_cor_df <- function(data,selected_factors) {
+  data_num<-data %>% 
+    mutate(across(everything(), as.numeric))%>%
+    select(all_of(per_adoptionBinary_selectedFactors$selected_factors))
+  
+  cor_matrix <- cor(data_num,
+                    method = "spearman", use = "pairwise.complete.obs")
+  
+  cor_df <- as.data.frame(cor_matrix) %>%
+    rownames_to_column("factor1") %>%
+    tidyr::pivot_longer(-factor1, names_to = "factor2", values_to = "spearman_correlation")
+  
+  return(cor_df)
+}
+per_data_selected_factors_cor<-create_cor_df(per_data_redundantFiltered,per_adoptionBinary_selectedFactors)
+
+##=== Run for household_shock_recover_capacity ====
+per_data_household_shock_recover_capacity_numeric <- prepare_numeric_matrix(per_household_shock_recover_capacity_redundantFiltered)
+sft_data_household_shock_recover_capacity <- run_soft_threshold(per_data_household_shock_recover_capacity_numeric, dataset_name = "per_data_nzvFiltered")
+per_data_household_shock_recover_capacity_picked_power <- 7  # Optionally automate this later
+
+per_household_shock_recover_capacity <- per_household_shock_recover_capacity_redundantFiltered$household_shock_recover_capacity
+per_household_shock_recover_capacity
+per_household_shock_recover_capacity_factors <- per_household_shock_recover_capacity_redundantFiltered %>% select(-household_shock_recover_capacity)
+per_household_shock_recover_capacity_factors
+
+per_household_shock_recover_capacity_results <- feature_selection_continuous_algorithms(
+  per_household_shock_recover_capacity_factors, per_household_shock_recover_capacity,
+  per_data_household_shock_recover_capacity_picked_power, file_name = "indirect/per/per_household_shock_recover_capacity")
+
+# Plot accuracy vs number of selected factors
+per_household_shock_recover_capacity_acc_ff<- read.csv("results/indirect/per/per_household_shock_recover_capacity_accValAllFuzzyForest.csv",sep=",") 
+per_household_shock_recover_capacity_acc_rf<- read.csv("results/indirect/per/per_household_shock_recover_capacity_accValAllRandomForest.csv",sep=",") 
+per_household_shock_recover_capacity_acc_cf<- read.csv("results/indirect/per/per_household_shock_recover_capacity_accValAllCForest.csv",sep=",") 
+
+plot_accuracy_vs_features(per_household_shock_recover_capacity_acc_ff,per_household_shock_recover_capacity_acc_rf, per_household_shock_recover_capacity_acc_cf,
+                          method_name = "A) Peru: Household recovery recovery capacity from shocks",10)
+#1600*1000
+
+per_household_shock_recover_capacity_selectFactors_cf<- read.csv("results/indirect/per/per_household_shock_recover_capacity_featureSelectedCForest.csv",sep=",") 
+per_household_shock_recover_capacity_selectFactors_ff<- read.csv("results/indirect/per/per_household_shock_recover_capacity_featureSelectedFuzzyForest.csv",sep=",") 
+per_household_shock_recover_capacity_selectFactors_rf<- read.csv("results/indirect/per/per_household_shock_recover_capacity_featureSelectedRandomForest.csv",sep=",") 
+
+per_household_shock_recover_capacity_selectedFactors_freq<-selected_factors_freq(per_household_shock_recover_capacity_selectFactors_cf,
+                                                                     per_household_shock_recover_capacity_selectFactors_ff,
+                                                                     per_household_shock_recover_capacity_selectFactors_rf)
+write.csv(per_household_shock_recover_capacity_selectedFactors_freq, "results/indirect/per/per_household_shock_recover_capacity_selectedFactors_freq.csv")
+
+## Extract the best 5 factors
+per_household_shock_recover_capacity_selectedFactors<-per_household_shock_recover_capacity_selectedFactors_freq%>%
+  filter(NumFeatures=="featNum10")%>%
+  slice_max(order_by = frequency, n = 10)%>%
+  left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
+
+write.csv(per_household_shock_recover_capacity_selectedFactors, "results/indirect/per/per_household_shock_recover_capacity_selectedFactors.csv")
+
+# Select only the selected factors from database
+
+per_data_household_shock_recover_capacity_selectedFactors<- per_data_analysis%>%
+  select(dfs_adoption_binary,
+         all_of(per_household_shock_recover_capacity_selectedFactors$selected_factors))
+
+dim(per_data_household_shock_recover_capacity_selectedFactors)#[1] 200   24; 7 factors
+
+write.csv(per_household_shock_recover_capacity_selectedFactors, "results/indirect/per/per_data_household_shock_recover_capacity_selectedFactors.csv")
+
+create_cor_df <- function(data,selected_factors) {
+  data_num<-data %>% 
+    mutate(across(everything(), as.numeric))%>%
+    select(all_of(per_household_shock_recover_capacity_selectedFactors$selected_factors))
+  
+  cor_matrix <- cor(data_num,
+                    method = "spearman", use = "pairwise.complete.obs")
+  
+  cor_df <- as.data.frame(cor_matrix) %>%
+    rownames_to_column("factor1") %>%
+    tidyr::pivot_longer(-factor1, names_to = "factor2", values_to = "spearman_correlation")
+  
+  return(cor_df)
+}
+per_data_household_shock_recover_capacity_selected_factors_cor<-create_cor_df(per_household_shock_recover_capacity_redundantFiltered,per_household_shock_recover_capacity_selectedFactors)
+
+##=== Run for training_participation ====
+per_data_training_participation_numeric <- prepare_numeric_matrix(per_training_participation_redundantFiltered)
+sft_data_training_participation <- run_soft_threshold(per_data_training_participation_numeric, dataset_name = "per_data_nzvFiltered")
+per_data_training_participation_picked_power <- 7  # Optionally automate this later
+
+per_training_participation <- per_training_participation_redundantFiltered$training_participation
+per_training_participation
+per_training_participation_factors <- per_training_participation_redundantFiltered %>% select(-training_participation)
+str(per_training_participation_factors)
+
+per_training_participation_results <- feature_selection_binary_algorithms(
+  per_training_participation_factors, per_training_participation,
+  per_data_training_participation_picked_power, file_name = "indirect/per_training_participation")
+
+# Plot accuracy vs number of selected factors
+per_training_participation_acc_ff<- read.csv("results/indirect/per_training_participation_accValAllFuzzyForest.csv",sep=",") 
+per_training_participation_acc_rf<- read.csv("results/indirect/per_training_participation_accValAllRandomForest.csv",sep=",") 
+per_training_participation_acc_cf<- read.csv("results/indirect/per_training_participation_accValAllCForest.csv",sep=",") 
+
+plot_accuracy_vs_features(per_training_participation_acc_ff,per_training_participation_acc_rf, per_training_participation_acc_cf,
+                          method_name = "A) Peru: Governance capacity",22)
+#1600*1000
+
+per_training_participation_selectFactors_cf<- read.csv("results/indirect/per_training_participation_featureSelectedCForest.csv",sep=",") 
+per_training_participation_selectFactors_ff<- read.csv("results/indirect/per_training_participation_featureSelectedFuzzyForest.csv",sep=",") 
+per_training_participation_selectFactors_rf<- read.csv("results/indirect/per_training_participation_featureSelectedRandomForest.csv",sep=",") 
+
+per_training_participation_selectedFactors_freq<-selected_factors_freq(per_training_participation_selectFactors_cf,
+  per_training_participation_selectFactors_ff,
+  per_training_participation_selectFactors_rf)
+write.csv(per_training_participation_selectedFactors_freq, "per_training_participation_selectedFactors_freq.csv")
+
+## Extract the best 60 factors
+per_training_participation_selectedFactors<-per_training_participation_selectedFactors_freq%>%
+  filter(NumFeatures=="featNum22")%>%
+  slice_max(order_by = frequency, n = 22)%>%
+  left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
+
+write.csv(per_training_participation_selectedFactors, "results/per_training_participation_selectedFactors.csv")
 
 # Select only the selected factors from database
 
@@ -470,3 +772,5 @@ create_cor_df <- function(data,selected_factors) {
 }
 per_data_selected_factors_cor<-create_cor_df(per_data_redundantFiltered,per_adoptionBinary_selectedFactors)
 
+fills <- c("#f0c602","#F09319", "#ea6044","#d896ff","#6a57b8",  "#87CEEB", "#496491", "#92c46d", "#92c46d","#92c46d","#297d7d") #
+ "#602058"
