@@ -37,7 +37,7 @@ per_data_clean<- per_data_clean%>%
 #############################################################
 ########## OUTCOMES CALCULATION #####-----
 #############################################################
-### Potential outcomes ----
+### Outcomes ----
 per_data_clean <- per_data_clean %>%
   mutate(
     # total area (ha) of cropland under diversified farming systems
@@ -157,7 +157,7 @@ per_data_clean<-per_data_clean%>%
     #Household head age
   mutate(age = 2025-year_birth)%>%
     #Ethnicity
-    mutate( ethnicity= case_when(ethnicity %in% c("Ashaninka","Quechua")~ "Ashaninka or Quechua", TRUE~ ethnicity))%>%
+    mutate(ethnicity= case_when(ethnicity %in% c("Ashaninka","Quechua")~ "Ashaninka or Quechua", TRUE~ ethnicity))%>%
   #Level of education farmer
   mutate(education_level_finished= case_when(
     education_level%in%c("1","4")~"1",
@@ -183,17 +183,17 @@ per_data_clean<-per_data_clean%>%
       TRUE~NA))%>%
   #Level of education of most household members
   mutate(education_level_household_finished= pmax(education_level_finished, education_level_male_finished, education_level_female_finished, na.rm = TRUE))%>%
-    #Total adults (18-65 years old) in household
+  #Total adults (18-65 years old) in household
   mutate(num_adults_wa = num_adults_wa_male+num_adults_wa_female,
-    #Total adults (>65 years old) in household
-    num_adults_old= num_adults_old_male+num_adults_old_female,
-    #Total children in household
-    num_children= num_children_male+num_children_female ,
-    #Total adults in household (18->65 years old) 
-    num_adults_total= num_adults_wa+num_adults_old ,
-    #Total number of people in household
-    num_people = num_adults_total+num_children,
-    #Total number of permanent hired labour
+  #Total adults (>65 years old) in household
+  num_adults_old= num_adults_old_male+num_adults_old_female,
+  #Total children in household
+  num_children= num_children_male+num_children_female ,
+  #Total adults in household (18->65 years old) 
+  num_adults_total= num_adults_wa+num_adults_old ,
+  #Total number of people in household
+  num_people = num_adults_total+num_children,
+  #Total number of permanent hired labour
     num_hlabour_permanent_total= rowSums(across(starts_with("num_workers_hlabour_permanent_")), na.rm = TRUE),
     #Total number of seasonal hired labour
     num_hlabour_seasonal_total= rowSums(across(starts_with("num_workers_hlabour_seasonal_")), na.rm = TRUE),
@@ -236,6 +236,18 @@ per_data_clean<-per_data_clean%>%
   mutate(months_count_water_accessibility_difficulty_drought_year = rowSums(as.matrix(select(., starts_with("water_accessibility_difficulty_drought_year."))), na.rm = TRUE))%>%
   #Vegetation cover
   mutate(across(starts_with("vegetation_diversity_"), ~as.numeric(replace_na(as.numeric(as.character(.)), 0))))
+
+### HUMAN CAPITAL ----
+per_data_clean<-per_data_clean%>%
+  mutate(
+  #Total number of permanent hired labour per ha
+  numHA_hlabour_permanent_total= num_hlabour_permanent_total/farm_size,
+  #Total number of seasonal hired labour per ha
+  numHA_hlabour_seasonal_total= num_hlabour_seasonal_total/farm_size,
+  #Total number of permanent household labour per ha
+  numHA_nhlabour_permanent_total=num_nhlabour_permanent_total/farm_size,
+    #Total number of seasonal household labour
+    numHA_nhlabour_seasonal_total=num_nhlabour_seasonal_total/farm_size)
 
 
 ### PHYSICAL CAPITAL ----

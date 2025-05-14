@@ -9,39 +9,41 @@ library(ggplot2)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-per_factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")%>%
+factors_list_analysis<-read_excel("factors_list.xlsx",sheet = "factors_list_analysis")%>%
   filter(is.na(peru_remove_adoption_status))
 
-per_structural_model<-read_excel("factors_list.xlsx",sheet = "structural_model")%>%
+per_structural_model<-read_excel("factors_list.xlsx",sheet = "structural_model")
   filter(country=="peru_status")
 
 per_measurement_model<- read_excel("factors_list.xlsx",sheet = "measurement_model")%>%
-  select(category_1,constructs, column_name_new,constructs,factor, constructs_type,weights,country)%>%
-  filter(country=="peru")
-
+  select(path,category_1,constructs, column_name_new,constructs,factor, constructs_type,weights,country)%>%
+  filter(country=="peru")%>%
+  filter(str_detect(path, "^direct"))
+         
 sort(unique(per_measurement_model$constructs))
                                         
 #############################################################    
 ########## SELECTED FACTORS #####-----
 #############################################################
-per_data_adoptionBinary_analysis<- read.csv("results/per_data_adoptionBinary_selectedFactors.csv",sep=",")
-rownames(per_data_adoptionBinary_analysis) <- per_data_adoptionBinary_analysis$X
-per_data_adoptionBinary_analysis<- per_data_adoptionBinary_analysis%>%
+per_data_analysis<-read.csv("per_data_Binary.csv",sep=",")
+rownames(per_data_analysis) <- per_data_analysis$X
+per_data_analysis<- per_data_analysis%>%
   dplyr::select(-X)%>%
+  dplyr::select(all_of(per_measurement_model$column_name_new))%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))
 
-names(per_data_adoptionBinary_analysis)
-str(per_data_adoptionBinary_analysis)
-dim(per_data_adoptionBinary_analysis)#[1] 200   24
-summary(per_data_adoptionBinary_analysis)
-describe(per_data_adoptionBinary_analysis)
+names(per_data_analysis)
+str(per_data_analysis)
+dim(per_data_analysis)#[1] 200   14
+summary(per_data_analysis)
+describe(per_data_analysis)
 
-apply(per_data_adoptionBinary_analysis, 2, function(x) var(as.numeric(x), na.rm = TRUE))
+apply(per_data_analysis, 2, function(x) var(as.numeric(x), na.rm = TRUE))
 
 #############################################################    
 ########## PLS-SEM MODEL ANALYSIS #####-----
 #############################################################
-describe(per_data_adoptionBinary_analysis)
+describe(per_data_analysis)
 
 check_multicollinearity <- function(construct_list, data, threshold = 0.999) {
   problematic_constructs <- list()
@@ -78,7 +80,7 @@ check_multicollinearity <- function(construct_list, data, threshold = 0.999) {
 }
 
 
-per_data_adoptionBinary_analysis %>%
+per_data_analysis %>%
   #select(indicators_used) %>%
   tidyr::pivot_longer(everything(), names_to = "variable", values_to = "value") %>%
   ggplot(aes(x = value)) +
@@ -92,7 +94,7 @@ per_data_adoptionBinary_analysis %>%
 #the relationships between the latent variables and their measures (i.e., their indicators)
 #display the relationships between the constructs and the indicator variables
 per_constructs_def <- per_measurement_model %>%
-  filter(column_name_new %in% intersect(per_measurement_model$column_name_new, colnames(per_data_adoptionBinary_analysis)))%>%
+  filter(column_name_new %in% intersect(per_measurement_model$column_name_new, colnames(per_data_analysis)))%>%
   group_by(category_1,constructs, constructs_type, weights) %>%
   summarise(items = list(column_name_new), .groups = "drop") %>%
   mutate(n_items = lengths(items))
@@ -163,14 +165,13 @@ return(measurement_model)
 
 ## ==== STEP 6: Measurement model: Direct effect to adoption ====
 per_measurement_model_direct<- build_measurement_model(
-  data_analysis=per_data_adoptionBinary_analysis,
+  data_analysis=per_data_analysis,
   constructs_variables= per_measurement_model )
 per_measurement_model_direct
 
 
 #problematic <- check_multicollinearity(c(  reflective_measures, composite_multi_measures, composite_single_measures), per_data_analysis)
 #problematic
-
 
 #################################################################################
 ##=== SPECIFYING THE STRUCTURAL MODELS (Also called inner models) ======
@@ -189,7 +190,7 @@ per_structural_model_direct
 ##===  Estimating the PLS-SEM model: Direct effect on adoption ======
 #################################################################################
 ## STEP 1: PLS-SEM model ----
-per_pls_sem_model_direct <- estimate_pls(data = per_data_adoptionBinary_analysis,
+per_pls_sem_model_direct <- estimate_pls(data = per_data_analysis,
                               measurement_model = per_measurement_model_direct,
                               structural_model = per_structural_model_direct)
 per_pls_sem_model_direct
@@ -264,7 +265,7 @@ per_assessment.mmr.step1<- as.data.frame(per_pls_sem_summary_direct$loadings)%>%
   filter(reliability != 0)%>%
   select(constructs,factors,reliability)%>%
   left_join(per_constructs_def%>%select(constructs,constructs_type,weights),by="constructs")%>%
-  left_join(per_factors_list%>%select(category_1,column_name_new,factor),by=c("factors"="column_name_new"))%>%
+  left_join(factors_list_analysis%>%select(category_1,column_name_new,factor),by=c("factors"="column_name_new"))%>%
   filter(constructs %in%c(per_reflective_constructs_list))%>%
   mutate(reliability_assessment= case_when(
     reliability>=0.708~ "Good",
@@ -272,7 +273,7 @@ per_assessment.mmr.step1<- as.data.frame(per_pls_sem_summary_direct$loadings)%>%
     TRUE~"Please check"))%>%
   select(category_1,constructs,factors,factor, reliability,constructs_type,weights,reliability_assessment)
 
-write.csv(per_assessment.mmr.step1,"results/per_assessment.mmr.step1.csv",row.names=FALSE)
+write.csv(per_assessment.mmr.step1,"results/direct/per_assessment.mmr.step1.csv",row.names=FALSE)
 
 #INTERPRETATION: check if indicator loadings of the reflective measured constructs are above or bellow 0.708
 #Rather than automatically eliminating indicators 
@@ -352,7 +353,7 @@ per_assessment.mmr.step2.3<- as.data.frame(per_pls_sem_summary_direct$reliabilit
 
 plot(per_pls_sem_summary_direct$reliability)
   
-write.csv(per_assessment.mmr.step2.3,"results/per_assessment.mmr.step2.3.csv",row.names=FALSE)
+write.csv(per_assessment.mmr.step2.3,"results/direct/per_assessment.mmr.step2.3.csv",row.names=FALSE)
 
 ## STEP 4: Assess discriminant validity ====
 #This metric measures the extent to which a construct is empirically distinct from other constructs in the structural model
@@ -379,7 +380,7 @@ per_assessment.mmr.step4<- as.data.frame(per_pls_sem_summary_direct$validity$htm
   rowwise() 
   
 head(per_assessment.mmr.step4)
-write.csv(per_assessment.mmr.step4,"results/per_assessment.mmr.step4.csv",row.names=FALSE)
+write.csv(per_assessment.mmr.step4,"results/direct/per_assessment.mmr.step4.csv",row.names=FALSE)
 
 
 # Extract the bootstrapped HTMT 
@@ -406,7 +407,7 @@ per_assessment.mmf.step1 <- lapply(names(per_pls_sem_summary_direct$validity$vif
   )
 }) %>% bind_rows()%>%
   left_join(per_constructs_def%>%select(constructs,constructs_type,weights),by=c("construct"="constructs"))%>%
-  left_join(per_factors_list%>%select(category_1,column_name_new,factor),by=c("factors"="column_name_new"))%>%
+  left_join(factors_list_analysis%>%select(category_1,column_name_new,factor),by=c("factors"="column_name_new"))%>%
   filter(constructs_type=="composite")%>%
   filter(weights=="mode_B")
 
@@ -461,14 +462,15 @@ composite_by_mode <- function(mode) {
 }
 per_composite_mode_A <- composite_by_mode("A")
 per_composite_mode_A
+per_composite_mode_A <- setdiff(per_composite_mode_A, "environmental_quality")
+per_composite_mode_A
 
 per_reflective_constructs_list<-c(per_composite_mode_A)#,reflective_constructs)
 per_reflective_constructs_list
 
-per_observed_vars<-per_data_adoptionBinary_analysis%>%
-  select(all_of(per_reflective_constructs_list))
+per_observed_vars<-per_data_analysis%>%
+  select(all_of(per_reflective_constructs_list),human_wellbeing_11)
 names(per_observed_vars)
-
 
 #Extract the latent constructs
 per_composite_mode_B <- composite_by_mode("B")
@@ -499,7 +501,9 @@ per_logit_model.results<-as.data.frame(exp(cbind(OR = coef(per_logit_model), con
 
 
 
-###########desde aca el nuevo procedimiento #########
+
+
+###########desde aca el nuevo procedimiento #########----------------------------------------------
 ##=== MODEL 2: Indirect effect to adoption NOT APPLY ----
 per_indirect_effect<- per_structural_model%>%
   filter(path_type=="indirect")%>%
@@ -524,7 +528,7 @@ per_structural_model_indirect
 ##===  Estimating the PLS-SEM model: Indirect effect ======
 #################################################################################
 ## STEP 1: PLS-SEM model ----
-per_pls_sem_model_indirect <- estimate_pls(data = per_data_adoptionBinary_analysis,
+per_pls_sem_model_indirect <- estimate_pls(data = per_data_analysis,
                                            measurement_model = per_measurement_model.formula,
                                            structural_model = per_structural_model_indirect)
 per_pls_sem_model_indirect
