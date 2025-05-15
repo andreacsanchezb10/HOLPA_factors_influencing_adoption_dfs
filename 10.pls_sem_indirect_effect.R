@@ -1,4 +1,10 @@
-
+library(dplyr)
+library(readxl)
+library(seminr)
+library(purrr)
+library(rlang)
+library(psych)
+library(ggplot2)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
@@ -23,7 +29,6 @@ per_data_analysis<- per_data_analysis%>%
   dplyr::select(-X)%>%
   select(all_of(per_measurement_model$column_name_new))%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))
-
 
 names(per_data_analysis)
 str(per_data_analysis)
