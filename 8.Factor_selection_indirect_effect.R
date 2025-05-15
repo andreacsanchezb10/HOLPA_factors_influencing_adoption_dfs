@@ -608,8 +608,8 @@ write.csv(per_governance_capacity_selectedFactors_freq, "results/indirect/per/pe
 
 ## Extract the best 60 factors
 per_governance_capacity_selectedFactors<-per_governance_capacity_selectedFactors_freq%>%
-  filter(NumFeatures=="featNum6")%>%
-  slice_max(order_by = frequency, n = 6)%>%
+  filter(NumFeatures=="featNum10")%>%
+  slice_max(order_by = frequency, n =10)%>%
   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
 write.csv(per_governance_capacity_selectedFactors, "results/indirect/per/per_influence_nr_selectedFactors.csv")

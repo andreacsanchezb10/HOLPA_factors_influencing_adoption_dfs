@@ -469,7 +469,7 @@ per_reflective_constructs_list<-c(per_composite_mode_A)#,reflective_constructs)
 per_reflective_constructs_list
 
 per_observed_vars<-per_data_analysis%>%
-  select(all_of(per_reflective_constructs_list),human_wellbeing_11)
+  select(all_of(per_reflective_constructs_list),human_wellbeing_11,crop_type.cacao)
 names(per_observed_vars)
 
 #Extract the latent constructs
@@ -477,29 +477,72 @@ per_composite_mode_B <- composite_by_mode("B")
 per_composite_mode_B
 
 per_data_logistic_regression_direct<- per_pls_sem_model_direct.construct_scores%>%
-  select(all_of(per_composite_mode_B))%>%
+  select(all_of(per_composite_mode_B),-crop_type)%>%
   cbind(per_observed_vars)
 write.csv(per_data_logistic_regression_direct, "per_data_logistic_regression_direct.csv")
 
 
 ## STEP 4: Apply the logistic regression model ====
 #https://stats.oarc.ucla.edu/r/dae/logit-regression/
+str(per_data_logistic_regression_direct$dfs_adoption_binary)
+per_data_logistic_regression_direct$dfs_adoption_binary<- as.factor(per_data_logistic_regression_direct$dfs_adoption_binary)
+
 per_logit_model <- glm(dfs_adoption_binary ~ ., 
                    data = per_data_logistic_regression_direct, 
                    family = binomial(link = "logit"))
+per_logit_model
 summary(per_logit_model)
 
 exp(coef(per_logit_model))
 per_logit_model.results<-as.data.frame(exp(cbind(OR = coef(per_logit_model), confint(per_logit_model))))
 
+# Predict adoption using model
+per_glm.predict.adoption <- predict(per_logit_model, per_data_logistic_regression_direct,  type="response" )
+head(per_glm.predict.adoption)
+
+# Convert predicted values back to 1/0
+per_data_logistic_regression_direct$predict.adoption<-ifelse(per_glm.predict.adoption>=0.5,"1","0")
+
+#Determine accuracy of model
+per_accuracy<- mean(per_data_logistic_regression_direct$dfs_adoption_binary==per_data_logistic_regression_direct$predict.adoption)
+per_accuracy
 
 
+#https://bradleyboehmke.github.io/HOML/logistic-regression.html
 
+#5.5 assessing accuracy
+set.seed(123)
+cv_model1 <- train(
+  dfs_adoption_binary ~ ., 
+  data = per_data_logistic_regression_direct, 
+  method = "glm",
+  family = binomial(link = "logit"),
+  trControl = trainControl(method = "cv", number = 10)
+)
+summary(cv_model1)
 
+# predict class
+pred_class <- predict(cv_model1, per_data_logistic_regression_direct)
 
+# create confusion matrix
+confusionMatrix(
+  data = relevel(pred_class, ref = "1"), 
+  reference = relevel(per_data_logistic_regression_direct$dfs_adoption_binary, ref = "1")
+  
+)
 
+install.packages("ROCR")
+library(ROCR)
 
+# Compute predicted probabilities
+m1_prob <- predict(cv_model1, per_data_logistic_regression_direct, type = "prob")$"1"
+m1_prob
 
+# Compute AUC metrics for cv_model1 and cv_model3
+perf1 <- prediction(m1_prob, per_data_logistic_regression_direct$dfs_adoption_binary) 
+  performance(measure = "tpr", x.measure = "fpr")
+
+perf1
 
 
 
