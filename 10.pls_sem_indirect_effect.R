@@ -212,20 +212,20 @@ per_pls_sem_model_complete <- estimate_pls(data = per_data_analysis,
 per_pls_sem_model_complete
 
 # Summarize the model results
-per_pls_sem_summary_direct<- summary(per_pls_sem_model_complete)
-per_pls_sem_summary_direct
+per_pls_sem_summary_complete<- summary(per_pls_sem_model_complete)
+per_pls_sem_summary_complete
 # Inspect the model’s path coefficients and the R^2 values
-per_pls_sem_summary_direct$paths
+per_pls_sem_summary_complete$paths
 # Inspect the construct reliability metrics 
-per_pls_sem_summary_direct$reliability
+per_pls_sem_summary_complete$reliability
 # Inspect descriptive statistics
-per_pls_sem_summary_direct$descriptives$statistics
+per_pls_sem_summary_complete$descriptives$statistics
 #- Number of iterations that the PLS-SEM algorithm needed to converge 
 #This number should be lower than the maximum number of iterations (e.g., 300)
-per_pls_sem_summary_direct$iterations 
+per_pls_sem_summary_complete$iterations 
 #[1] 1
 
-per_pls_sem_summary_direct$descriptives$statistics$constructs
+per_pls_sem_summary_complete$descriptives$statistics$constructs
 
 ## STEP 2: Bootstrapping the model ----
 per_boot_model_complete <- bootstrap_model(seminr_model = per_pls_sem_model_complete, 
@@ -239,7 +239,7 @@ per_boot_model_summary_complete$weights
 per_boot_model_summary_complete$validity
 per_boot_model_summary_complete$bootstrapped_paths
 
-plot(per_boot_model_direct, title = "")
+plot(per_boot_model_complete, title = "")
 
 #########################################################
 ##===  Assessing the reflective measurement models ====
@@ -255,11 +255,11 @@ plot(per_boot_model_direct, title = "")
 #researchers should carefully examine the effects of indicator removal on other reliability and validity measures. 
 
 # Extract reflective constructs directly
-per_measurement_model_direct
-per_reflective_constructs <- unique(per_measurement_model_direct$reflective[seq(1, length(per_measurement_model_direct$reflective), 3)])
+per_measurement_model_formula
+per_reflective_constructs <- unique(per_measurement_model_formula$reflective[seq(1, length(per_measurement_model_formula$reflective), 3)])
 per_reflective_constructs
 
-per_composite_constructs <- per_measurement_model_direct[names(per_measurement_model_direct) == "composite"]
+per_composite_constructs <- per_measurement_model_formula[names(per_measurement_model_formula) == "composite"]
 per_composite_constructs
 composite_by_mode <- function(mode) {
   unique(unlist(lapply(per_composite_constructs, \(x) x[seq(1, length(x), 3)][x[seq(3, length(x), 3)] == mode])))
@@ -270,9 +270,9 @@ per_composite_mode_A
 per_reflective_constructs_list<-c(per_composite_mode_A)#,reflective_constructs)
 per_reflective_constructs_list
 
-per_pls_sem_summary_direct$loadings
+per_pls_sem_summary_complete$loadings
 
-per_assessment.mmr.step1<- as.data.frame(per_pls_sem_summary_direct$loadings)%>%
+per_assessment.mmr.step1<- as.data.frame(per_pls_sem_summary_complete$loadings)%>%
   tibble::rownames_to_column("factors") %>%
   tidyr::pivot_longer(
     cols = -factors,
@@ -307,7 +307,7 @@ write.csv(per_assessment.mmr.step1,"results/direct/per_assessment.mmr.step1.csv"
 #measurement model (Hair, Hult, Ringle, & Sarstedt, 2022).
 
 #Inspect the indicator reliability
-per_reliability<-as.data.frame(per_pls_sem_summary_direct$loadings^2)%>%
+per_reliability<-as.data.frame(per_pls_sem_summary_complete$loadings^2)%>%
   tibble::rownames_to_column("factors") %>%
   tidyr::pivot_longer(
     cols = -factors,
