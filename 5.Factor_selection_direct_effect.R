@@ -489,7 +489,9 @@ per_picked_power <- 8  # Optionally automate this later
 per_adoptionBinary <- per_data_redundantFiltered$dfs_adoption_binary
 per_factors <- per_data_redundantFiltered %>% select(-dfs_adoption_binary)
 
-per_adoption_binary_results <- feature_selection_algorithms(per_factors, per_adoptionBinary, per_picked_power, file_name = "results/direct/per/per_adoption_binary")
+time_taken <- system.time({
+  per_adoption_binary_results <- feature_selection_algorithms(per_factors, per_adoptionBinary, per_picked_power, file_name = "results/direct/per/per_adoption_binary")
+})
 
 # Plot accuracy vs number of selected factors
 per_adoptionBinary_acc_ff<- read.csv("results/direct/per/per_adoption_binary_accValAllFuzzyForest.csv",sep=",") 
