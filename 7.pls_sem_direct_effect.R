@@ -469,7 +469,7 @@ per_reflective_constructs_list<-c(per_composite_mode_A)#,reflective_constructs)
 per_reflective_constructs_list
 
 per_observed_vars<-per_data_analysis%>%
-  select(all_of(per_reflective_constructs_list),human_wellbeing_11,crop_type.cacao)
+  select(all_of(per_reflective_constructs_list),human_wellbeing_11)
 names(per_observed_vars)
 
 #Extract the latent constructs
@@ -477,7 +477,7 @@ per_composite_mode_B <- composite_by_mode("B")
 per_composite_mode_B
 
 per_data_logistic_regression_direct<- per_pls_sem_model_direct.construct_scores%>%
-  select(all_of(per_composite_mode_B),-crop_type)%>%
+  select(all_of(per_composite_mode_B),)%>%
   cbind(per_observed_vars)
 write.csv(per_data_logistic_regression_direct, "per_data_logistic_regression_direct.csv")
 

@@ -244,7 +244,6 @@ run_soft_threshold <- function(data_numeric, powers = c(1:10, seq(12, 20, 2)), d
   
   return(sft)
 }
-install.packages("Metrics")
 library("Metrics")
 # Function to run feature selection algotithms
 feature_selection_continuous_algorithms <- function(factors, Outcome, picked_power, file_name = "dataset") {
