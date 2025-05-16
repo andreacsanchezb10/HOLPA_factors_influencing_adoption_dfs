@@ -592,7 +592,9 @@ per_household_shock_recover_capacity_acc_ff<- read.csv("results/indirect/per/per
 per_household_shock_recover_capacity_acc_rf<- read.csv("results/indirect/per/per_household_shock_recover_capacity_accValAllRandomForest.csv",sep=",") 
 per_household_shock_recover_capacity_acc_cf<- read.csv("results/indirect/per/per_household_shock_recover_capacity_accValAllCForest.csv",sep=",") 
 
-plot_accuracy_vs_features(per_household_shock_recover_capacity_acc_ff,per_household_shock_recover_capacity_acc_rf, per_household_shock_recover_capacity_acc_cf,
+plot_accuracy_vs_features(per_household_shock_recover_capacity_acc_ff,
+                          per_household_shock_recover_capacity_acc_rf, 
+                          per_household_shock_recover_capacity_acc_cf,
                           method_name = "A) Peru: Household recovery recovery capacity from shocks",10)
 #1600*1000
 
