@@ -9,11 +9,9 @@ library(ggplot2)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-factors_list_analysis<-read_excel("factors_list.xlsx",sheet = "factors_list_analysis")%>%
-  filter(is.na(peru_remove_adoption_status))
+factors_list_analysis<-read_excel("factors_list.xlsx",sheet = "factors_list_analysis")
 
 per_structural_model<-read_excel("factors_list.xlsx",sheet = "structural_model")
-  filter(country=="peru_status")
 
 per_measurement_model<- read_excel("factors_list.xlsx",sheet = "measurement_model")%>%
   select(path,category_1,constructs, column_name_new,constructs,factor, constructs_type,weights,country)%>%
@@ -273,7 +271,7 @@ per_assessment.mmr.step1<- as.data.frame(per_pls_sem_summary_direct$loadings)%>%
     TRUE~"Please check"))%>%
   select(category_1,constructs,factors,factor, reliability,constructs_type,weights,reliability_assessment)
 
-write.csv(per_assessment.mmr.step1,"results/direct/per_assessment.mmr.step1.csv",row.names=FALSE)
+write.csv(per_assessment.mmr.step1,"results/direct/per/per_assessment.mmr.step1.csv",row.names=FALSE)
 
 #INTERPRETATION: check if indicator loadings of the reflective measured constructs are above or bellow 0.708
 #Rather than automatically eliminating indicators 
@@ -353,7 +351,7 @@ per_assessment.mmr.step2.3<- as.data.frame(per_pls_sem_summary_direct$reliabilit
 
 plot(per_pls_sem_summary_direct$reliability)
   
-write.csv(per_assessment.mmr.step2.3,"results/direct/per_assessment.mmr.step2.3.csv",row.names=FALSE)
+write.csv(per_assessment.mmr.step2.3,"results/direct/per/per_assessment.mmr.step2.3.csv",row.names=FALSE)
 
 ## STEP 4: Assess discriminant validity ====
 #This metric measures the extent to which a construct is empirically distinct from other constructs in the structural model
@@ -368,7 +366,8 @@ write.csv(per_assessment.mmr.step2.3,"results/direct/per_assessment.mmr.step2.3.
 #satisfaction, and loyalty. In such a setting, an HTMT value above 0.90 would 
 #suggest that discriminant validity is not present. But when constructs are conceptually 
 #more distinct, a lower, more conservative, threshold value is suggested, such as 0.85 (Henseler et al., 2015).
-per_assessment.mmr.step4<- as.data.frame(per_pls_sem_summary_direct$validity$htmt)%>%
+per_pls_sem_summary_direct$validity$htmt
+per_assessment.mmr.step4<- as.data.frame(per_pls_sem_summary_direct$validity$htmt)
   tibble::rownames_to_column("constructs1")%>%
   left_join(per_constructs_def%>%select(constructs,constructs_type),by=c("constructs1"="constructs"))%>%
   filter(constructs1 %in%c(per_reflective_constructs_list))%>%
