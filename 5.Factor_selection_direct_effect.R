@@ -290,7 +290,7 @@ feature_selection_algorithms <- function(factors, adoptionOutcome, picked_power,
   library(tidyr)
   library(tibble)
   
-  feature_nums <- c(10:40)
+  feature_nums <- c(1:40)
   times <- 20 #number of runs
   
   acc_ff <- matrix(0, nrow = times, ncol = length(feature_nums))
@@ -402,7 +402,7 @@ feature_selection_algorithms <- function(factors, adoptionOutcome, picked_power,
 }
 
 # Function to plot accuracy vs number of selected features
-plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,method_name = "Model",xmax) {
+plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,method_name = "Model",xmax,xmin) {
   process_df <- function(df, algo_name) {
     df %>%
       rename("Run"="X")%>%
@@ -420,6 +420,7 @@ plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,method_name
     process_df(acc_cf_df, "Conditional Inference Forest")
   )
   acc_long_mean<- acc_long%>%
+    filter(NumFeatures>=xmin)%>%
     group_by(Run, NumFeatures)%>%
     summarise(Accuracy= mean(Accuracy))%>%
     ungroup()%>%
@@ -427,7 +428,7 @@ plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,method_name
     rbind(acc_long)
   
   # Find the point with highest accuracy
-  max_point <- acc_long_mean %>%
+  max_accuracy <- acc_long_mean %>%
     filter(algorithm == "Mean") %>%
     slice_max(order_by = Accuracy, n = 1)
   
@@ -436,15 +437,14 @@ plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,method_name
     geom_point(size = 3) +
     scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
     scale_color_manual(values = c("#377EB8", "#4DAF4A","#E41A1C","#984EA3"))+
-    geom_hline(yintercept = max_point$Accuracy, linetype = "dotted", color = "black", size = 1) +
+    geom_hline(yintercept = max_accuracy$Accuracy, linetype = "dotted", color = "black", size = 1) +
     geom_vline(xintercept = xmax, linetype = "dotted", color = "black", size = 1) +
-    
-    labs(
+    scale_x_continuous(limits = c(xmin, 40))+
+      labs(
       title = method_name,
       x = "Number of selected factors",
       y = "Mean classification accuracy (%)",
-      color = "Feature selection algorithm"
-    ) +
+      color = "Feature selection algorithm") +
     theme(plot.background = element_rect(fill = "White", color = "White"),
           panel.background = element_blank(),
           axis.line = element_line(colour = "black"),
@@ -499,7 +499,7 @@ per_adoptionBinary_acc_rf<- read.csv("results/direct/per/per_adoption_binary_acc
 per_adoptionBinary_acc_cf<- read.csv("results/direct/per/per_adoption_binary_accValAllCForest.csv",sep=",") 
 
 plot_accuracy_vs_features(per_adoptionBinary_acc_ff,per_adoptionBinary_acc_rf, per_adoptionBinary_acc_cf,
-                          method_name = "A) Ucayali Peru: Dependent variable = Adoption Binary",12)
+                          method_name = "A) Ucayali Peru: Dependent variable = Adoption Binary",13,13)
 #1600*1000
 
 per_adoptionBinary_selectFactors_cf<- read.csv("results/direct/per/per_adoption_binary_featureSelectedCForest.csv",sep=",") 
@@ -511,10 +511,10 @@ per_adoptionBinary_selectedFactors_freq<-selected_factors_freq(per_adoptionBinar
                                                                per_adoptionBinary_selectFactors_rf)
 write.csv(per_adoptionBinary_selectedFactors_freq, "results/direct/per_adoption_binary_selectedFactors_freq.csv")
 
-## Extract the best 20 factors
+## Extract the best 13 factors
 per_adoptionBinary_selectedFactors<-per_adoptionBinary_selectedFactors_freq%>%
-  filter(NumFeatures=="featNum12")%>%
-  slice_max(order_by = frequency, n = 12)%>%
+  filter(NumFeatures=="featNum13")%>%
+  slice_max(order_by = frequency, n = 13)%>%
   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
 write.csv(per_adoptionBinary_selectedFactors, "results/direct/per_adoption_binary_selectedFactors.csv")
