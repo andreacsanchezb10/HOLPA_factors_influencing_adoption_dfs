@@ -532,14 +532,9 @@ plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,method_name
     scale_color_manual(values = c("#377EB8", "#4DAF4A","#E41A1C","#984EA3"))+
     geom_hline(yintercept = max_point$Accuracy, linetype = "dotted", color = "black", size = 1) +
     geom_vline(xintercept = xmax, linetype = "dotted", color = "black", size = 1) +
-<<<<<<< HEAD
     scale_x_continuous(limits = c(1, 20),breaks = pretty(1:20, n = 5),expand = c(0.01, 0))+
-=======
-    geom_vline(xintercept = xmin,  color = "black", size = 1) +
-    geom_vline(xintercept = 20,  color = "black", size = 1) +
     scale_x_continuous(limits = c(1, 20),breaks = pretty(1:20, n = 10),expand = c(0.01, 0))+
->>>>>>> 44048cadbdcd9d3bba90f08b5356b42a5751f9f2
-    
+
     labs(
       title = method_name,
       x = "Number of selected factors",
