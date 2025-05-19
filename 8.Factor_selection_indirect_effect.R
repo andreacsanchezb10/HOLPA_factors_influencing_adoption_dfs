@@ -244,10 +244,11 @@ run_soft_threshold <- function(data_numeric, powers = c(1:10, seq(12, 20, 2)), d
   
   return(sft)
 }
-install.packages("Metrics")
+
 library("Metrics")
 # Function to run feature selection algotithms
-feature_selection_continuous_algorithms <- function(factors, Outcome, picked_power, file_name = "dataset") {
+
+feature_selection_continuous_algorithms <- function( factors, Outcome, picked_power, file_name = "dataset") {
   library(e1071)
   library(caret)
   library(WGCNA)
@@ -258,7 +259,7 @@ feature_selection_continuous_algorithms <- function(factors, Outcome, picked_pow
   library(tibble)
   library(Metrics)
   
-  feature_nums <- c(10:40)
+  feature_nums <- c(1:40)
   times <- 20 #number of runs
   
   acc_ff <- matrix(0, nrow = times, ncol = length(feature_nums))
@@ -369,7 +370,7 @@ feature_selection_continuous_algorithms <- function(factors, Outcome, picked_pow
   )
 }
 
-feature_selection_binary_algorithms <- function(factors, Outcome, picked_power, file_name = "dataset") {
+feature_selection_binary_algorithms <- function(min,factors, Outcome, picked_power, file_name = "dataset") {
   library(e1071)
   library(caret)
   library(WGCNA)
@@ -379,7 +380,7 @@ feature_selection_binary_algorithms <- function(factors, Outcome, picked_power, 
   library(tidyr)
   library(tibble)
   
-  feature_nums <- c(10:40)
+  feature_nums <- c(1:40)
   times <- 20 #number of runs
   
   acc_ff <- matrix(0, nrow = times, ncol = length(feature_nums))
