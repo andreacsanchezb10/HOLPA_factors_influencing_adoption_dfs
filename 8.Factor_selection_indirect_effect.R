@@ -84,7 +84,7 @@ dim(per_governance_capacity_redundantFiltered)#200 farmers; 1 outcomes, 79 facto
 names(per_governance_capacity_redundantFiltered)
 
 ##=== Run for training_participation ====
-per_training_participation_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_training_participation",per_data_analysis )%>%
+per_training_participation_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_training_participation",per_data_analysis )
   select(-governance_capacity)
 dim(per_training_participation_redundantFiltered)#200 farmers; 1 outcomes, 29 factors retained
 #[1] 200  30
@@ -244,10 +244,7 @@ run_soft_threshold <- function(data_numeric, powers = c(1:10, seq(12, 20, 2)), d
   
   return(sft)
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> 5ecc2dfccde3ba1c373ffe25164a4d2503dec65b
 library("Metrics")
 # Function to run feature selection algotithms
 
@@ -527,15 +524,15 @@ plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,method_name
     slice_max(order_by = Accuracy, n = 1)
   
   ggplot(acc_long_mean, aes(x = NumFeatures, y = Accuracy, color = algorithm)) +
+    geom_vline(xintercept = xmin,  color = "grey", size = 2) +
+    geom_vline(xintercept = 20,  color = "grey", size = 2) +
     geom_line(size = 1) +
     geom_point(size = 3) +
     scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
     scale_color_manual(values = c("#377EB8", "#4DAF4A","#E41A1C","#984EA3"))+
     geom_hline(yintercept = max_point$Accuracy, linetype = "dotted", color = "black", size = 1) +
     geom_vline(xintercept = xmax, linetype = "dotted", color = "black", size = 1) +
-    geom_vline(xintercept = xmin,  color = "black", size = 1) +
-    geom_vline(xintercept = 40,  color = "black", size = 1) +
-    scale_x_continuous(limits = c(1, 20),breaks = pretty(1:40, n = 10),expand = c(0.01, 0))+
+    scale_x_continuous(limits = c(1, 20),breaks = pretty(1:20, n = 5),expand = c(0.01, 0))+
     
     labs(
       title = method_name,
@@ -732,9 +729,9 @@ per_training_participation_results <- feature_selection_binary_algorithms(
   per_data_training_participation_picked_power, file_name = "indirect/per_training_participation")
 
 # Plot accuracy vs number of selected factors
-per_training_participation_acc_ff<- read.csv("results/indirect/per_training_participation_accValAllFuzzyForest.csv",sep=",") 
-per_training_participation_acc_rf<- read.csv("results/indirect/per_training_participation_accValAllRandomForest.csv",sep=",") 
-per_training_participation_acc_cf<- read.csv("results/indirect/per_training_participation_accValAllCForest.csv",sep=",") 
+per_training_participation_acc_ff<- read.csv("results/indirect/per/per_training_participation_accValAllFuzzyForest.csv",sep=",") 
+per_training_participation_acc_rf<- read.csv("results/indirect/per/per_training_participation_accValAllRandomForest.csv",sep=",") 
+per_training_participation_acc_cf<- read.csv("results/indirect/per/per_training_participation_accValAllCForest.csv",sep=",") 
 
 plot_accuracy_vs_features(per_training_participation_acc_ff,per_training_participation_acc_rf, per_training_participation_acc_cf,
                           method_name = "A) Peru: Governance capacity",22)
