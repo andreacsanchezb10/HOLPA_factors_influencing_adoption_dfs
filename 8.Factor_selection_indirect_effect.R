@@ -86,8 +86,8 @@ names(per_governance_capacity_redundantFiltered)
 ##=== Run for training_participation ====
 per_training_participation_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_training_participation",per_data_analysis )
   select(-governance_capacity)
-dim(per_training_participation_redundantFiltered)#200 farmers; 1 outcomes, 29 factors retained
-#[1] 200  30
+dim(per_training_participation_redundantFiltered)#200 farmers; 1 outcomes, 30 factors retained
+#[1] 200  31
 names(per_training_participation_redundantFiltered)
 
 ##=== STEP 4: CHECK FOR CORRELATION ACROSS FACTORS ======
@@ -98,7 +98,7 @@ create_cor_df <- function(data, factors_list_analysis) {
   
   cor_df <- as.data.frame(cor_matrix) %>%
     rownames_to_column("factor1") %>%
-    pivot_longer(-factor1, names_to = "factor2", values_to = "spearman_correlation") %>%
+    tidyr::pivot_longer(-factor1, names_to = "factor2", values_to = "spearman_correlation") %>%
     left_join(factors_list_analysis %>% select(column_name_new, category_1), by = c("factor1" = "column_name_new")) %>%
     rename(category_1.factor1 = category_1) %>%
     left_join(factors_list_analysis %>% select(column_name_new, category_1), by = c("factor2" = "column_name_new")) %>%
