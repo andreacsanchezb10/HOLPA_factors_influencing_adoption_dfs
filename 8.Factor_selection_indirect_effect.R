@@ -497,8 +497,7 @@ feature_selection_binary_algorithms <- function(min,factors, Outcome, picked_pow
 }
 
 # Function to plot accuracy vs number of selected features
-plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,
-                                      method_name = "Model",xmax) {
+plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,method_name = "Model",xmax,xmin) {
   process_df <- function(df, algo_name) {
     df %>%
       rename("Run"="X")%>%
@@ -523,6 +522,7 @@ plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,
     rbind(acc_long)
   
   max_point <- acc_long_mean %>%
+    filter(NumFeatures>=xmin)%>%
     filter(algorithm == "Mean") %>%
     slice_max(order_by = Accuracy, n = 1)
   
@@ -533,6 +533,10 @@ plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,
     scale_color_manual(values = c("#377EB8", "#4DAF4A","#E41A1C","#984EA3"))+
     geom_hline(yintercept = max_point$Accuracy, linetype = "dotted", color = "black", size = 1) +
     geom_vline(xintercept = xmax, linetype = "dotted", color = "black", size = 1) +
+    geom_vline(xintercept = xmin,  color = "black", size = 1) +
+    geom_vline(xintercept = 40,  color = "black", size = 1) +
+    scale_x_continuous(limits = c(1, 20),breaks = pretty(1:40, n = 10),expand = c(0.01, 0))+
+    
     labs(
       title = method_name,
       x = "Number of selected factors",
@@ -599,7 +603,7 @@ per_household_shock_recover_capacity_acc_cf<- read.csv("results/indirect/per/per
 plot_accuracy_vs_features(per_household_shock_recover_capacity_acc_ff,
                           per_household_shock_recover_capacity_acc_rf, 
                           per_household_shock_recover_capacity_acc_cf,
-                          method_name = "A) Peru: Household recovery recovery capacity from shocks",10)
+                          method_name = "A) Peru: Household recovery recovery capacity from shocks",13,12)
 #1600*1000
 
 per_household_shock_recover_capacity_selectFactors_cf<- read.csv("results/indirect/per/per_household_shock_recover_capacity_featureSelectedCForest.csv",sep=",") 
