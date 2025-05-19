@@ -201,7 +201,7 @@ ggplot(data=d, aes(x=n, y=category_1, fill= category_1)) +
 dim(per_data_redundantFiltered)#200 farmers; 1 outcomes, 146 factors retained
 #[1] 200 147
 
-##=== STEP 4: CHECK FOR CORRELATION ACROSS RETAINED FACTORS ======
+##=== STEP 5: CHECK FOR CORRELATION ACROSS RETAINED FACTORS ======
 per_factors_list_analysis2 <- as.data.frame(colnames(per_data_redundantFiltered))%>%
   rename("column_name_new"= "colnames(per_data_redundantFiltered)")%>%
   left_join(factors_list_analysis%>%select(column_name_new, category_1),by="column_name_new")%>%
@@ -214,7 +214,7 @@ plot_correlation_betw_category(per_data_redundantFiltered_cor)
 sort(unique(per_data_redundantFiltered$district))
 sort(unique(per_data_redundantFiltered$crop_type))
 
-##=== STEP 5: FUZZY FOREST FACTOR SELECTION ======
+##=== STEP 6: FUZZY FOREST FACTOR SELECTION ======
 ## Advantages
 # - The fuzzy forests algorithm is an extension of random forests designed to obtain less bi-ased feature selection in the presence of correlated features. 
 # - WGCNA takes in the matrix of features and uses the correlation structure to partition the features into distinct groups such that the 
@@ -420,7 +420,6 @@ plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,method_name
     process_df(acc_cf_df, "Conditional Inference Forest")
   )
   acc_long_mean<- acc_long%>%
-    filter(NumFeatures>=xmin)%>%
     group_by(Run, NumFeatures)%>%
     summarise(Accuracy= mean(Accuracy))%>%
     ungroup()%>%
@@ -429,6 +428,7 @@ plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,method_name
   
   # Find the point with highest accuracy
   max_accuracy <- acc_long_mean %>%
+    filter(NumFeatures>=xmin)%>%
     filter(algorithm == "Mean") %>%
     slice_max(order_by = Accuracy, n = 1)
   
@@ -439,7 +439,7 @@ plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,method_name
     scale_color_manual(values = c("#377EB8", "#4DAF4A","#E41A1C","#984EA3"))+
     geom_hline(yintercept = max_accuracy$Accuracy, linetype = "dotted", color = "black", size = 1) +
     geom_vline(xintercept = xmax, linetype = "dotted", color = "black", size = 1) +
-    scale_x_continuous(limits = c(xmin, 40))+
+    scale_x_continuous(limits = c(1, 40),breaks = pretty(1:40, n = 10),expand = c(0.01, 0))+
       labs(
       title = method_name,
       x = "Number of selected factors",
