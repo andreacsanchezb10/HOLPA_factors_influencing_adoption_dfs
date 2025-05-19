@@ -9,11 +9,9 @@ library(ggplot2)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-factors_list_analysis<-read_excel("factors_list.xlsx",sheet = "factors_list_analysis")%>%
-  filter(is.na(peru_remove_adoption_status))
+factors_list_analysis<-read_excel("factors_list.xlsx",sheet = "factors_list_analysis")
 
 per_structural_model<-read_excel("factors_list.xlsx",sheet = "structural_model")
-  filter(country=="peru_status")
 
 per_measurement_model<- read_excel("factors_list.xlsx",sheet = "measurement_model")%>%
   select(path,category_1,constructs, column_name_new,constructs,factor, constructs_type,weights,country)%>%
@@ -273,7 +271,7 @@ per_assessment.mmr.step1<- as.data.frame(per_pls_sem_summary_direct$loadings)%>%
     TRUE~"Please check"))%>%
   select(category_1,constructs,factors,factor, reliability,constructs_type,weights,reliability_assessment)
 
-write.csv(per_assessment.mmr.step1,"results/direct/per_assessment.mmr.step1.csv",row.names=FALSE)
+write.csv(per_assessment.mmr.step1,"results/direct/per/per_assessment.mmr.step1.csv",row.names=FALSE)
 
 #INTERPRETATION: check if indicator loadings of the reflective measured constructs are above or bellow 0.708
 #Rather than automatically eliminating indicators 
@@ -353,7 +351,7 @@ per_assessment.mmr.step2.3<- as.data.frame(per_pls_sem_summary_direct$reliabilit
 
 plot(per_pls_sem_summary_direct$reliability)
   
-write.csv(per_assessment.mmr.step2.3,"results/direct/per_assessment.mmr.step2.3.csv",row.names=FALSE)
+write.csv(per_assessment.mmr.step2.3,"results/direct/per/per_assessment.mmr.step2.3.csv",row.names=FALSE)
 
 ## STEP 4: Assess discriminant validity ====
 #This metric measures the extent to which a construct is empirically distinct from other constructs in the structural model
@@ -368,7 +366,8 @@ write.csv(per_assessment.mmr.step2.3,"results/direct/per_assessment.mmr.step2.3.
 #satisfaction, and loyalty. In such a setting, an HTMT value above 0.90 would 
 #suggest that discriminant validity is not present. But when constructs are conceptually 
 #more distinct, a lower, more conservative, threshold value is suggested, such as 0.85 (Henseler et al., 2015).
-per_assessment.mmr.step4<- as.data.frame(per_pls_sem_summary_direct$validity$htmt)%>%
+per_pls_sem_summary_direct$validity$htmt
+per_assessment.mmr.step4<- as.data.frame(per_pls_sem_summary_direct$validity$htmt)
   tibble::rownames_to_column("constructs1")%>%
   left_join(per_constructs_def%>%select(constructs,constructs_type),by=c("constructs1"="constructs"))%>%
   filter(constructs1 %in%c(per_reflective_constructs_list))%>%
@@ -477,29 +476,72 @@ per_composite_mode_B <- composite_by_mode("B")
 per_composite_mode_B
 
 per_data_logistic_regression_direct<- per_pls_sem_model_direct.construct_scores%>%
-  select(all_of(per_composite_mode_B))%>%
+  select(all_of(per_composite_mode_B),)%>%
   cbind(per_observed_vars)
 write.csv(per_data_logistic_regression_direct, "per_data_logistic_regression_direct.csv")
 
 
 ## STEP 4: Apply the logistic regression model ====
 #https://stats.oarc.ucla.edu/r/dae/logit-regression/
+str(per_data_logistic_regression_direct$dfs_adoption_binary)
+per_data_logistic_regression_direct$dfs_adoption_binary<- as.factor(per_data_logistic_regression_direct$dfs_adoption_binary)
+
 per_logit_model <- glm(dfs_adoption_binary ~ ., 
                    data = per_data_logistic_regression_direct, 
                    family = binomial(link = "logit"))
+per_logit_model
 summary(per_logit_model)
 
 exp(coef(per_logit_model))
 per_logit_model.results<-as.data.frame(exp(cbind(OR = coef(per_logit_model), confint(per_logit_model))))
 
+# Predict adoption using model
+per_glm.predict.adoption <- predict(per_logit_model, per_data_logistic_regression_direct,  type="response" )
+head(per_glm.predict.adoption)
+
+# Convert predicted values back to 1/0
+per_data_logistic_regression_direct$predict.adoption<-ifelse(per_glm.predict.adoption>=0.5,"1","0")
+
+#Determine accuracy of model
+per_accuracy<- mean(per_data_logistic_regression_direct$dfs_adoption_binary==per_data_logistic_regression_direct$predict.adoption)
+per_accuracy
 
 
+#https://bradleyboehmke.github.io/HOML/logistic-regression.html
 
+#5.5 assessing accuracy
+set.seed(123)
+cv_model1 <- train(
+  dfs_adoption_binary ~ ., 
+  data = per_data_logistic_regression_direct, 
+  method = "glm",
+  family = binomial(link = "logit"),
+  trControl = trainControl(method = "cv", number = 10)
+)
+summary(cv_model1)
 
+# predict class
+pred_class <- predict(cv_model1, per_data_logistic_regression_direct)
 
+# create confusion matrix
+confusionMatrix(
+  data = relevel(pred_class, ref = "1"), 
+  reference = relevel(per_data_logistic_regression_direct$dfs_adoption_binary, ref = "1")
+  
+)
 
+install.packages("ROCR")
+library(ROCR)
 
+# Compute predicted probabilities
+m1_prob <- predict(cv_model1, per_data_logistic_regression_direct, type = "prob")$"1"
+m1_prob
 
+# Compute AUC metrics for cv_model1 and cv_model3
+perf1 <- prediction(m1_prob, per_data_logistic_regression_direct$dfs_adoption_binary) 
+  performance(measure = "tpr", x.measure = "fpr")
+
+perf1
 
 
 
