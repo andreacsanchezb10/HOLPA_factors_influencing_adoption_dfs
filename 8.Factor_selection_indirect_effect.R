@@ -84,7 +84,7 @@ dim(per_governance_capacity_redundantFiltered)#200 farmers; 1 outcomes, 79 facto
 names(per_governance_capacity_redundantFiltered)
 
 ##=== Run for training_participation ====
-per_training_participation_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_training_participation",per_data_analysis )%>%
+per_training_participation_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_training_participation",per_data_analysis )
   select(-governance_capacity)
 dim(per_training_participation_redundantFiltered)#200 farmers; 1 outcomes, 29 factors retained
 #[1] 200  30
@@ -383,7 +383,7 @@ feature_selection_binary_algorithms <- function(min,factors, Outcome, picked_pow
   library(tidyr)
   library(tibble)
   
-  feature_nums <- c(1:40)
+  feature_nums <- c(1:30)
   times <- 20 #number of runs
   
   acc_ff <- matrix(0, nrow = times, ncol = length(feature_nums))
@@ -716,7 +716,7 @@ per_data_selected_factors_cor<-create_cor_df(per_data_redundantFiltered,per_adop
 ##=== Run for training_participation ====
 per_data_training_participation_numeric <- prepare_numeric_matrix(per_training_participation_redundantFiltered)
 sft_data_training_participation <- run_soft_threshold(per_data_training_participation_numeric, dataset_name = "per_data_nzvFiltered")
-per_data_training_participation_picked_power <- 7  # Optionally automate this later
+per_data_training_participation_picked_power <- 6  # Optionally automate this later
 
 per_training_participation <- per_training_participation_redundantFiltered$training_participation
 per_training_participation
@@ -725,7 +725,7 @@ str(per_training_participation_factors)
 
 per_training_participation_results <- feature_selection_binary_algorithms(
   per_training_participation_factors, per_training_participation,
-  per_data_training_participation_picked_power, file_name = "indirect/per_training_participation")
+  per_data_training_participation_picked_power, file_name = "indirect/per/per_training_participation")
 
 # Plot accuracy vs number of selected factors
 per_training_participation_acc_ff<- read.csv("results/indirect/per_training_participation_accValAllFuzzyForest.csv",sep=",") 
