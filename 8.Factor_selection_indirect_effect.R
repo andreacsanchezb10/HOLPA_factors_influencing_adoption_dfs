@@ -533,7 +533,6 @@ plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,method_name
     geom_hline(yintercept = max_point$Accuracy, linetype = "dotted", color = "black", size = 1) +
     geom_vline(xintercept = xmax, linetype = "dotted", color = "black", size = 1) +
     scale_x_continuous(limits = c(1, 20),breaks = pretty(1:20, n = 5),expand = c(0.01, 0))+
-    scale_x_continuous(limits = c(1, 20),breaks = pretty(1:20, n = 10),expand = c(0.01, 0))+
 
     labs(
       title = method_name,
@@ -548,9 +547,10 @@ plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,method_name
           panel.grid.major  = element_line(color = "grey85",size = 0.6),
           axis.title = element_text(color="black",size=16, family = "sans", face = "bold",vjust = -1),
           axis.text =element_text(color="black",size=14, family = "sans"),
-          legend.text = element_text(color="black",size=14, family = "sans"),
-          legend.title = element_text(color="black",size=14, family = "sans", face = "bold"),
-          legend.position = c(0.85, 0.9),
+          #legend.text = element_text(color="black",size=14, family = "sans"),
+          #legend.title = element_text(color="black",size=14, family = "sans", face = "bold"),
+          #legend.position = c(0.85, 0.9),
+          legend.position = "none",
           plot.margin = unit(c(t=0.5,r=0.5,b=0.5,l=0.5), "cm"))
 }
 
@@ -737,22 +737,22 @@ per_training_participation_acc_rf<- read.csv("results/indirect/per/per_training_
 per_training_participation_acc_cf<- read.csv("results/indirect/per/per_training_participation_accValAllCForest.csv",sep=",") 
 
 plot_accuracy_vs_features(per_training_participation_acc_ff,per_training_participation_acc_rf, per_training_participation_acc_cf,
-                          method_name = "A) Peru: Governance capacity",12,13)
+                          method_name = "A) Peru: Governance capacity",17,5)
 #1600*1000
 
-per_training_participation_selectFactors_cf<- read.csv("results/indirect/per_training_participation_featureSelectedCForest.csv",sep=",") 
-per_training_participation_selectFactors_ff<- read.csv("results/indirect/per_training_participation_featureSelectedFuzzyForest.csv",sep=",") 
-per_training_participation_selectFactors_rf<- read.csv("results/indirect/per_training_participation_featureSelectedRandomForest.csv",sep=",") 
+per_training_participation_selectFactors_cf<- read.csv("results/indirect/per/per_training_participation_featureSelectedCForest.csv",sep=",") 
+per_training_participation_selectFactors_ff<- read.csv("results/indirect/per/per_training_participation_featureSelectedFuzzyForest.csv",sep=",") 
+per_training_participation_selectFactors_rf<- read.csv("results/indirect/per/per_training_participation_featureSelectedRandomForest.csv",sep=",") 
 
 per_training_participation_selectedFactors_freq<-selected_factors_freq(per_training_participation_selectFactors_cf,
   per_training_participation_selectFactors_ff,
   per_training_participation_selectFactors_rf)
-write.csv(per_training_participation_selectedFactors_freq, "per_training_participation_selectedFactors_freq.csv")
+write.csv(per_training_participation_selectedFactors_freq, "results/indirect/per/per_training_participation_selectedFactors_freq.csv")
 
 ## Extract the best 60 factors
 per_training_participation_selectedFactors<-per_training_participation_selectedFactors_freq%>%
-  filter(NumFeatures=="featNum22")%>%
-  slice_max(order_by = frequency, n = 22)%>%
+  filter(NumFeatures=="featNum17")%>%
+  slice_max(order_by = frequency, n = 17)%>%
   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
 write.csv(per_training_participation_selectedFactors, "results/per_training_participation_selectedFactors.csv")
