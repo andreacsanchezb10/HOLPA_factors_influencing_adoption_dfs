@@ -259,7 +259,7 @@ feature_selection_continuous_algorithms <- function( factors, Outcome, picked_po
   library(tibble)
   library(Metrics)
   
-  feature_nums <- c(1:40)
+  feature_nums <- c(1:20)
   times <- 20 #number of runs
   
   acc_ff <- matrix(0, nrow = times, ncol = length(feature_nums))
@@ -370,7 +370,7 @@ feature_selection_continuous_algorithms <- function( factors, Outcome, picked_po
   )
 }
 
-feature_selection_binary_algorithms <- function(min,factors, Outcome, picked_power, file_name = "dataset") {
+feature_selection_binary_algorithms <- function(factors, Outcome, picked_power, file_name = "dataset") {
   library(e1071)
   library(caret)
   library(WGCNA)
@@ -380,7 +380,7 @@ feature_selection_binary_algorithms <- function(min,factors, Outcome, picked_pow
   library(tidyr)
   library(tibble)
   
-  feature_nums <- c(1:40)
+  feature_nums <- c(1:20)
   times <- 20 #number of runs
   
   acc_ff <- matrix(0, nrow = times, ncol = length(feature_nums))
@@ -532,7 +532,13 @@ plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,method_name
     scale_color_manual(values = c("#377EB8", "#4DAF4A","#E41A1C","#984EA3"))+
     geom_hline(yintercept = max_point$Accuracy, linetype = "dotted", color = "black", size = 1) +
     geom_vline(xintercept = xmax, linetype = "dotted", color = "black", size = 1) +
+<<<<<<< HEAD
     scale_x_continuous(limits = c(1, 20),breaks = pretty(1:20, n = 5),expand = c(0.01, 0))+
+=======
+    geom_vline(xintercept = xmin,  color = "black", size = 1) +
+    geom_vline(xintercept = 20,  color = "black", size = 1) +
+    scale_x_continuous(limits = c(1, 20),breaks = pretty(1:20, n = 10),expand = c(0.01, 0))+
+>>>>>>> 44048cadbdcd9d3bba90f08b5356b42a5751f9f2
     
     labs(
       title = method_name,
@@ -720,13 +726,15 @@ sft_data_training_participation <- run_soft_threshold(per_data_training_particip
 per_data_training_participation_picked_power <- 7  # Optionally automate this later
 
 per_training_participation <- per_training_participation_redundantFiltered$training_participation
-per_training_participation
+str(per_training_participation)
+table(per_training_participation)
+
 per_training_participation_factors <- per_training_participation_redundantFiltered %>% select(-training_participation)
 str(per_training_participation_factors)
 
 per_training_participation_results <- feature_selection_binary_algorithms(
   per_training_participation_factors, per_training_participation,
-  per_data_training_participation_picked_power, file_name = "indirect/per_training_participation")
+  per_data_training_participation_picked_power, file_name = "indirect/per/per_training_participation")
 
 # Plot accuracy vs number of selected factors
 per_training_participation_acc_ff<- read.csv("results/indirect/per/per_training_participation_accValAllFuzzyForest.csv",sep=",") 
@@ -734,7 +742,7 @@ per_training_participation_acc_rf<- read.csv("results/indirect/per/per_training_
 per_training_participation_acc_cf<- read.csv("results/indirect/per/per_training_participation_accValAllCForest.csv",sep=",") 
 
 plot_accuracy_vs_features(per_training_participation_acc_ff,per_training_participation_acc_rf, per_training_participation_acc_cf,
-                          method_name = "A) Peru: Governance capacity",22)
+                          method_name = "A) Peru: Governance capacity",12,13)
 #1600*1000
 
 per_training_participation_selectFactors_cf<- read.csv("results/indirect/per_training_participation_featureSelectedCForest.csv",sep=",") 
