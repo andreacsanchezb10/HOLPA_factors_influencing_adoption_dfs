@@ -290,7 +290,7 @@ feature_selection_algorithms <- function(factors, adoptionOutcome, picked_power,
   library(tidyr)
   library(tibble)
   
-  feature_nums <- c(1:40)
+  feature_nums <- c(1:20)
   times <- 20 #number of runs
   
   acc_ff <- matrix(0, nrow = times, ncol = length(feature_nums))
@@ -433,16 +433,17 @@ plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,method_name
     slice_max(order_by = Accuracy, n = 1)
   
   ggplot(acc_long_mean, aes(x = NumFeatures, y = Accuracy, color = algorithm)) +
+    geom_vline(xintercept = xmin,  color = "grey", size = 2) +
+    geom_vline(xintercept = 20,  color = "grey", size = 2) +
     geom_line(size = 1) +
     geom_point(size = 3) +
     scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
     scale_color_manual(values = c("#377EB8", "#4DAF4A","#E41A1C","#984EA3"))+
     geom_hline(yintercept = max_accuracy$Accuracy, linetype = "dotted", color = "black", size = 1) +
-    geom_vline(xintercept = xmax, linetype = "dotted", color = "black", size = 1) +
-    geom_vline(xintercept = xmin,  color = "black", size = 1) +
-    geom_vline(xintercept = 40,  color = "black", size = 1) +
     
-    scale_x_continuous(limits = c(1, 40),breaks = pretty(1:40, n = 10),expand = c(0.01, 0))+
+    geom_vline(xintercept = xmax, linetype = "dotted", color = "black", size = 1) +
+    
+    scale_x_continuous(limits = c(1, 20),breaks = pretty(1:20, n = 5),expand = c(0.01, 0))+
       labs(
       title = method_name,
       x = "Number of selected factors",
@@ -503,8 +504,8 @@ per_adoptionBinary_acc_rf<- read.csv("results/direct/per/per_adoption_binary_acc
 per_adoptionBinary_acc_cf<- read.csv("results/direct/per/per_adoption_binary_accValAllCForest.csv",sep=",") 
 
 plot_accuracy_vs_features(per_adoptionBinary_acc_ff,per_adoptionBinary_acc_rf, per_adoptionBinary_acc_cf,
-                          method_name = "A) Ucayali Peru: Dependent variable = Adoption Binary",14,13)
-#17*12 pdf landscape
+                          method_name = "A) Ucayali Peru: Dependent variable = Adoption Binary",13,13)
+#11.5*9.5 pdf landscape
 
 per_adoptionBinary_selectFactors_cf<- read.csv("results/direct/per/per_adoption_binary_featureSelectedCForest.csv",sep=",") 
 per_adoptionBinary_selectFactors_ff<- read.csv("results/direct/per/per_adoption_binary_featureSelectedFuzzyForest.csv",sep=",") 
@@ -515,10 +516,10 @@ per_adoptionBinary_selectedFactors_freq<-selected_factors_freq(per_adoptionBinar
                                                                per_adoptionBinary_selectFactors_rf)
 write.csv(per_adoptionBinary_selectedFactors_freq, "results/direct/per_adoption_binary_selectedFactors_freq.csv")
 
-## Extract the best 14 factors
+## Extract the best 13 factors
 per_adoptionBinary_selectedFactors<-per_adoptionBinary_selectedFactors_freq%>%
-  filter(NumFeatures=="featNum14")%>%
-  slice_max(order_by = frequency, n = 14)%>%
+  filter(NumFeatures=="featNum13")%>%
+  slice_max(order_by = frequency, n = 13)%>%
   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
 write.csv(per_adoptionBinary_selectedFactors, "results/direct/per_adoption_binary_selectedFactors.csv")
@@ -528,7 +529,7 @@ per_data_adoptionBinary_selectedFactors<- per_data_analysis%>%
   select(dfs_adoption_binary,
     all_of(per_adoptionBinary_selectedFactors$selected_factors))
   
-dim(per_data_adoptionBinary_selectedFactors)#[1] 200   15 variables; 14 factors
+dim(per_data_adoptionBinary_selectedFactors)#[1] 200   14 variables; 13 factors
 
 write.csv(per_data_adoptionBinary_selectedFactors, "results/direct/per_data_adoption_binary_selectedFactors.csv")
 
