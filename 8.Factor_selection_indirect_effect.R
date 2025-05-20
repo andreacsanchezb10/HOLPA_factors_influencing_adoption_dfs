@@ -76,7 +76,6 @@ dim(per_household_shock_recover_capacity_redundantFiltered)#200 farmers; 1 outco
 #[1] 200 105
 names(per_household_shock_recover_capacity_redundantFiltered)
 
-
 ##=== Run for governance_capacity ====
 per_governance_capacity_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_governance_capacity",per_data_analysis )
 dim(per_governance_capacity_redundantFiltered)#200 farmers; 1 outcomes, 79 factors retained
@@ -601,8 +600,8 @@ per_household_shock_recover_capacity_acc_cf<- read.csv("results/indirect/per/per
 plot_accuracy_vs_features(per_household_shock_recover_capacity_acc_ff,
                           per_household_shock_recover_capacity_acc_rf, 
                           per_household_shock_recover_capacity_acc_cf,
-                          method_name = "A) Peru: Household recovery recovery capacity from shocks",17,12)
-#1600*1000
+                          method_name = "Dependent variable: Household recovery recovery capacity from shocks",17,12)
+#11.5*9.5 pdf landscape
 
 per_household_shock_recover_capacity_selectFactors_cf<- read.csv("results/indirect/per/per_household_shock_recover_capacity_featureSelectedCForest.csv",sep=",") 
 per_household_shock_recover_capacity_selectFactors_ff<- read.csv("results/indirect/per/per_household_shock_recover_capacity_featureSelectedFuzzyForest.csv",sep=",") 
