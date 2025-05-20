@@ -486,7 +486,7 @@ selected_factors_freq <- function(select_factors_cf,select_factors_ff, select_fa
   
 }
 
-##=== Run for DFS adoption binary ====
+##=== Run for Ucayali (Peru) ====
 per_data_numeric <- prepare_numeric_matrix(per_data_redundantFiltered)
 sft <- run_soft_threshold(per_data_numeric, dataset_name = "per_data_redundantFiltered")
 per_picked_power <- 8  # Optionally automate this later
@@ -495,7 +495,8 @@ per_adoptionBinary <- per_data_redundantFiltered$dfs_adoption_binary
 per_factors <- per_data_redundantFiltered %>% select(-dfs_adoption_binary)
 
 time_taken <- system.time({
-  per_adoption_binary_results <- feature_selection_algorithms(per_factors, per_adoptionBinary, per_picked_power, file_name = "results/direct/per/per_adoption_binary")
+  per_adoption_binary_results <- feature_selection_algorithms(per_factors, per_adoptionBinary, per_picked_power, 
+                                                              file_name = "results/direct/per/per_adoption_binary")
 })
 
 # Plot accuracy vs number of selected factors
@@ -514,7 +515,7 @@ per_adoptionBinary_selectFactors_rf<- read.csv("results/direct/per/per_adoption_
 per_adoptionBinary_selectedFactors_freq<-selected_factors_freq(per_adoptionBinary_selectFactors_cf,
                                                                per_adoptionBinary_selectFactors_ff,
                                                                per_adoptionBinary_selectFactors_rf)
-write.csv(per_adoptionBinary_selectedFactors_freq, "results/direct/per_adoption_binary_selectedFactors_freq.csv")
+write.csv(per_adoptionBinary_selectedFactors_freq, "results/direct/per/per_adoption_binary_selectedFactors_freq.csv")
 
 ## Extract the best 13 factors
 per_adoptionBinary_selectedFactors<-per_adoptionBinary_selectedFactors_freq%>%
@@ -522,7 +523,7 @@ per_adoptionBinary_selectedFactors<-per_adoptionBinary_selectedFactors_freq%>%
   slice_max(order_by = frequency, n = 13)%>%
   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
-write.csv(per_adoptionBinary_selectedFactors, "results/direct/per_adoption_binary_selectedFactors.csv")
+write.csv(per_adoptionBinary_selectedFactors, "results/direct/per/per_adoption_binary_selectedFactors.csv")
 
 # Select only the selected factors from database
 per_data_adoptionBinary_selectedFactors<- per_data_analysis%>%
@@ -531,7 +532,7 @@ per_data_adoptionBinary_selectedFactors<- per_data_analysis%>%
   
 dim(per_data_adoptionBinary_selectedFactors)#[1] 200   14 variables; 13 factors
 
-write.csv(per_data_adoptionBinary_selectedFactors, "results/direct/per_data_adoption_binary_selectedFactors.csv")
+write.csv(per_data_adoptionBinary_selectedFactors, "results/direct/per/per_data_adoption_binary_selectedFactors.csv")
 
 create_cor_df <- function(data,selected_factors) {
   data_num<-data %>% 

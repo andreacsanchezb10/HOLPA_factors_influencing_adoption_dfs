@@ -601,7 +601,7 @@ per_household_shock_recover_capacity_acc_cf<- read.csv("results/indirect/per/per
 plot_accuracy_vs_features(per_household_shock_recover_capacity_acc_ff,
                           per_household_shock_recover_capacity_acc_rf, 
                           per_household_shock_recover_capacity_acc_cf,
-                          method_name = "A) Peru: Household recovery recovery capacity from shocks",13,12)
+                          method_name = "A) Peru: Household recovery recovery capacity from shocks",17,12)
 #1600*1000
 
 per_household_shock_recover_capacity_selectFactors_cf<- read.csv("results/indirect/per/per_household_shock_recover_capacity_featureSelectedCForest.csv",sep=",") 
@@ -613,10 +613,10 @@ per_household_shock_recover_capacity_selectedFactors_freq<-selected_factors_freq
                                                                                  per_household_shock_recover_capacity_selectFactors_rf)
 write.csv(per_household_shock_recover_capacity_selectedFactors_freq, "results/indirect/per/per_household_shock_recover_capacity_selectedFactors_freq.csv")
 
-## Extract the best 5 factors
+## Extract the best 17 factors
 per_household_shock_recover_capacity_selectedFactors<-per_household_shock_recover_capacity_selectedFactors_freq%>%
-  filter(NumFeatures=="featNum10")%>%
-  slice_max(order_by = frequency, n = 10)%>%
+  filter(NumFeatures=="featNum17")%>%
+  slice_max(order_by = frequency, n = 17)%>%
   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
 write.csv(per_household_shock_recover_capacity_selectedFactors, "results/indirect/per/per_household_shock_recover_capacity_selectedFactors.csv")
