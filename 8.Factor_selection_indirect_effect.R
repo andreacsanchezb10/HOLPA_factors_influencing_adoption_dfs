@@ -76,18 +76,19 @@ dim(per_household_shock_recover_capacity_redundantFiltered)#200 farmers; 1 outco
 #[1] 200 104
 names(per_household_shock_recover_capacity_redundantFiltered)
 
-##=== Run for governance_capacity ====
-per_governance_capacity_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_governance_capacity",per_data_analysis )
-dim(per_governance_capacity_redundantFiltered)#200 farmers; 1 outcomes, 79 factors retained
-#[1] 200  80
-names(per_governance_capacity_redundantFiltered)
-
 ##=== Run for training_participation ====
 per_training_participation_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_training_participation",per_data_analysis )
   select(-governance_capacity)
-dim(per_training_participation_redundantFiltered)#200 farmers; 1 outcomes, 30 factors retained
-#[1] 200  31
+dim(per_training_participation_redundantFiltered)#200 farmers; 1 outcomes, 29 factors retained
+#[1] 200  30
 names(per_training_participation_redundantFiltered)
+##=== Run for influence_nr_frequency ====
+per_influence_nr_frequency_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_influence_nr_frequency",
+                                                             per_data_analysis )
+dim(per_influence_nr_frequency_redundantFiltered)#200 farmers; 1 outcomes, 74 factors retained
+#[1] 200  75
+names(per_influence_nr_frequency_redundantFiltered)
+
 
 ##=== STEP 4: CHECK FOR CORRELATION ACROSS FACTORS ======
 # Function to calculate Spearman's correlation
@@ -647,73 +648,6 @@ create_cor_df <- function(data,selected_factors) {
 per_data_household_shock_recover_capacity_selected_factors_cor<-create_cor_df(per_household_shock_recover_capacity_redundantFiltered,per_household_shock_recover_capacity_selectedFactors)
 
 
-##=== Run for governance_capacity ====
-per_data_governance_capacity_numeric <- prepare_numeric_matrix(per_governance_capacity_redundantFiltered)
-sft_data_governance_capacity <- run_soft_threshold(per_data_governance_capacity_numeric, dataset_name = "per_data_nzvFiltered")
-per_data_governance_capacity_picked_power <- 7  # Optionally automate this later
-
-per_governance_capacity <- per_governance_capacity_redundantFiltered$influence_nr_frequency
-
-per_governance_capacity
-per_governance_capacity_factors <- per_governance_capacity_redundantFiltered %>% select(-influence_nr_frequency)
-per_governance_capacity_factors
-
-per_governance_capacity_results <- feature_selection_continuous_algorithms(
-  per_governance_capacity_factors, per_governance_capacity,
-  per_data_governance_capacity_picked_power, file_name = "indirect/per/per_influence_nr_frequency")
-
-# Plot accuracy vs number of selected factors
-per_governance_capacity_acc_ff<- read.csv("results/indirect/per/per_influence_nr_frequency_accValAllFuzzyForest.csv",sep=",") 
-per_governance_capacity_acc_rf<- read.csv("results/indirect/per/per_influence_nr_frequency_accValAllRandomForest.csv",sep=",") 
-per_governance_capacity_acc_cf<- read.csv("results/indirect/per/per_influence_nr_frequency_accValAllCForest.csv",sep=",") 
-
-plot_accuracy_vs_features(per_governance_capacity_acc_ff,per_governance_capacity_acc_rf, per_governance_capacity_acc_cf,
-                          method_name = "A) Peru: Governance capacity",6)
-#1600*1000
-
-per_governance_capacity_selectFactors_cf<- read.csv("results/indirect/per/per_influence_nr_frequency_featureSelectedCForest.csv",sep=",") 
-per_governance_capacity_selectFactors_ff<- read.csv("results/indirect/per/per_influence_nr_frequency_featureSelectedFuzzyForest.csv",sep=",") 
-per_governance_capacity_selectFactors_rf<- read.csv("results/indirect/per/per_influence_nr_frequency_featureSelectedRandomForest.csv",sep=",") 
-
-per_governance_capacity_selectedFactors_freq<-selected_factors_freq(per_governance_capacity_selectFactors_cf,
-                                                               per_governance_capacity_selectFactors_ff,
-                                                               per_governance_capacity_selectFactors_rf)
-write.csv(per_governance_capacity_selectedFactors_freq, "results/indirect/per/per_influence_nr_selectedFactors_freq.csv")
-
-## Extract the best 60 factors
-per_governance_capacity_selectedFactors<-per_governance_capacity_selectedFactors_freq%>%
-  filter(NumFeatures=="featNum10")%>%
-  slice_max(order_by = frequency, n =10)%>%
-  left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
-
-write.csv(per_governance_capacity_selectedFactors, "results/indirect/per/per_influence_nr_selectedFactors.csv")
-
-# Select only the selected factors from database
-
-per_data_governance_capacity_selectedFactors<- per_data_analysis%>%
-  select(dfs_adoption_binary,
-         all_of(per_adoptionBinary_selectedFactors$selected_factors))
-
-dim(per_data_governance_capacity_selectedFactors)#[1] 200   24; 23 factors
-
-write.csv(per_data_governance_capacity_selectedFactors, "results/indirect/per_data_influence_nr_selectedFactors.csv")
-
-create_cor_df <- function(data,selected_factors) {
-  data_num<-data %>% 
-    mutate(across(everything(), as.numeric))%>%
-    select(all_of(per_adoptionBinary_selectedFactors$selected_factors))
-  
-  cor_matrix <- cor(data_num,
-                    method = "spearman", use = "pairwise.complete.obs")
-  
-  cor_df <- as.data.frame(cor_matrix) %>%
-    rownames_to_column("factor1") %>%
-    tidyr::pivot_longer(-factor1, names_to = "factor2", values_to = "spearman_correlation")
-  
-  return(cor_df)
-}
-per_data_selected_factors_cor<-create_cor_df(per_data_redundantFiltered,per_adoptionBinary_selectedFactors)
-
 ##=== Run for training_participation ====
 per_data_training_participation_numeric <- prepare_numeric_matrix(per_training_participation_redundantFiltered)
 sft_data_training_participation <- run_soft_threshold(per_data_training_participation_numeric, dataset_name = "per_data_nzvFiltered")
@@ -748,13 +682,13 @@ per_training_participation_selectedFactors_freq<-selected_factors_freq(per_train
   per_training_participation_selectFactors_rf)
 write.csv(per_training_participation_selectedFactors_freq, "results/indirect/per/per_training_participation_selectedFactors_freq.csv")
 
-## Extract the best 60 factors
+## Extract the best 15 factors
 per_training_participation_selectedFactors<-per_training_participation_selectedFactors_freq%>%
   filter(NumFeatures=="featNum15")%>%
   slice_max(order_by = frequency, n = 15)%>%
   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
-write.csv(per_training_participation_selectedFactors, "results/per_training_participation_selectedFactors.csv")
+write.csv(per_training_participation_selectedFactors, "results/indirect/per/per_training_participation_selectedFactors.csv")
 
 # Select only the selected factors from database
 
@@ -784,3 +718,72 @@ per_data_selected_factors_cor<-create_cor_df(per_data_redundantFiltered,per_adop
 
 fills <- c("#f0c602","#F09319", "#ea6044","#d896ff","#6a57b8",  "#87CEEB", "#496491", "#92c46d", "#92c46d","#92c46d","#297d7d") #
  "#602058"
+
+ ##=== Run for influence_nr_frequency ====
+ per_data_influence_nr_frequency_numeric <- prepare_numeric_matrix(per_influence_nr_frequency_redundantFiltered)
+ sft_data_influence_nr_frequency <- run_soft_threshold(per_data_governance_capacity_numeric, dataset_name = "per_data_nzvFiltered")
+ per_data_influence_nr_frequency_picked_power <- 7  # Optionally automate this later
+ 
+ per_influence_nr_frequency <- per_influence_nr_frequency_redundantFiltered$influence_nr_frequency
+ 
+ per_influence_nr_frequency
+ per_influence_nr_frequency_factors <- per_influence_nr_frequency_redundantFiltered %>% select(-influence_nr_frequency)
+ per_influence_nr_frequency_factors
+ 
+ per_influence_nr_frequency_results <- feature_selection_continuous_algorithms(
+   per_governance_capacity_factors, per_governance_capacity,
+   per_data_governance_capacity_picked_power, file_name = "indirect/per/per_influence_nr_frequency")
+ 
+ # Plot accuracy vs number of selected factors
+ per_influence_nr_frequency_acc_ff<- read.csv("results/indirect/per/per_influence_nr_frequency_accValAllFuzzyForest.csv",sep=",") 
+ per_influence_nr_frequency_acc_rf<- read.csv("results/indirect/per/per_influence_nr_frequency_accValAllRandomForest.csv",sep=",") 
+ per_influence_nr_frequency_acc_cf<- read.csv("results/indirect/per/per_influence_nr_frequency_accValAllCForest.csv",sep=",") 
+ 
+ plot_accuracy_vs_features(per_influence_nr_frequency_acc_ff,per_influence_nr_frequency_acc_rf, per_influence_nr_frequency_acc_cf,
+                           method_name = "A) Dependent variable: influence_nr_frequency",10,9)
+ #1600*1000
+ 
+ per_influence_nr_frequency_selectFactors_cf<- read.csv("results/indirect/per/per_influence_nr_frequency_featureSelectedCForest.csv",sep=",") 
+ per_influence_nr_frequency_selectFactors_ff<- read.csv("results/indirect/per/per_influence_nr_frequency_featureSelectedFuzzyForest.csv",sep=",") 
+ per_influence_nr_frequency_selectFactors_rf<- read.csv("results/indirect/per/per_influence_nr_frequency_featureSelectedRandomForest.csv",sep=",") 
+ 
+ per_influence_nr_frequency_selectedFactors_freq<-selected_factors_freq(per_influence_nr_frequency_selectFactors_cf,
+                                                                     per_influence_nr_frequency_selectFactors_ff,
+                                                                     per_influence_nr_frequency_selectFactors_rf)
+ write.csv(per_influence_nr_frequency_selectedFactors_freq, "results/indirect/per/per_influence_nr_selectedFactors_freq.csv")
+ 
+ ## Extract the best 60 factors
+ per_influence_nr_frequencyy_selectedFactors<-per_influence_nr_frequency_selectedFactors_freq%>%
+   filter(NumFeatures=="featNum10")%>%
+   slice_max(order_by = frequency, n =10)%>%
+   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
+ 
+ write.csv(per_influence_nr_frequency_selectedFactors, "results/indirect/per/per_influence_nr_selectedFactors.csv")
+ 
+ # Select only the selected factors from database
+ 
+ per_data_governance_capacity_selectedFactors<- per_data_analysis%>%
+   select(dfs_adoption_binary,
+          all_of(per_adoptionBinary_selectedFactors$selected_factors))
+ 
+ dim(per_data_governance_capacity_selectedFactors)#[1] 200   24; 23 factors
+ 
+ write.csv(per_data_governance_capacity_selectedFactors, "results/indirect/per_data_influence_nr_selectedFactors.csv")
+ 
+ create_cor_df <- function(data,selected_factors) {
+   data_num<-data %>% 
+     mutate(across(everything(), as.numeric))%>%
+     select(all_of(per_adoptionBinary_selectedFactors$selected_factors))
+   
+   cor_matrix <- cor(data_num,
+                     method = "spearman", use = "pairwise.complete.obs")
+   
+   cor_df <- as.data.frame(cor_matrix) %>%
+     rownames_to_column("factor1") %>%
+     tidyr::pivot_longer(-factor1, names_to = "factor2", values_to = "spearman_correlation")
+   
+   return(cor_df)
+ }
+ per_data_selected_factors_cor<-create_cor_df(per_data_redundantFiltered,per_adoptionBinary_selectedFactors)
+ 
+ 
