@@ -601,7 +601,7 @@ per_household_shock_recover_capacity_acc_cf<- read.csv("results/indirect/per/per
 plot_accuracy_vs_features(per_household_shock_recover_capacity_acc_ff,
                           per_household_shock_recover_capacity_acc_rf, 
                           per_household_shock_recover_capacity_acc_cf,
-                          method_name = "Dependent variable: Household recovery recovery capacity from shocks",17,12)
+                          method_name = "Dependent variable: Household recovery recovery capacity from shocks",13,12)
 #11.5*7.5 pdf landscape
 
 per_household_shock_recover_capacity_selectFactors_cf<- read.csv("results/indirect/per/per_household_shock_recover_capacity_featureSelectedCForest.csv",sep=",") 
@@ -615,8 +615,8 @@ write.csv(per_household_shock_recover_capacity_selectedFactors_freq, "results/in
 
 ## Extract the best 17 factors
 per_household_shock_recover_capacity_selectedFactors<-per_household_shock_recover_capacity_selectedFactors_freq%>%
-  filter(NumFeatures=="featNum17")%>%
-  slice_max(order_by = frequency, n = 17)%>%
+  filter(NumFeatures=="featNum13")%>%
+  slice_max(order_by = frequency, n = 13)%>%
   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
 write.csv(per_household_shock_recover_capacity_selectedFactors, "results/indirect/per/per_household_shock_recover_capacity_selectedFactors.csv")
