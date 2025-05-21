@@ -7,29 +7,34 @@ factors_list_analysis<-read_excel("factors_list.xlsx",sheet = "factors_list_anal
 
 per_structural_model<-read_excel("factors_list.xlsx",sheet = "structural_model")
 
-per_data_clean<- read.csv("per_data_Binary.csv",sep=",")
+per_data_clean<- read.csv("per_data_Binary.csv",sep=",")%>%
+  dplyr::select(-X)
 
-per_adoptionBinary_selectedFactors<- read.csv("results/direct/per_adoption_binary_selectedFactors.csv",sep=",")%>%
-  rename("column_name_new"="selected_factors")%>%
-  left_join(factors_list_analysis%>%select(constructs,constructs_type,weights,column_name_new),by="column_name_new")
-  dplyr::select(constructs, column_name_new,factor, constructs, constructs_type,weights)
- 
- 
-sort(unique(per_adoptionBinary_selectedFactors$constructs))
+per_selectedFactors<- rbind(
+  read.csv("results/direct/per/per_adoption_binary_selectedFactors.csv",sep=","),
+  read.csv("results/indirect/per/per_household_shock_recover_capacity_selectedFactors.csv",sep=","),
+  read.csv("results/indirect/per/per_influence_nr_selectedFactors.csv",sep=","),
+  read.csv("results/indirect/per/per_training_participation_selectedFactors.csv",sep=","))%>%
+  rename("column_name_new"="selected_factors")
 
+length(per_selectedFactors$column_name_new) #47
+
+per_selectedFactors<-per_selectedFactors%>%distinct(column_name_new, .keep_all = TRUE)
+length(per_selectedFactors$column_name_new) #35
+sort(per_selectedFactors$column_name_new) #35
 
 #############################################################    
 ########## SELECTED FACTORS #####-----
 #############################################################
 ##=== Select most important factors ----
-per_data_adoptionBinary_analysis<- read.csv("results/direct/per_data_adoption_binary_selectedFactors.csv",sep=",")%>%
-  dplyr::select(-X)
+per_data_analysis<- per_data_clean%>%
+  dplyr::select(all_of(per_selectedFactors$column_name_new),dfs_adoption_binary)
 
-names(per_data_adoptionBinary_analysis)
-str(per_data_adoptionBinary_analysis)
-dim(per_data_adoptionBinary_analysis)#[1] 200   24
-summary(per_data_adoptionBinary_analysis)
-describe(per_data_adoptionBinary_analysis)
+names(per_data_analysis)
+str(per_data_analysis)
+dim(per_data_analysis)#[1] 200   36
+summary(per_data_analysis)
+describe(per_data_analysis)
 
 
 library(tidyr)
@@ -97,7 +102,7 @@ summary_stats_factor <- function(df,factor_valid_columns,categorical_choices,fac
 ########## SUMMARY STATISTICS #####-----
 #############################################################
 ##=== ADOPTION BINARY OUTCOME ====
-per_data_adoptionBinary_outcome<- per_data_adoptionBinary_analysis%>%
+per_dfs_adoption<- per_data_analysis%>%
   select(dfs_adoption_binary)%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))%>%
   pivot_longer(
@@ -114,23 +119,20 @@ per_data_adoptionBinary_outcome<- per_data_adoptionBinary_analysis%>%
     TRUE~"NA")) %>%
     arrange(factor(practice_clean, levels = c("Total")))
 
-levels_m_dp_recla<- c("Total", "Homegarden", "Hedgerows",
-                      "Fallow","Embedded seminatural habitats",
-                      "Crop rotation","Cover crops","Intercropping", "Agroforestry")
 
-
-ggplot(per_data_adoptionBinary_outcome, aes(x = percent_farmers,y= factor(practice_clean, levels_m_dp_recla), fill = factor(adoption))) +
-  geom_col(position = "stack") + 
+ggplot(per_dfs_adoption, aes(x = percent_farmers,y= factor(adoption), fill = factor(adoption))) +
+  geom_bar(stat="identity", position=position_dodge())+
   scale_fill_manual(values = c("0" = "grey70", "1" = "forestgreen"),
                   labels = c("Not-dopters", "Adopters"),
                   name = "Adoption status") +
   scale_x_continuous(expand = c(0, 0),limits = c(0,100),
                      breaks = c(0,20,40,60,80,100,120,140,160,180,200)) +
-  labs(x = "Number of farmers",
+  labs(x = "Percentage of farmers",
        y = "")+
   theme(
-    panel.grid.major = element_blank(), 
+    #panel.grid.major = element_blank(), 
     panel.grid.minor = element_blank(),
+    panel.grid.major.x  = element_line(color = "grey85",size = 0.6),
     axis.text.y =element_text(color="black",size=13, family = "sans"),
     axis.text.x=element_text(color="black",size=13, family = "sans"),
     axis.title =element_text(color="black",size=15, face = "bold",family = "sans"),
@@ -146,10 +148,10 @@ ggplot(per_data_adoptionBinary_outcome, aes(x = percent_farmers,y= factor(practi
   #landscape 9.73*8.89
 ##=== SELECTED FACTORS ====
 #--- Numerical factors -----
-columns_numeric <- intersect(factors_list_analysis$column_name_new[factors_list_analysis$metric_type %in% c("continuous","categorical")], colnames(per_data_adoptionBinary_analysis))
-print(columns_numeric)  # Check if it holds expected values
+per_columns_numeric <- intersect(factors_list_analysis$column_name_new[factors_list_analysis$metric_type %in% c("continuous","categorical")], colnames(per_data_analysis))
+print(per_columns_numeric)  # Check if it holds expected values
 
-per_summary_numerical <- summary_stats_num(per_data_adoptionBinary_analysis,columns_numeric,factors_list_analysis)%>%
+per_summary_numerical <- summary_stats_num(per_data_analysis,per_columns_numeric,factors_list_analysis)%>%
   mutate(mean=round(mean,1),
          sd=round(sd,1),
          min=round(min,2),
@@ -171,17 +173,17 @@ per_categorical_choices<-per_global_choices%>%
 
 ### For factor and binary variables
 #(select_one)
-columns_factor_so <- intersect(factors_list_analysis$column_name_new[factors_list_analysis$metric_type %in%c("binary")], colnames(per_data_adoptionBinary_analysis))
-print(columns_factor_so)  # Check if it holds expected values
+per_columns_factor_so <- intersect(factors_list_analysis$column_name_new[factors_list_analysis$metric_type %in%c("binary")], colnames(per_data_analysis))
+print(per_columns_factor_so)  # Check if it holds expected values
 
 #(select_multiple)
 #columns_factor_sm <- intersect(per_categorical_choices$column_name_new2[per_categorical_choices$type_question %in%c("select_multiple")], colnames(per_data_adoptionBinary_analysis))
 #print(columns_factor_sm)  # Check if it holds expected values
 
-columns_factor<-c(columns_factor_so, columns_factor_sm)
-print(columns_factor)  # Check if it holds expected values
+per_columns_factor<-c(per_columns_factor_so, columns_factor_sm)
+print(per_columns_factor)  # Check if it holds expected values
 
-per_summary_categorical <- summary_stats_factor(per_data_adoptionBinary_analysis,columns_factor_so,per_categorical_choices,factors_list_analysis)%>%
+per_summary_categorical <- summary_stats_factor(per_data_analysis,per_columns_factor_so,per_categorical_choices,factors_list_analysis)%>%
   mutate(name_label= paste0(name_choice,": ",label_choice),
          statistic= paste0(Count," (",Percentage,"%)"))%>%
   select(category_1,factor,name_label,statistic)%>%
@@ -190,5 +192,5 @@ sort(unique(per_summary_categorical$factor))
 
 print(per_summary_categorical)  # Check if it holds expected values
 sort(unique(per_summary_categorical$factor))
-write.csv(per_summary_categorical,"results/direct/per_summary_selectedFactors.csv",row.names=FALSE)
+write.csv(per_summary_categorical,"results/per_summary_selectedFactors.csv",row.names=FALSE)
 
