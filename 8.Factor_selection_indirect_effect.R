@@ -85,8 +85,8 @@ names(per_training_participation_redundantFiltered)
 ##=== Run for influence_nr_frequency ====
 per_influence_nr_frequency_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_influence_nr_frequency",
                                                              per_data_analysis )
-dim(per_influence_nr_frequency_redundantFiltered)#200 farmers; 1 outcomes, 74 factors retained
-#[1] 200  75
+dim(per_influence_nr_frequency_redundantFiltered)#200 farmers; 1 outcomes, 69 factors retained
+#[1] 200  70
 names(per_influence_nr_frequency_redundantFiltered)
 
 
@@ -719,20 +719,19 @@ per_data_selected_factors_cor<-create_cor_df(per_data_redundantFiltered,per_adop
 fills <- c("#f0c602","#F09319", "#ea6044","#d896ff","#6a57b8",  "#87CEEB", "#496491", "#92c46d", "#92c46d","#92c46d","#297d7d") #
  "#602058"
 
- ##=== Run for influence_nr_frequency ====
- per_data_influence_nr_frequency_numeric <- prepare_numeric_matrix(per_influence_nr_frequency_redundantFiltered)
- sft_data_influence_nr_frequency <- run_soft_threshold(per_data_governance_capacity_numeric, dataset_name = "per_data_nzvFiltered")
- per_data_influence_nr_frequency_picked_power <- 7  # Optionally automate this later
+##=== Run for influence_nr_frequency ====
+per_data_influence_nr_frequency_numeric <- prepare_numeric_matrix(per_influence_nr_frequency_redundantFiltered)
+sft_data_influence_nr_frequency <- run_soft_threshold(per_data_influence_nr_frequency_numeric, dataset_name = "per_data_nzvFiltered")
+per_data_influence_nr_frequency_picked_power <- 7  # Optionally automate this later
  
- per_influence_nr_frequency <- per_influence_nr_frequency_redundantFiltered$influence_nr_frequency
+per_influence_nr_frequency <- per_influence_nr_frequency_redundantFiltered$influence_nr_frequency
+per_influence_nr_frequency
+per_influence_nr_frequency_factors <- per_influence_nr_frequency_redundantFiltered %>% select(-influence_nr_frequency)
+per_influence_nr_frequency_factors
  
- per_influence_nr_frequency
- per_influence_nr_frequency_factors <- per_influence_nr_frequency_redundantFiltered %>% select(-influence_nr_frequency)
- per_influence_nr_frequency_factors
- 
- per_influence_nr_frequency_results <- feature_selection_continuous_algorithms(
-   per_governance_capacity_factors, per_governance_capacity,
-   per_data_governance_capacity_picked_power, file_name = "indirect/per/per_influence_nr_frequency")
+per_influence_nr_frequency_results <- feature_selection_continuous_algorithms(
+  per_influence_nr_frequency_factors, per_influence_nr_frequency,
+  per_data_influence_nr_frequency_picked_power, file_name = "indirect/per/per_influence_nr_frequency")
  
  # Plot accuracy vs number of selected factors
  per_influence_nr_frequency_acc_ff<- read.csv("results/indirect/per/per_influence_nr_frequency_accValAllFuzzyForest.csv",sep=",") 
