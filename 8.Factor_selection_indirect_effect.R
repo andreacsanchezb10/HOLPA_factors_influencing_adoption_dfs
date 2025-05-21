@@ -739,7 +739,7 @@ per_influence_nr_frequency_results <- feature_selection_continuous_algorithms(
  per_influence_nr_frequency_acc_cf<- read.csv("results/indirect/per/per_influence_nr_frequency_accValAllCForest.csv",sep=",") 
  
  plot_accuracy_vs_features(per_influence_nr_frequency_acc_ff,per_influence_nr_frequency_acc_rf, per_influence_nr_frequency_acc_cf,
-                           method_name = "A) Dependent variable: influence_nr_frequency",10,9)
+                           method_name = "Dependent variable: influence_nr_frequency",10,9)
  #1600*1000
  
  per_influence_nr_frequency_selectFactors_cf<- read.csv("results/indirect/per/per_influence_nr_frequency_featureSelectedCForest.csv",sep=",") 
