@@ -85,8 +85,8 @@ names(per_training_participation_redundantFiltered)
 ##=== Run for influence_nr_frequency ====
 per_influence_nr_frequency_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_influence_nr_frequency",
                                                              per_data_analysis )
-dim(per_influence_nr_frequency_redundantFiltered)#200 farmers; 1 outcomes, 74 factors retained
-#[1] 200  75
+dim(per_influence_nr_frequency_redundantFiltered)#200 farmers; 1 outcomes, 69 factors retained
+#[1] 200  70
 names(per_influence_nr_frequency_redundantFiltered)
 
 
@@ -601,7 +601,7 @@ per_household_shock_recover_capacity_acc_cf<- read.csv("results/indirect/per/per
 plot_accuracy_vs_features(per_household_shock_recover_capacity_acc_ff,
                           per_household_shock_recover_capacity_acc_rf, 
                           per_household_shock_recover_capacity_acc_cf,
-                          method_name = "Dependent variable: Household recovery recovery capacity from shocks",17,12)
+                          method_name = "Dependent variable: Household recovery recovery capacity from shocks",13,12)
 #11.5*7.5 pdf landscape
 
 per_household_shock_recover_capacity_selectFactors_cf<- read.csv("results/indirect/per/per_household_shock_recover_capacity_featureSelectedCForest.csv",sep=",") 
@@ -615,8 +615,8 @@ write.csv(per_household_shock_recover_capacity_selectedFactors_freq, "results/in
 
 ## Extract the best 17 factors
 per_household_shock_recover_capacity_selectedFactors<-per_household_shock_recover_capacity_selectedFactors_freq%>%
-  filter(NumFeatures=="featNum17")%>%
-  slice_max(order_by = frequency, n = 17)%>%
+  filter(NumFeatures=="featNum13")%>%
+  slice_max(order_by = frequency, n = 13)%>%
   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
 write.csv(per_household_shock_recover_capacity_selectedFactors, "results/indirect/per/per_household_shock_recover_capacity_selectedFactors.csv")
@@ -720,19 +720,24 @@ fills <- c("#f0c602","#F09319", "#ea6044","#d896ff","#6a57b8",  "#87CEEB", "#496
  "#602058"
 
 ##=== Run for influence_nr_frequency ====
+<<<<<<< HEAD
  per_data_influence_nr_frequency_numeric <- prepare_numeric_matrix(per_influence_nr_frequency_redundantFiltered)
  sft_data_influence_nr_frequency <- run_soft_threshold(per_data_governance_capacity_numeric, dataset_name = "per_data_nzvFiltered")
  per_data_influence_nr_frequency_picked_power <- 7  # Optionally automate this later
+=======
+per_data_influence_nr_frequency_numeric <- prepare_numeric_matrix(per_influence_nr_frequency_redundantFiltered)
+sft_data_influence_nr_frequency <- run_soft_threshold(per_data_influence_nr_frequency_numeric, dataset_name = "per_data_nzvFiltered")
+per_data_influence_nr_frequency_picked_power <- 7  # Optionally automate this later
+>>>>>>> aa947bdbb22d410efe224e1953be4b75a58888ea
  
- per_influence_nr_frequency <- per_influence_nr_frequency_redundantFiltered$influence_nr_frequency
+per_influence_nr_frequency <- per_influence_nr_frequency_redundantFiltered$influence_nr_frequency
+per_influence_nr_frequency
+per_influence_nr_frequency_factors <- per_influence_nr_frequency_redundantFiltered %>% select(-influence_nr_frequency)
+per_influence_nr_frequency_factors
  
- per_influence_nr_frequency
- per_influence_nr_frequency_factors <- per_influence_nr_frequency_redundantFiltered %>% select(-influence_nr_frequency)
- per_influence_nr_frequency_factors
- 
- per_influence_nr_frequency_results <- feature_selection_continuous_algorithms(
-   per_governance_capacity_factors, per_governance_capacity,
-   per_data_governance_capacity_picked_power, file_name = "indirect/per/per_influence_nr_frequency")
+per_influence_nr_frequency_results <- feature_selection_continuous_algorithms(
+  per_influence_nr_frequency_factors, per_influence_nr_frequency,
+  per_data_influence_nr_frequency_picked_power, file_name = "indirect/per/per_influence_nr_frequency")
  
  # Plot accuracy vs number of selected factors
  per_influence_nr_frequency_acc_ff<- read.csv("results/indirect/per/per_influence_nr_frequency_accValAllFuzzyForest.csv",sep=",") 
