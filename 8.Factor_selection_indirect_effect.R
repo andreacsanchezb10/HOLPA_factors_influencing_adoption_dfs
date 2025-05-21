@@ -720,16 +720,10 @@ fills <- c("#f0c602","#F09319", "#ea6044","#d896ff","#6a57b8",  "#87CEEB", "#496
  "#602058"
 
 ##=== Run for influence_nr_frequency ====
-<<<<<<< HEAD
- per_data_influence_nr_frequency_numeric <- prepare_numeric_matrix(per_influence_nr_frequency_redundantFiltered)
- sft_data_influence_nr_frequency <- run_soft_threshold(per_data_governance_capacity_numeric, dataset_name = "per_data_nzvFiltered")
- per_data_influence_nr_frequency_picked_power <- 7  # Optionally automate this later
-=======
 per_data_influence_nr_frequency_numeric <- prepare_numeric_matrix(per_influence_nr_frequency_redundantFiltered)
 sft_data_influence_nr_frequency <- run_soft_threshold(per_data_influence_nr_frequency_numeric, dataset_name = "per_data_nzvFiltered")
 per_data_influence_nr_frequency_picked_power <- 7  # Optionally automate this later
->>>>>>> aa947bdbb22d410efe224e1953be4b75a58888ea
- 
+
 per_influence_nr_frequency <- per_influence_nr_frequency_redundantFiltered$influence_nr_frequency
 per_influence_nr_frequency
 per_influence_nr_frequency_factors <- per_influence_nr_frequency_redundantFiltered %>% select(-influence_nr_frequency)
@@ -759,8 +753,8 @@ per_influence_nr_frequency_results <- feature_selection_continuous_algorithms(
  
  ## Extract the best 60 factors
  per_influence_nr_frequencyy_selectedFactors<-per_influence_nr_frequency_selectedFactors_freq%>%
-   filter(NumFeatures=="featNum10")%>%
-   slice_max(order_by = frequency, n =10)%>%
+   filter(NumFeatures=="featNum19")%>%
+   slice_max(order_by = frequency, n =19)%>%
    left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
  
  write.csv(per_influence_nr_frequency_selectedFactors, "results/indirect/per/per_influence_nr_selectedFactors.csv")
