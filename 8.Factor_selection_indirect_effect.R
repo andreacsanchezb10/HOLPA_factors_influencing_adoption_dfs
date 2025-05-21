@@ -670,8 +670,8 @@ per_training_participation_acc_rf<- read.csv("results/indirect/per/per_training_
 per_training_participation_acc_cf<- read.csv("results/indirect/per/per_training_participation_accValAllCForest.csv",sep=",") 
 
 plot_accuracy_vs_features(per_training_participation_acc_ff,per_training_participation_acc_rf, per_training_participation_acc_cf,
-                          method_name = "A) Peru: Governance capacity",14,5)
-#1600*1000
+                          method_name = "A) Dependent variable: training participation",14,5)
+#11.5*7.5 pdf landscape
 
 per_training_participation_selectFactors_cf<- read.csv("results/indirect/per/per_training_participation_featureSelectedCForest.csv",sep=",") 
 per_training_participation_selectFactors_ff<- read.csv("results/indirect/per/per_training_participation_featureSelectedFuzzyForest.csv",sep=",") 
