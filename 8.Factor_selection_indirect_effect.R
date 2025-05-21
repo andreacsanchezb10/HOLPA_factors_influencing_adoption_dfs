@@ -670,7 +670,7 @@ per_training_participation_acc_rf<- read.csv("results/indirect/per/per_training_
 per_training_participation_acc_cf<- read.csv("results/indirect/per/per_training_participation_accValAllCForest.csv",sep=",") 
 
 plot_accuracy_vs_features(per_training_participation_acc_ff,per_training_participation_acc_rf, per_training_participation_acc_cf,
-                          method_name = "A) Peru: Governance capacity",15,5)
+                          method_name = "A) Peru: Governance capacity",14,5)
 #1600*1000
 
 per_training_participation_selectFactors_cf<- read.csv("results/indirect/per/per_training_participation_featureSelectedCForest.csv",sep=",") 
@@ -684,8 +684,8 @@ write.csv(per_training_participation_selectedFactors_freq, "results/indirect/per
 
 ## Extract the best 15 factors
 per_training_participation_selectedFactors<-per_training_participation_selectedFactors_freq%>%
-  filter(NumFeatures=="featNum15")%>%
-  slice_max(order_by = frequency, n = 15)%>%
+  filter(NumFeatures=="featNum14")%>%
+  slice_max(order_by = frequency, n = 14)%>%
   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
 write.csv(per_training_participation_selectedFactors, "results/indirect/per/per_training_participation_selectedFactors.csv")
@@ -719,7 +719,7 @@ per_data_selected_factors_cor<-create_cor_df(per_data_redundantFiltered,per_adop
 fills <- c("#f0c602","#F09319", "#ea6044","#d896ff","#6a57b8",  "#87CEEB", "#496491", "#92c46d", "#92c46d","#92c46d","#297d7d") #
  "#602058"
 
- ##=== Run for influence_nr_frequency ====
+##=== Run for influence_nr_frequency ====
  per_data_influence_nr_frequency_numeric <- prepare_numeric_matrix(per_influence_nr_frequency_redundantFiltered)
  sft_data_influence_nr_frequency <- run_soft_threshold(per_data_governance_capacity_numeric, dataset_name = "per_data_nzvFiltered")
  per_data_influence_nr_frequency_picked_power <- 7  # Optionally automate this later
