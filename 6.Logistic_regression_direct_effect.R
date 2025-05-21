@@ -44,15 +44,18 @@ create_cor_df <- function(data, factors_list_analysis) {
                     method = "spearman", use = "pairwise.complete.obs")
   
   cor_df <- as.data.frame(cor_matrix) %>%
-    rownames_to_column("factor1") 
+    rownames_to_column("factor1") %>%  # <- fixed pipe here
     pivot_longer(-factor1, names_to = "factor2", values_to = "spearman_correlation") %>%
-    left_join(factors_list_analysis %>% select(column_name_new, category_1), by = c("factor1" = "column_name_new")) %>%
+    left_join(factors_list_analysis %>% select(column_name_new, category_1),
+              by = c("factor1" = "column_name_new")) %>%
     rename(category_1.factor1 = category_1) %>%
-    left_join(factors_list_analysis %>% select(column_name_new, category_1), by = c("factor2" = "column_name_new")) %>%
+    left_join(factors_list_analysis %>% select(column_name_new, category_1),
+              by = c("factor2" = "column_name_new")) %>%
     rename(category_1.factor2 = category_1)
   
   return(cor_df)
 }
+
 
 
 plot_correlation_betw_category <- function(cor_df, factor_info_df) {
