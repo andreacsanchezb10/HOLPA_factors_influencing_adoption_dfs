@@ -135,7 +135,7 @@ ggplot(per_dfs_adoption, aes(x = percent_farmers,y= adoption_label, fill = facto
     #panel.grid.major = element_blank(), 
     panel.grid.minor = element_blank(),
     panel.grid.major.x  = element_line(color = "grey85",size = 0.6),
-    axis.text.y =element_text(color="black",size=13, family = "sans"),
+    axis.text.y =element_text(color="black",size=15, family = "sans"),
     axis.text.x=element_text(color="black",size=13, family = "sans"),
     axis.title =element_text(color="black",size=15, face = "bold",family = "sans"),
     panel.border = element_blank(),
@@ -144,10 +144,10 @@ ggplot(per_dfs_adoption, aes(x = percent_farmers,y= adoption_label, fill = facto
     axis.ticks.x=element_line(color="grey50", size= 1),
     legend.position = "none",
     panel.background = element_rect(fill = "white"),
-    plot.margin = unit(c(t=0.5,r=0.5,b=0.5,l=3), "cm"))
+    plot.margin = unit(c(t=0.5,r=0.5,b=0.5,l=0.5), "cm"))
 
-#930*850
-#landscape 9.73*8.89
+
+#landscape 12.17*7.48
 
 per_selectedFactors_direct<- rbind(
   read.csv("results/direct/per/per_adoption_binary_selectedFactors.csv",sep=","))%>%
@@ -182,7 +182,8 @@ per_selectedFactors_plot$category_1 <- factor(per_selectedFactors_plot$category_
 ))
 
 sort(unique(per_selectedFactors_plot$category_1))
-ggplot(per_selectedFactors_plot, aes(x = freq,y= factor(path), fill = factor(category_1))) +
+ggplot(per_selectedFactors_plot, aes(x = freq,y= factor(path), fill = factor(category_1),
+                                     color=factor(category_1))) +
   geom_bar(stat="identity")+
   scale_x_continuous(expand = c(0, 0),limits = c(0,40))+
   labs(x = "Number of predictors",
@@ -198,6 +199,17 @@ ggplot(per_selectedFactors_plot, aes(x = freq,y= factor(path), fill = factor(cat
                       "P&I_context_knowledge"="#92c46d",
                       "social_capital"= "#297d7d",
                       "vulnerability_context"= "#297d7d"))+
+  scale_color_manual(values=c("biophysical_context"= "#f0c602",
+                             "farm_management_characteristics"="#F09319",
+                             "farmers_behaviour"= "#ea6044",
+                             "financial_capital"="#d896ff",
+                             "natural_capital"=  "#87CEEB",
+                             "human_capital"="#6a57b8",
+                             "physical_capital"="#496491",
+                             "P&I_context_value_chain"="#92c46d",
+                             "P&I_context_knowledge"="#92c46d",
+                             "social_capital"= "#297d7d",
+                             "vulnerability_context"= "#297d7d"))+
   theme(
     #panel.grid.major = element_blank(), 
     panel.grid.minor = element_blank(),
@@ -209,11 +221,12 @@ ggplot(per_selectedFactors_plot, aes(x = freq,y= factor(path), fill = factor(cat
     axis.line = element_line(color="grey50", size= 1),
     axis.ticks.y=element_line(color="grey50", size= 1),
     axis.ticks.x=element_line(color="grey50", size= 1),
-    legend.position = "bottom",
+    legend.position = "none",
     
     panel.background = element_rect(fill = "white"),
     plot.margin = unit(c(t=0.5,r=0.5,b=0.5,l=0.5), "cm"))
   
+#landscape 12.17*10
 
 
 ##=== SELECTED FACTORS ====
