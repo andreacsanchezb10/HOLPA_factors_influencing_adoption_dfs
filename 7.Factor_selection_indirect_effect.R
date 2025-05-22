@@ -3,6 +3,7 @@ library(readxl)
 library(dplyr)
 library(caret)
 library(ggplot2)
+library(tibble)
 
 #############################################################    
 ########## UPLOAD DATA #####-----
@@ -158,17 +159,6 @@ str(per_household_shock_recover_capacity_redundantFiltered_cor)
 plot_correlation_betw_category(per_household_shock_recover_capacity_redundantFiltered_cor)
 
 
-##--- Run for governance_capacity----
-per_governance_capacity_factors_list <- as.data.frame(colnames(per_governance_capacity_redundantFiltered))%>%
-  rename("column_name_new"= "colnames(per_governance_capacity_redundantFiltered)")%>%
-  left_join(factors_list_analysis%>%select(column_name_new, category_1),by="column_name_new")%>%
-  filter(category_1!="outcome")
-
-per_per_governance_redundantFiltered_cor<-create_cor_df(per_governance_capacity_redundantFiltered,per_per_governance_capacity_factors_list)
-str(per_per_governance_redundantFiltered_cor)
-
-plot_correlation_betw_category(per_per_governance_redundantFiltered_cor)
-
 ##--- Run for training_participation ====
 per_training_participation_factors_list <- as.data.frame(colnames(per_training_participation_redundantFiltered))%>%
   rename("column_name_new"= "colnames(per_training_participation_redundantFiltered)")%>%
@@ -179,6 +169,18 @@ per_training_participation_redundantFiltered_cor<-create_cor_df(per_training_par
 str(per_training_participation_redundantFiltered_cor)
 
 plot_correlation_betw_category(per_training_participation_redundantFiltered_cor)
+
+##--- Run for governance_capacity----
+per_influence_nr_frequency_factors_list <- as.data.frame(colnames(per_influence_nr_frequency_redundantFiltered))%>%
+  rename("column_name_new"= "colnames(per_influence_nr_frequency_redundantFiltered)")%>%
+  left_join(factors_list_analysis%>%select(column_name_new, category_1),by="column_name_new")%>%
+  filter(category_1!="outcome")
+
+per_influence_nr_frequency_redundantFiltered_cor<-create_cor_df(per_influence_nr_frequency_redundantFiltered,per_influence_nr_frequency_factors_list)
+str(per_influence_nr_frequency_redundantFiltered_cor)
+
+plot_correlation_betw_category(per_influence_nr_frequency_redundantFiltered_cor)
+
 
 ##=== STEP 5: FUZZY FOREST FACTOR SELECTION ======
 ## Advantages
