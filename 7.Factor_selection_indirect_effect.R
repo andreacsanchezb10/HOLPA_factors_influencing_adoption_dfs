@@ -86,8 +86,8 @@ names(per_training_participation_redundantFiltered)
 ##=== Run for influence_nr_frequency ====
 per_influence_nr_frequency_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_influence_nr_frequency",
                                                              per_data_analysis )
-dim(per_influence_nr_frequency_redundantFiltered)#200 farmers; 1 outcomes, 69 factors retained
-#[1] 200  70
+dim(per_influence_nr_frequency_redundantFiltered)#200 farmers; 1 outcomes, 59 factors retained
+#[1] 200  60
 names(per_influence_nr_frequency_redundantFiltered)
 
 
