@@ -15,7 +15,8 @@ per_selectedFactors<- rbind(
   read.csv("results/indirect/per/per_household_shock_recover_capacity_selectedFactors.csv",sep=","),
   read.csv("results/indirect/per/per_influence_nr_selectedFactors.csv",sep=","),
   read.csv("results/indirect/per/per_training_participation_selectedFactors.csv",sep=","))%>%
-  rename("column_name_new"="selected_factors")
+  rename("column_name_new"="selected_factors")%>%
+  mutate(path="Complete path")
 
 length(per_selectedFactors$column_name_new) #47
 
@@ -114,13 +115,13 @@ per_dfs_adoption<- per_data_analysis%>%
   summarise(n_farmers=n(),
             .groups = "drop") %>%
   mutate(percent_farmers= (n_farmers/200)*100)%>%
-  mutate(practice_clean = case_when(
-    practice=="dfs_adoption_binary"~"Total",
-    TRUE~"NA")) %>%
-    arrange(factor(practice_clean, levels = c("Total")))
+  mutate(adoption_label = case_when(
+    adoption=="1"~"Adopters",
+    TRUE~"Non-adopters")) 
+per_dfs_adoption$adoption_label <- factor(per_dfs_adoption$adoption_label, levels = c("Non-adopters", "Adopters"))
 
 
-ggplot(per_dfs_adoption, aes(x = percent_farmers,y= factor(adoption), fill = factor(adoption))) +
+ggplot(per_dfs_adoption, aes(x = percent_farmers,y= adoption_label, fill = factor(adoption))) +
   geom_bar(stat="identity", position=position_dodge())+
   scale_fill_manual(values = c("0" = "grey70", "1" = "forestgreen"),
                   labels = c("Not-dopters", "Adopters"),
@@ -129,6 +130,7 @@ ggplot(per_dfs_adoption, aes(x = percent_farmers,y= factor(adoption), fill = fac
                      breaks = c(0,20,40,60,80,100,120,140,160,180,200)) +
   labs(x = "Percentage of farmers",
        y = "")+
+ 
   theme(
     #panel.grid.major = element_blank(), 
     panel.grid.minor = element_blank(),
@@ -142,10 +144,78 @@ ggplot(per_dfs_adoption, aes(x = percent_farmers,y= factor(adoption), fill = fac
     axis.ticks.x=element_line(color="grey50", size= 1),
     legend.position = "none",
     panel.background = element_rect(fill = "white"),
-    plot.margin = unit(c(t=0.5,r=0.5,b=0.5,l=0.5), "cm"))
+    plot.margin = unit(c(t=0.5,r=0.5,b=0.5,l=3), "cm"))
 
-  #930*850
-  #landscape 9.73*8.89
+#930*850
+#landscape 9.73*8.89
+
+per_selectedFactors_direct<- rbind(
+  read.csv("results/direct/per/per_adoption_binary_selectedFactors.csv",sep=","))%>%
+  rename("column_name_new"="selected_factors")%>%
+  mutate(path="Direct path")
+
+per_selectedFactors_plot<- rbind(
+  read.csv("results/indirect/per/per_household_shock_recover_capacity_selectedFactors.csv",sep=","),
+  read.csv("results/indirect/per/per_influence_nr_selectedFactors.csv",sep=","),
+  read.csv("results/indirect/per/per_training_participation_selectedFactors.csv",sep=","))%>%
+  rename("column_name_new"="selected_factors")%>%
+  distinct(column_name_new, .keep_all = TRUE)%>%
+  mutate(path="Indirect path")%>%
+  rbind(per_selectedFactors_direct,
+        per_selectedFactors)%>%
+  group_by(path,category_1)%>%
+  summarise(freq = n())%>%
+  ungroup()
+per_selectedFactors_plot$path <- factor(per_selectedFactors_plot$path, levels = c("Complete path", "Indirect path", "Direct path"))
+per_selectedFactors_plot$category_1 <- factor(per_selectedFactors_plot$category_1, levels = c(
+  "vulnerability_context",
+  "social_capital",
+  "P&I_context_knowledge",
+  "P&I_context_value_chain",
+  "physical_capital",
+  "human_capital",
+  "natural_capital",
+  "financial_capital",
+  "farmers_behaviour",
+  "farm_management_characteristics",
+  "biophysical_context"
+))
+
+sort(unique(per_selectedFactors_plot$category_1))
+ggplot(per_selectedFactors_plot, aes(x = freq,y= factor(path), fill = factor(category_1))) +
+  geom_bar(stat="identity")+
+  scale_x_continuous(expand = c(0, 0),limits = c(0,40))+
+  labs(x = "Number of predictors",
+       y = "")+
+  scale_fill_manual(values=c("biophysical_context"= "#f0c602",
+                      "farm_management_characteristics"="#F09319",
+                      "farmers_behaviour"= "#ea6044",
+                      "financial_capital"="#d896ff",
+                      "natural_capital"=  "#87CEEB",
+                      "human_capital"="#6a57b8",
+                      "physical_capital"="#496491",
+                      "P&I_context_value_chain"="#92c46d",
+                      "P&I_context_knowledge"="#92c46d",
+                      "social_capital"= "#297d7d",
+                      "vulnerability_context"= "#297d7d"))+
+  theme(
+    #panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x  = element_line(color = "grey85",size = 0.6),
+    axis.text.y =element_text(color="black",size=15, family = "sans"),
+    axis.text.x=element_text(color="black",size=13, family = "sans"),
+    axis.title =element_text(color="black",size=15, face = "bold",family = "sans"),
+    panel.border = element_blank(),
+    axis.line = element_line(color="grey50", size= 1),
+    axis.ticks.y=element_line(color="grey50", size= 1),
+    axis.ticks.x=element_line(color="grey50", size= 1),
+    legend.position = "bottom",
+    
+    panel.background = element_rect(fill = "white"),
+    plot.margin = unit(c(t=0.5,r=0.5,b=0.5,l=0.5), "cm"))
+  
+
+
 ##=== SELECTED FACTORS ====
 #--- Numerical factors -----
 per_columns_numeric <- intersect(factors_list_analysis$column_name_new[factors_list_analysis$metric_type %in% c("continuous","categorical")], colnames(per_data_analysis))
