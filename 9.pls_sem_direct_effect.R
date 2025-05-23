@@ -15,9 +15,8 @@ per_structural_model<-read_excel("factors_list.xlsx",sheet = "structural_model")
 
 per_measurement_model<- read_excel("factors_list.xlsx",sheet = "measurement_model")%>%
   select(path,category_1,constructs, column_name_new,constructs,factor, constructs_type,weights,country)%>%
-  filter(country=="peru")%>%
-  filter(str_detect(path, "^direct"))
-         
+  filter(country=="peru")
+
 sort(unique(per_measurement_model$constructs))
                                         
 #############################################################    
@@ -32,7 +31,7 @@ per_data_analysis<- per_data_analysis%>%
 
 names(per_data_analysis)
 str(per_data_analysis)
-dim(per_data_analysis)#[1] 200   14
+dim(per_data_analysis)#[1] 200   35
 summary(per_data_analysis)
 describe(per_data_analysis)
 

@@ -32,7 +32,7 @@ per_data_analysis<- per_data_analysis%>%
 
 names(per_data_analysis)
 str(per_data_analysis)
-dim(per_data_analysis)#[1] 200   24
+dim(per_data_analysis)#[1] 200   35
 summary(per_data_analysis)
 describe(per_data_analysis)
 
@@ -176,6 +176,13 @@ class(per_measurement_model_formula)
 
 #problematic <- check_multicollinearity(c(  reflective_measures, composite_multi_measures, composite_single_measures), per_data_analysis)
 #problematic
+summary(per_data_analysis$num_info_exchange_extension)
+sd(per_data_analysis$num_info_exchange_extension, na.rm = TRUE)
+
+summary(per_data_analysis$num_info_exchange_ngo)
+sd(per_data_analysis$num_info_exchange_ngo, na.rm = TRUE)
+
+loadings(per_boot_model_complete)
 
 #################################################################################
 ##=== SPECIFYING THE STRUCTURAL MODELS (Also called inner models) ======
