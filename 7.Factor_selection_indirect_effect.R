@@ -741,7 +741,7 @@ per_influence_nr_frequency_results <- feature_selection_continuous_algorithms(
  per_influence_nr_frequency_acc_cf<- read.csv("results/indirect/per/per_influence_nr_frequency_accValAllCForest.csv",sep=",") 
  
  plot_accuracy_vs_features(per_influence_nr_frequency_acc_ff,per_influence_nr_frequency_acc_rf, per_influence_nr_frequency_acc_cf,
-                           method_name = "Dependent variable: influence_nr_frequency",8,8)
+                           method_name = "Dependent variable: influence_nr_frequency",9,8)
  #1600*1000
  
  per_influence_nr_frequency_selectFactors_cf<- read.csv("results/indirect/per/per_influence_nr_frequency_featureSelectedCForest.csv",sep=",") 
@@ -755,8 +755,8 @@ per_influence_nr_frequency_results <- feature_selection_continuous_algorithms(
  
  ## Extract the best 8 factors
  per_influence_nr_frequency_selectedFactors<-per_influence_nr_frequency_selectedFactors_freq%>%
-   filter(NumFeatures=="featNum8")%>%
-   slice_max(order_by = frequency, n =8)%>%
+   filter(NumFeatures=="featNum9")%>%
+   slice_max(order_by = frequency, n =9)%>%
    left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
  
  write.csv(per_influence_nr_frequency_selectedFactors, "results/indirect/per/per_influence_nr_frequency_selectedFactors.csv")
