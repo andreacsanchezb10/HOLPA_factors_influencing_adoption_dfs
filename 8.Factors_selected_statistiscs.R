@@ -13,7 +13,7 @@ per_data_clean<- read.csv("per_data_Binary.csv",sep=",")%>%
 per_selectedFactors<- rbind(
   read.csv("results/direct/per/per_adoption_binary_selectedFactors.csv",sep=","),
   read.csv("results/indirect/per/per_household_shock_recover_capacity_selectedFactors.csv",sep=","),
-  read.csv("results/indirect/per/per_influence_nr_selectedFactors.csv",sep=","),
+  read.csv("results/indirect/per/per_influence_nr_frequency_selectedFactors.csv",sep=","),
   read.csv("results/indirect/per/per_training_participation_selectedFactors.csv",sep=","))%>%
   rename("column_name_new"="selected_factors")%>%
   mutate(path="Complete path")
@@ -33,7 +33,7 @@ per_data_analysis<- per_data_clean%>%
 
 names(per_data_analysis)
 str(per_data_analysis)
-dim(per_data_analysis)#[1] 200   36
+dim(per_data_analysis)#[1] 200   31
 summary(per_data_analysis)
 describe(per_data_analysis)
 
