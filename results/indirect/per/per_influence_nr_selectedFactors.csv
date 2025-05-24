@@ -1,7 +1,0 @@
-,NumFeatures,selected_factors,frequency,category_1,factor,description
-1,featNum6,participation_nr_frequency,60,social_capital,Household participation in resource governance,How frequently does the household participate in activities or meetings related to the management of the community's land and natural resources?
-2,featNum6,agroecol_perspective_3,44,farmers_behaviour,Perceived community care for nature,How far does the farmer agree with the statement: I live in a place where most people take good care of the land and nature.
-3,featNum6,human_wellbeing_11,44,natural_capital,Satisfaction with quality of local environment,How satisfied is the farmer with the quality of their local environment?
-4,featNum6,distance_main_road,43,physical_capital,Distance to main road,Distance to the closest accessible and functioning road suitable for cars (in minutes).
-5,featNum6,num_info_exchange_traders,41,P&I_context_value_chain,Frequency of information exchange with food traders,How frequently does the farmer exchange information with food traders?
-6,featNum6,agroecol_perspective_7,40,farmers_behaviour,Power and freedom to solve problems collectively,"How far does the farmer agree with the statement: If I work together with others in my community, we have power and freedom to solve problems facing farmers."
