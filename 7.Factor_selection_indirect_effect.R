@@ -683,9 +683,9 @@ per_training_participation_selectedFactors_freq<-selected_factors_freq(per_train
   per_training_participation_selectFactors_rf)
 write.csv(per_training_participation_selectedFactors_freq, "results/indirect/per/per_training_participation_selectedFactors_freq.csv")
 
-## Extract the best 15 factors
+## Extract the best 12 factors
 per_training_participation_selectedFactors<-per_training_participation_selectedFactors_freq%>%
-  filter(NumFeatures=="featNum8")%>%
+  filter(NumFeatures=="featNum12")%>%
   slice_max(order_by = frequency, n = 12)%>%
   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
