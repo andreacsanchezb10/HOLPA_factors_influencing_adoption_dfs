@@ -32,7 +32,7 @@ per_data_analysis<- per_data_analysis%>%
 
 names(per_data_analysis)
 str(per_data_analysis)
-dim(per_data_analysis)#[1] 200   35
+dim(per_data_analysis)#[1] 200   31
 summary(per_data_analysis)
 describe(per_data_analysis)
 
@@ -348,7 +348,7 @@ head(per_reliability)
 #variance that make up the construct (Hair et al., 2022).
 
 # Inspect the composite reliability AND Convergent validity
-per_assessment.mmr.step2.3<- as.data.frame(per_pls_sem_summary_direct$reliability)%>%
+per_assessment.mmr.step2.3<- as.data.frame(per_pls_sem_model_complete$reliability)%>%
   tibble::rownames_to_column("constructs")%>%
   left_join(per_constructs_def%>%select(category_1,constructs,constructs_type),by="constructs")%>%
   filter(constructs %in%c(per_reflective_constructs_list))%>%
@@ -391,7 +391,7 @@ write.csv(per_assessment.mmr.step2.3,"results/direct/per_assessment.mmr.step2.3.
 #satisfaction, and loyalty. In such a setting, an HTMT value above 0.90 would 
 #suggest that discriminant validity is not present. But when constructs are conceptually 
 #more distinct, a lower, more conservative, threshold value is suggested, such as 0.85 (Henseler et al., 2015).
-per_assessment.mmr.step4<- as.data.frame(per_pls_sem_summary_direct$validity$htmt)%>%
+per_assessment.mmr.step4<- as.data.frame(per_pls_sem_model_complete$validity$htmt)%>%
   tibble::rownames_to_column("constructs1")%>%
   left_join(per_constructs_def%>%select(constructs,constructs_type),by=c("constructs1"="constructs"))%>%
   filter(constructs1 %in%c(per_reflective_constructs_list))%>%
@@ -407,7 +407,7 @@ write.csv(per_assessment.mmr.step4,"results/direct/per_assessment.mmr.step4.csv"
 
 
 # Extract the bootstrapped HTMT 
-per_boot_model_summary_complete <- summary(per_boot_model_direct,alpha = 0.1)
+per_boot_model_summary_complete <- summary(per_boot_model_complete,alpha = 0.1)
 
 per_boot_model_summary_complete$bootstrapped_HTMT  ### CHECK HOW TO INTERPRET THIS!!!!!!!
 
@@ -417,11 +417,11 @@ per_boot_model_summary_complete$bootstrapped_HTMT  ### CHECK HOW TO INTERPRET TH
 ## STEP 1: Assess for collinearity issues ====
 ###-- Multicollinearity: VIF
 # Convert to dataframe
-per_pls_sem_summary_direct$validity$vif_items
+per_pls_sem_summary_complete$validity$vif_items
 
-per_assessment.mmf.step1 <- lapply(names(per_pls_sem_summary_direct$validity$vif_items), function(construct) {
-  factors <- names(per_pls_sem_summary_direct$validity$vif_items[[construct]])
-  vifs <- as.numeric(per_pls_sem_summary_direct$validity$vif_items[[construct]])
+per_assessment.mmf.step1 <- lapply(names(per_pls_sem_summary_complete$validity$vif_items), function(construct) {
+  factors <- names(per_pls_sem_summary_complete$validity$vif_items[[construct]])
+  vifs <- as.numeric(per_pls_sem_summary_complete$validity$vif_items[[construct]])
   
   tibble(
     construct = construct,
@@ -437,7 +437,7 @@ per_assessment.mmf.step1 <- lapply(names(per_pls_sem_summary_direct$validity$vif
 
 ## STEP 2: Assess the statistical significance and relevance of the factors weights ====
 # Store the summary of the bootstrapped model 
-per_boot_model_summary_complete <- summary(per_boot_model_direct,alpha = 0.05)
+per_boot_model_summary_complete <- summary(per_boot_model_complete,alpha = 0.05)
 
 
 # Inspect the bootstrapping results for indicator weights 
@@ -471,14 +471,14 @@ head(latent_scores_normalized)
 
 ## STEP 3: Extract the normalized latent constructs and the original values for observed variables ====
 # Extract all observed variables from the measurement model
-per_measurement_model_direct
-per_reflective_constructs <- unique(per_measurement_model_direct$reflective[seq(1, length(per_measurement_model_direct$reflective), 3)])
+per_measurement_model_formula
+per_reflective_constructs <- unique(per_measurement_model_formula$reflective[seq(1, length(per_measurement_model_formula$reflective), 3)])
 per_reflective_constructs
 
-per_reflective_constructs <- unique(per_measurement_model_direct$composite[seq(1, length(per_measurement_model$reflective), 3)])
+per_reflective_constructs <- unique(per_measurement_model_formula$composite[seq(1, length(per_measurement_model$reflective), 3)])
 per_reflective_constructs
 
-per_composite_constructs <- per_measurement_model_direct[names(per_measurement_model_direct) == "composite"]
+per_composite_constructs <- per_measurement_model_formula[names(per_measurement_model_formula) == "composite"]
 per_composite_constructs
 composite_by_mode <- function(mode) {
   unique(unlist(lapply(per_composite_constructs, \(x) x[seq(1, length(x), 3)][x[seq(3, length(x), 3)] == mode])))
@@ -491,8 +491,8 @@ per_composite_mode_A
 per_reflective_constructs_list<-c(per_composite_mode_A)#,reflective_constructs)
 per_reflective_constructs_list
 
-per_observed_vars<-per_data_adoptionBinary_analysis%>%
-  select(all_of(per_reflective_constructs_list))
+per_observed_vars<-per_data_analysis%>%
+  select(all_of(per_reflective_constructs_list),"human_wellbeing_11")
 names(per_observed_vars)
 
 #Extract the latent constructs
@@ -507,17 +507,42 @@ write.csv(per_data_logistic_regression_direct, "per_data_logistic_regression_dir
 
 ## STEP 4: Apply the logistic regression model ====
 #https://stats.oarc.ucla.edu/r/dae/logit-regression/
-per_logit_model <- glm(dfs_adoption_binary ~ ., 
-                       data = per_data_logistic_regression_direct, 
+sort(per_structural_model$to)
+names(per_data_logistic_regression_direct)
+
+per_direct_dfs_adoption<-per_data_logistic_regression_direct%>%
+  select(all_of(per_structural_model%>%
+                  filter(country=="peru",to=="dfs_adoption_binary",from!="environmental_quality")%>%
+           pull(from)),"human_wellbeing_11",dfs_adoption_binary)
+
+names(per_direct_dfs_adoption)
+
+
+per_logit_model_dfs_adoption <- glm(dfs_adoption_binary ~ ., 
+                       data = per_direct_dfs_adoption, 
                        family = binomial(link = "logit"))
-summary(per_logit_model)
+summary(per_logit_model_dfs_adoption)
 
-exp(coef(per_logit_model))
-per_logit_model.results<-as.data.frame(exp(cbind(OR = coef(per_logit_model), confint(per_logit_model))))
-
-
+exp(coef(per_logit_model_dfs_adoption))
+per_logit_model_dfs_adoption.results<-as.data.frame(exp(cbind(OR = coef(per_logit_model_dfs_adoption), confint(per_logit_model_dfs_adoption))))
 
 
+
+per_direct_training_participation<-per_data_logistic_regression_direct%>%
+  select(all_of(per_structural_model%>%
+                  filter(country=="peru",to=="training_participation",from!="environmental_quality")%>%
+                  pull(from)),training_participation)
+
+names(per_direct_training_participation)
+
+
+per_logit_model_training_participation <- glm(training_participation ~ ., 
+                                    data = per_direct_training_participation, 
+                                    family = binomial(link = "logit"))
+summary(per_logit_model_training_participation)
+
+exp(coef(per_logit_model_training_participation))
+per_logit_model_training_participation.results<-as.data.frame(exp(cbind(OR = coef(per_logit_model_training_participation), confint(per_logit_model_training_participation))))
 
 
 
