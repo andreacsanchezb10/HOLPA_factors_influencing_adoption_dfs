@@ -671,7 +671,7 @@ per_training_participation_acc_rf<- read.csv("results/indirect/per/per_training_
 per_training_participation_acc_cf<- read.csv("results/indirect/per/per_training_participation_accValAllCForest.csv",sep=",") 
 
 plot_accuracy_vs_features(per_training_participation_acc_ff,per_training_participation_acc_rf, per_training_participation_acc_cf,
-                          method_name = "A) Dependent variable: training participation",8,5)
+                          method_name = "A) Dependent variable: training participation",12,5)
 #11.5*7.5 pdf landscape
 
 per_training_participation_selectFactors_cf<- read.csv("results/indirect/per/per_training_participation_featureSelectedCForest.csv",sep=",") 
@@ -686,25 +686,25 @@ write.csv(per_training_participation_selectedFactors_freq, "results/indirect/per
 ## Extract the best 15 factors
 per_training_participation_selectedFactors<-per_training_participation_selectedFactors_freq%>%
   filter(NumFeatures=="featNum8")%>%
-  slice_max(order_by = frequency, n = 8)%>%
+  slice_max(order_by = frequency, n = 12)%>%
   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
 write.csv(per_training_participation_selectedFactors, "results/indirect/per/per_training_participation_selectedFactors.csv")
 
 # Select only the selected factors from database
 
-per_data_adoptionBinary_selectedFactors<- per_data_analysis%>%
-  select(dfs_adoption_binary,
-         all_of(per_adoptionBinary_selectedFactors$selected_factors))
+per_data_training_participation_selectedFactors<- per_data_analysis%>%
+  select(training_participation,
+         all_of(per_training_participation_selectedFactors$selected_factors))
 
-dim(per_data_adoptionBinary_selectedFactors)#[1] 200   24; 23 factors
+dim(per_data_training_participation_selectedFactors)#[1] 200   24; 13 factors
 
-write.csv(per_data_adoptionBinary_selectedFactors, "results/per_data_adoptionBinary_selectedFactors.csv")
+write.csv(per_data_training_participation_selectedFactors, "results/indirect/per/per_data_training_participation_selectedFactorss.csv")
 
 create_cor_df <- function(data,selected_factors) {
   data_num<-data %>% 
     mutate(across(everything(), as.numeric))%>%
-    select(all_of(per_adoptionBinary_selectedFactors$selected_factors))
+    select(all_of(per_training_participation_selectedFactors$selected_factors))
   
   cor_matrix <- cor(data_num,
                     method = "spearman", use = "pairwise.complete.obs")
@@ -715,7 +715,7 @@ create_cor_df <- function(data,selected_factors) {
   
   return(cor_df)
 }
-per_data_selected_factors_cor<-create_cor_df(per_data_redundantFiltered,per_adoptionBinary_selectedFactors)
+per_data_selected_factors_cor<-create_cor_df(per_data_analysis,per_training_participation_selectedFactors)
 
 fills <- c("#f0c602","#F09319", "#ea6044","#d896ff","#6a57b8",  "#87CEEB", "#496491", "#92c46d", "#92c46d","#92c46d","#297d7d") #
  "#602058"
