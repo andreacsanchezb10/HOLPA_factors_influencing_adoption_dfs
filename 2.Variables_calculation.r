@@ -99,7 +99,9 @@ per_data_clean<-per_data_clean%>%
   #On-farm income
   mutate(income_amount_onfarm= rowSums(as.matrix(select(., c(income_amount_crop,
                                                              income_amount_livestock,
-                                                             income_amount_fish))), na.rm = TRUE))%>%
+                                                             income_amount_fish))), na.rm = TRUE),
+         income_amount_onfarm=income_amount_onfarm/3.74)%>% #Exchange rate: 1 USD = 3.74 Peruvian Soles (World Bank, 2025).
+         
   #Non-farm income amount
   mutate(income_amount_nonfarm= rowSums(as.matrix(select(., c(income_amount_family_business,
                                                               income_amount_casual_labour,
@@ -107,7 +109,8 @@ per_data_clean<-per_data_clean%>%
                                                               income_amount_transfers,
                                                               income_amount_leasing_land,
                                                               income_amount_subsidy,
-                                                              income_amount_other))), na.rm = TRUE))%>%
+                                                              income_amount_other))), na.rm = TRUE),
+         income_amount_nonfarm=income_amount_nonfarm/3.74)%>% #Exchange rate: 1 USD = 3.74 Peruvian Soles (World Bank, 2025).
   #Total income amount
   mutate(income_amount_total= income_amount_onfarm+income_amount_nonfarm)%>%
   #Access to credit
