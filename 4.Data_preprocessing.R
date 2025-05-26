@@ -3,6 +3,7 @@ library(readxl)
 library(reshape2)
 library(summarytools)
 library(corrplot)
+library(caret)
 
 #############################################################    
 ########## UPLOAD DATA #####-----
