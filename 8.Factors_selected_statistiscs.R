@@ -21,7 +21,7 @@ per_selectedFactors<- rbind(
 length(per_selectedFactors$column_name_new) #47
 
 per_selectedFactors<-per_selectedFactors%>%distinct(column_name_new, .keep_all = TRUE)
-length(per_selectedFactors$column_name_new) #35
+length(per_selectedFactors$column_name_new) #33
 sort(per_selectedFactors$column_name_new) #35
 
 #############################################################    
@@ -33,7 +33,7 @@ per_data_analysis<- per_data_clean%>%
 
 names(per_data_analysis)
 str(per_data_analysis)
-dim(per_data_analysis)#[1] 200   31
+dim(per_data_analysis)#[1] 200   34
 summary(per_data_analysis)
 describe(per_data_analysis)
 
@@ -121,14 +121,14 @@ per_dfs_adoption<- per_data_analysis%>%
 per_dfs_adoption$adoption_label <- factor(per_dfs_adoption$adoption_label, levels = c("Non-adopters", "Adopters"))
 
 
-ggplot(per_dfs_adoption, aes(x = percent_farmers,y= adoption_label, fill = factor(adoption))) +
+ggplot(per_dfs_adoption, aes(x = n_farmers,y= adoption_label, fill = factor(adoption))) +
   geom_bar(stat="identity", position=position_dodge())+
   scale_fill_manual(values = c("0" = "grey70", "1" = "forestgreen"),
                   labels = c("Not-dopters", "Adopters"),
                   name = "Adoption status") +
-  scale_x_continuous(expand = c(0, 0),limits = c(0,100),
-                     breaks = c(0,20,40,60,80,100,120,140,160,180,200)) +
-  labs(x = "Percentage of farmers",
+  scale_x_continuous(expand = c(0, 0),limits = c(0,200),
+                     breaks = c(0,50,100,150,200)) +
+  labs(x = "Number of farmers",
        y = "")+
  
   theme(
@@ -156,7 +156,7 @@ per_selectedFactors_direct<- rbind(
 
 per_selectedFactors_plot<- rbind(
   read.csv("results/indirect/per/per_household_shock_recover_capacity_selectedFactors.csv",sep=","),
-  read.csv("results/indirect/per/per_influence_nr_selectedFactors.csv",sep=","),
+  read.csv("results/indirect/per/per_influence_nr_frequency_selectedFactors.csv",sep=","),
   read.csv("results/indirect/per/per_training_participation_selectedFactors.csv",sep=","))%>%
   rename("column_name_new"="selected_factors")%>%
   distinct(column_name_new, .keep_all = TRUE)%>%
@@ -198,7 +198,7 @@ ggplot(per_selectedFactors_plot, aes(x = freq,y= factor(path), fill = factor(cat
                       "P&I_context_value_chain"="#92c46d",
                       "P&I_context_knowledge"="#92c46d",
                       "social_capital"= "#297d7d",
-                      "vulnerability_context"= "#297d7d"))+
+                      "vulnerability_context"= "#602058"))+
   scale_color_manual(values=c("biophysical_context"= "#f0c602",
                              "farm_management_characteristics"="#F09319",
                              "farmers_behaviour"= "#ea6044",
@@ -209,7 +209,7 @@ ggplot(per_selectedFactors_plot, aes(x = freq,y= factor(path), fill = factor(cat
                              "P&I_context_value_chain"="#92c46d",
                              "P&I_context_knowledge"="#92c46d",
                              "social_capital"= "#297d7d",
-                             "vulnerability_context"= "#297d7d"))+
+                             "vulnerability_context"= "#602058"))+
   theme(
     #panel.grid.major = element_blank(), 
     panel.grid.minor = element_blank(),

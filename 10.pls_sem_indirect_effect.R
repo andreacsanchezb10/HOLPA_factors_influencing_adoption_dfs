@@ -32,7 +32,7 @@ per_data_analysis<- per_data_analysis%>%
 
 names(per_data_analysis)
 str(per_data_analysis)
-dim(per_data_analysis)#[1] 200   31
+dim(per_data_analysis)#[1] 200   33
 summary(per_data_analysis)
 describe(per_data_analysis)
 
@@ -206,8 +206,6 @@ per_structural_model_formula<-do.call(seminr::relationships, c(
 
 per_structural_model_formula
 
-per_measurement_model_formula
-per_structural_model_indirect
 str(per_data_analysis)
 #################################################################################
 ##===  Estimating the PLS-SEM model: Direct and indirect effect on adoption ======
