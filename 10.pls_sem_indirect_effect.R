@@ -8,8 +8,7 @@ library(ggplot2)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-factors_list_analysis<-read_excel("factors_list.xlsx",sheet = "factors_list_analysis")%>%
-  filter(is.na(peru_remove_adoption_status))
+factors_list_analysis<-read_excel("factors_list.xlsx",sheet = "factors_list_analysis")
 
 per_structural_model<-read_excel("factors_list.xlsx",sheet = "structural_model")%>%
   filter(country=="peru")
@@ -505,8 +504,6 @@ write.csv(per_data_logistic_regression_direct, "per_data_logistic_regression_dir
 
 ## STEP 4: Apply the logistic regression model ====
 #https://stats.oarc.ucla.edu/r/dae/logit-regression/
-sort(per_structural_model$to)
-names(per_data_logistic_regression_direct)
 
 per_direct_dfs_adoption<-per_data_logistic_regression_direct%>%
   select(all_of(per_structural_model%>%
@@ -514,7 +511,7 @@ per_direct_dfs_adoption<-per_data_logistic_regression_direct%>%
            pull(from)),"human_wellbeing_11",dfs_adoption_binary)
 
 names(per_direct_dfs_adoption)
-
+per_direct_dfs_adoption$dfs_adoption_binary<- as.factor(per_direct_dfs_adoption$dfs_adoption_binary)
 
 per_logit_model_dfs_adoption <- glm(dfs_adoption_binary ~ ., 
                        data = per_direct_dfs_adoption, 
@@ -532,6 +529,7 @@ per_direct_training_participation<-per_data_logistic_regression_direct%>%
                   pull(from)),training_participation)
 
 names(per_direct_training_participation)
+per_direct_training_participation$dfs_adoption_binary<- as.factor(per_direct_training_participation$dfs_adoption_binary)
 
 
 per_logit_model_training_participation <- glm(training_participation ~ ., 
@@ -543,434 +541,83 @@ exp(coef(per_logit_model_training_participation))
 per_logit_model_training_participation.results<-as.data.frame(exp(cbind(OR = coef(per_logit_model_training_participation), confint(per_logit_model_training_participation))))
 
 
-
-
-
-
-
-
-###########desde aca el nuevo procedimiento #########----------------------------------------------
-##=== MODEL 2: Indirect effect to adoption NOT APPLY ----
-per_indirect_effect<- per_structural_model%>%
-  filter(path_type=="indirect")%>%
-  filter(!is.na(to))%>%
-  mutate(formula=paste0("paths(from= '", from, "',to= '", to, "')"))%>%
-  select(formula)
-per_indirect_effect
-
-per_indirect_effect <- map(
-  per_indirect_effect$formula,
-  ~ eval(parse_expr(.x)))
-per_indirect_effect
-
-per_structural_model_indirect<-do.call(seminr::relationships, c(  
-  paths(from= c(per_direct_effect), to="dfs_adoption_binary"),
-  per_indirect_effect))
-
-per_structural_model_indirect
-
-
-#################################################################################
-##===  Estimating the PLS-SEM model: Indirect effect ======
-#################################################################################
-## STEP 1: PLS-SEM model ----
-per_pls_sem_model_indirect <- estimate_pls(data = per_data_adoptionBinary_analysis,
-                                           measurement_model = per_measurement_model.formula,
-                                           structural_model = per_structural_model_indirect)
-per_pls_sem_model_indirect
-
-# Summarize the model results
-per_pls_sem_summary_indirect<- summary(per_pls_sem_model_indirect)
-per_pls_sem_summary_indirect
-# Inspect the model’s path coefficients and the R^2 values
-per_pls_sem_summary_indirect$paths
-# Inspect the construct reliability metrics 
-per_pls_sem_summary_indirect$reliability
-# Inspect descriptive statistics
-per_pls_sem_summary_indirect$descriptives$statistics
-#- Number of iterations that the PLS-SEM algorithm needed to converge 
-#This number should be lower than the maximum number of iterations (e.g., 300)
-per_pls_sem_summary_indirect$iterations 
-#[1] 4
-
-## STEP 2: Bootstrapping the model ----
-per_boot_model_indirect <- bootstrap_model(seminr_model = per_pls_sem_model_indirect, 
-                                           nboot = 10000, # for the final result I should use 10,000
-                                           cores = 2 ) 
-per_boot_model_indirect
-# Store the summary of the bootstrapped model 
-per_boot_model_summary_indirect <- summary(per_boot_model_indirect,alpha = 0.01)
-per_boot_model_summary_indirect
-per_boot_model_summary_indirect$bootstrapped_weights
-
-plot(per_boot_model_indirect, title = "")
-
-
 #########################################################
-##===  Assessing the structural model ====
+##===  Assessing the structural model----
 #########################################################
+## STEP 1: Collinearity ====
+per_pls_sem_summary_complete$vif_antecedents
+per_assessment.sm.vif<-per_pls_sem_summary_complete$vif_antecedents%>%
+  map_df(~ tibble(variable = names(.x), VIF = .x), .id = "construct")%>%
+  left_join(factors_list_analysis%>%select(category_1,column_name_new,factor),by=c("variable"="column_name_new"))
+  
+write.csv(per_assessment.sm.vif,"results/per/per_assessment.sm.vif.csv",row.names=FALSE)
 
-## STEP 1: Assess Collinearity issues of the structural model ====
-#VIF values above 5 are indicative of probable collinearity issues among predictor constructs,
-#but collinearity can also occur at lower VIF values of 3–5
-per_pls_sem_summary_direct$vif_antecedents
-per_pls_sem_summary_indirect$vif_antecedents
+## STEP 2: Explanatory power ====
+# Dependent variable: continues -> PLS-SEM results
+per_pls_sem_summary_complete$paths
 
-per_assessment.sm.step1<- as.data.frame(per_pls_sem_summary_indirect$vif_antecedents)%>%
-  tibble::rownames_to_column("constructs") %>%
-  mutate(collinearity_assessment= case_when(
-    dfs_adoption_binary>=5~"critical",
-    dfs_adoption_binary>=3~"uncritical",
-    TRUE~"not problem"
-    
-  ))%>%
-  #left_join(per_constructs_def%>%select(constructs,constructs_type,weights),by=c("constructs"="constructs"))
-  left_join(per_factors_list%>%select(category_1,constructs,factor),by=c("constructs"="constructs"))
+#Dependent variable: binary -> Logistic regression results
+library(pscl)
+pR2(per_logit_model_dfs_adoption)
 
-write.csv(per_assessment.sm.step1,"results/per_assessment.sm.step1.csv",row.names=FALSE)
+pR2(per_logit_model_training_participation)
 
-## STEP 2: Assess the significance and relevance of the structural model relationships ====
-#A path coefficient is significant at the 5% level if the value zero does not fall into the 95% confidence interval.  
-per_boot_model_summary_complete <- summary(per_boot_model_direct, alpha = 0.05)
-per_boot_model_summary_indirect <- summary(per_boot_model_indirect, alpha = 0.05)
+## STEP 3: Predictive power ====
+# Dependent variable: continues -> PLS-SEM results
+per_pls_sem_model_complete
+rownames(per_pls_sem_model_complete$data) <- as.character(1:nrow(per_pls_sem_model_complete$data))
 
-# Inspect the structural paths 
-per_boot_model_summary_complete$bootstrapped_paths
-per_boot_model_summary_indirect$bootstrapped_paths
-
-per_assessment.sm.step2.paths<-as.data.frame(per_boot_model_summary_indirect$bootstrapped_paths)%>%
-  tibble::rownames_to_column("constructs")%>%
-  mutate(p_value = 2 * pnorm(-abs(`T Stat.`)),
-         significance = case_when(
-           p_value < 0.001 ~ "***",
-           p_value < 0.01  ~ "**",
-           p_value < 0.05  ~ "*",
-           TRUE            ~ ""))
-
-# Inspect the total effects 
-per_boot_model_summary_complete$bootstrapped_total_paths 
-per_boot_model_summary_indirect$bootstrapped_total_paths
-
-per_assessment.sm.step2.total.paths<-as.data.frame(per_boot_model_summary_indirect$bootstrapped_total_paths)%>%
-  tibble::rownames_to_column("paths") %>%
-  mutate(p_value = 2 * pnorm(-abs(`T Stat.`)),
-         significance = case_when(
-           p_value < 0.001 ~ "***",
-           p_value < 0.01  ~ "**",
-           p_value < 0.05  ~ "*",
-           TRUE            ~ ""))
-head(per_assessment.sm.step2.total.paths)
-
-## STEP 3: Assess the model's explanatory power ====
-# Inspect the model RSquares 
-per_pls_sem_summary_direct$paths
-per_pls_sem_summary_indirect$paths
-
-per_assessment.sm.step3<- as.data.frame(per_pls_sem_summary_indirect$paths )%>%
-  tibble::rownames_to_column("paths") %>%
-  mutate(Rsquare_evaluation= case_when(
-    abs(dfs_adoption_binary) >=0.75~ "substantial",
-    abs(dfs_adoption_binary) >=0.5~ "moderate",
-    
-    TRUE~"weak"
-  ))
-per_assessment.sm.step3
-
-# Inspect the effect sizes 
-per_pls_sem_summary_direct$fSquare  
-per_pls_sem_summary_indirect$fSquare  
-
-
-## STEP 4: Assess the model's predictive power ====
-# Generate the model predictions
-per_predict_model_indirect <- predict_pls(model = per_pls_sem_model_indirect, 
-                                          technique = predict_DA, 
-                                          noFolds = 10, 
-                                          reps = 20) # Summarize the prediction results sum_predict_corp_rep_ext <- summary(predict_corp_rep_ext)
-
-# Summarize the prediction results
-per_predict_model_indirect
-summary(per_predict_model_indirect)
-per_predict_summary_indirect <- summary(per_predict_model_indirect)
-
+per.assessment.sm.predictivePower<-seminr::predict_pls( model = per_pls_sem_model_complete,
+                                                technique = predict_DA,
+                                                noFolds = 10,
+                                                reps = 10)
+per.assessment.sm.predictivePower_summary<- summary(per.assessment.sm.predictivePower)
 
 # Analyze the distribution of prediction error 
-par(mfrow=c(1,1)) 
-plot(per_predict_summary_indirect, indicator = "dfs_adoption_binary") 
+par(mfrow=c(1,4)) 
+plot(per.assessment.sm.predictivePower_summary, indicator = "dfs_adoption_binary") 
+plot(per.assessment.sm.predictivePower_summary, indicator = "training_participation") 
+plot(per.assessment.sm.predictivePower_summary, indicator = "influence_nr_frequency") 
+plot(per.assessment.sm.predictivePower_summary, indicator = "household_shock_recover_capacity") 
+par(mfrow=c(1,1))
 
-# Compute the prediction statistics
-#Interpretation: the error distribution is symmetric so RMSE should be use
-per_predict_summary_indirect
+per.assessment.sm.predictivePower_summary
 
-#INTERPRETATION:
-#PLS out of sample: dfs_adoption_binary: RMSE= 0.313
-#LM out of sample: dfs_adoption_binary: RMSE= 0.318
-#PLS out of sample is lower than LM out of sample, so we conclude that the model has a high predictive power.
+#Dependent variable: binary -> Logistic regression results
+#https://bradleyboehmke.github.io/HOML/logistic-regression.html
 
-
-
-############### OLD #################
-per_constructs_factors1 <- factors_list%>%
-  select(category_1,constructs, column_name_new,constructs, constructs_type,weights)%>%
-  filter(!(constructs %in% per_reflective_consctructs_remove))
-
-per_data_analysis1<- per_data_analysis%>%
-  select(dfs_adoption_binary,any_of(per_constructs_factors1$column_name_new))%>%
-  mutate(across(everything(), ~ as.numeric(as.character(.))))
-dim(per_data_analysis1)#[1] 200   196
-str(per_data_analysis1)
-
-
-measurement_model1<- build_measurement_model(
-  data_analysis=per_data_analysis1,
-  constructs_variables= per_constructs_factors1 )
-measurement_model1
-
-direct_effect1<- purrr::map_chr(measurement_model1, ~ .[1]) %>%
-  unique() %>%
-  setdiff("dfs_adoption_binary")%>%
-  setdiff("dfs_adoption_area")
-direct_effect1
-
-structural_model1 <-relationships(
-  paths(from= c(direct_effect1), to="dfs_adoption_binary"),
-  paths(from=c("on_farm_income","non_farm_income"), to="income"))
-
-
-structural_model1
-
-#########################################################
-########## Estimating the PLS-SEM model ====
-#########################################################
-pls_sem_model1 <- estimate_pls(data = per_data_analysis1,
-                               measurement_model = measurement_model1,
-                               structural_model = structural_model1)
-
-# Summarize the model results
-pls_sem_summary1<- summary(pls_sem_model1)
-
-#########################################################
-########## Bootstrapping the model ====
-#########################################################
-boot_model1 <- bootstrap_model(seminr_model = pls_sem_model1, 
-                               nboot = 1000, 
-                               cores = 2 ) 
-# Store the summary of the bootstrapped model 
-boot_model_summary1 <- summary(boot_model,alpha = 0.10)
-boot_model_summary1$validity
-plot(boot_model, title = "")
-
-#########################################################
-########## Assessing the reflective measurement models AGAIN ====
-#########################################################
-
-
-
-
-
-
-summary(pls_model)$validity$vif_items #All VIF values are below 3.3, which means no concerning multicollinearity
-summary(pls_model)$validity$htmt
-#HTMT Value	Interpretation	Recommended Action
-#< 0.85	Good discriminant validity	Keep both constructs
-#0.85–0.90	Acceptable in some disciplines	Review, may keep with justification
-#> 0.90	Problematic — constructs overlap	Consider merging, revising, or removing
-
-
-#Reliability:
-#                            alpha  rhoC   AVE  rhoA
-#climate_change_perceptions  0.662 0.667 0.344 1.000
-#climate_events_exposure    -0.707 0.123 0.611 1.000 REMOVE LOW rhoC
-#farm_topography             0.557 0.818 0.692 1.000
-#"household_demographic"       0.290 0.006 0.356 1.000 REMOVE LOW rhoC
-#household_food_security     0.807 0.826 0.550 1.000
-#household_head_demographic -0.247 0.123 0.280 1.000 REMOVE LOW rhoC
-#household_head_health      -0.050 0.590 0.494 1.000 REMOVE NEGATIVE ALPHA
-#soil_characteristics        0.056 0.079 0.267 1.000 REMOVE LOW rhoC
-#household_head_occupation   1.000 1.000 1.000 1.000
-#dfs_adoption_binary         1.000 1.000 1.000 1.000
-
-remove<- c("climate_events_exposure",
-           "household_demographic",
-           "household_head_demographic",
-           "household_head_health",
-           "soil_characteristics"
-           
+#5.5 assessing accuracy
+per_direct_dfs_adoption$dfs_adoption_binary <- factor(
+  per_direct_dfs_adoption$dfs_adoption_binary,
+  levels = c("0", "1"),
+  labels = c("No", "Yes")  # "Yes" = positive class
 )
-
-#Alpha, rhoC, and rhoA should exceed 0.7 while AVE should exceed 0.5
-measurements
-measurements2 <- constructs(
-  composite("household_food_security",c("access_diversified_food","access_healthy_food" ,"access_seasonal_food","access_traditional_food"), weights = mode_B ),
-  composite("farm_topography", c("farm_elevation","soil_slope_perception"), weights = mode_B),
-  composite("household_head_occupation", single_item("num_occupation_secondary_list")),
-  composite("climate_change_perceptions", c("rainfall_amount_change_perception","rainfall_timing_change_perception.startearlier", "rainfall_timing_change_perception.startlater",
-                                            "rainfall_timing_change_perception.stopearlier" ,"rainfall_timing_change_perception.stoplater","rainfall_timing_change_perception.unpredictable"), weights = mode_B),
-  
-  composite("dfs_adoption_binary", single_item("dfs_adoption_binary")))
-measurements2
-
-
-direct_effect2<- purrr::map_chr(measurements2, ~ .[1]) %>%
-  unique() %>%
-  setdiff("dfs_adoption_binary")
-
-direct_effect2
-
-structural_model2<-relationships(
-  paths(from= c(direct_effect2), to="dfs_adoption_binary")
-  #paths(from= "dfs_adoption_binary", to="household_food_security")
+set.seed(123)
+per.assessment.sm.predictivePower_dfs_adoption <- train(
+  dfs_adoption_binary ~ ., 
+  data = per_direct_dfs_adoption, 
+  method = "glm",
+  family = binomial(link = "logit"),
+  trControl = trainControl(method = "repeatedcv", number = 10,repeats = 10,classProbs = TRUE,summaryFunction = twoClassSummary,),
+  metric = "ROC"
 )
-structural_model2
+per.assessment.sm.predictivePower_dfs_adoption
+summary(per.assessment.sm.predictivePower_dfs_adoption$results$ROC)
 
-data2<- per_data1_analysis%>%
-  select("access_diversified_food","access_healthy_food" ,"access_seasonal_food","access_traditional_food",
-         "farm_elevation","soil_slope_perception",
-         "num_occupation_secondary_list",
-         "rainfall_amount_change_perception","rainfall_timing_change_perception.startearlier", "rainfall_timing_change_perception.startlater",
-         "rainfall_timing_change_perception.stopearlier" ,"rainfall_timing_change_perception.stoplater","rainfall_timing_change_perception.unpredictable",
-         
-         
-         "dfs_adoption_binary")
-names(data2)
 
-pls_model2 <- estimate_pls(
-  data = data2,
-  measurement_model = measurements2,
-  structural_model = structural_model2
+per_direct_training_participation$training_participation <- factor(
+  per_direct_training_participation$training_participation,
+  levels = c("0", "1"),
+  labels = c("No", "Yes")  # "Yes" = positive class
 )
-
-summary(pls_model2) 
-
-boot_model_est2 <- bootstrap_model(seminr_model = pls_model2, 
-                                   nboot = 1000, 
-                                   cores = 2 ) 
-summary(boot_model_est2)
-plot(boot_model_est2, title = "")
-
-
-boot_model_est3
-boot_model_est2$boot_paths
-
-
-plot_boot_safe <- function(boot_model, title = "") {
-  # Set all diagonal path values in each bootstrap slice to NA
-  for (i in 1:dim(boot_model$boot_paths)[3]) {
-    diag(boot_model$boot_paths[, , i]) <- NA
-  }
-  
-  # Also set the diagonal of the original matrix to NA if needed
-  diag(boot_model$paths) <- NA
-  
-  # Now plot safely
-  plot(boot_model, title = title)
-}
-
-plot_boot_safe(boot_model_est3, title = "Bootstrapped PLS Path Coefficients")
-
-plot_boot_safe(boot_model_est3, title = "Bootstrapped PLS Path Coefficients")
-
-
-sd_paths <- apply(boot_model_est3$boot_paths, c(1, 2), sd, na.rm = TRUE)
-sd_paths
-describe(per_data1_analysis)
-per_data1_analysis
-
-
-###########check errors
-reduced_constructs <- all_constructs[names(all_constructs) != "household_demographic"]
-measurements_test <- do.call(seminr::constructs, reduced_constructs)
-
-# Also remove from structural model
-direct_effect_test <- setdiff(direct_effect, "household_head_health")
-structural_model_test <- relationships(paths(from = direct_effect_test, to = "dfs_adoption_binary"))
-structural_model_test
-# Re-run
-pls_model_test2 <- estimate_pls(
-  data = per_data1_analysis,
-  measurement_model = measurements_test,
-  structural_model = structural_model_test
+set.seed(123)
+per.assessment.sm.predictivePower_training_participation <- train(
+  training_participation ~ ., 
+  data = per_direct_training_participation, 
+  method = "glm",
+  family = binomial(link = "logit"),
+  trControl = trainControl(method = "repeatedcv", number = 10,repeats = 10,classProbs = TRUE,summaryFunction = twoClassSummary,),
+  metric = "ROC"
 )
-pls_model_test2
-
-
-
-
-##############################
-sort(unique(constructs_variables$constructs))
-
-head(constructs_variables)
-head(plssem_constructs)
-
-# Merge constructs with their items and data
-constructs_def <- constructs_variables %>%
-  inner_join(plssem_constructs, by = "constructs")
-
-sort(unique(constructs_def$constructs_type))
-
-##=== Composite constructs ====
-composite_constructs <- constructs_def %>%
-  filter(constructs_type == "composite") %>%
-  group_by(constructs, weights) %>%
-  summarise(items = list(column_name_new))
-
-composite_multi_items <- composite_constructs %>%
-  filter(lengths(items) > 1)
-
-composite_single_items <- composite_constructs %>%
-  filter(lengths(items) == 1)%>%
-  select(-weights)
-
-##=== Reflective constructs ====
-reflective_constructs <- constructs_def %>%
-  filter(constructs_type == "reflective") %>%
-  group_by(constructs) %>%
-  summarise(items = list(column_name_new))%>%
-  ungroup()
-
-
-
-# Reflective constructs (mode A)
-reflective_measures <- purrr::pmap(
-  list(reflective_constructs$constructs, reflective_constructs$items),
-  ~ reflective(.x, .y)
-)
-
-composite_measures <- purrr::pmap(
-  list(composite_constructs$constructs, composite_constructs$items, composite_constructs$weights),
-  function(name, items, weight_mode) {
-    composite(name, items, weights = weight_mode)
-  }
-)
-
-
-
-# Composite constructs (mode B or A)
-composite_measures <- purrr::pmap(
-  list(composite_constructs$constructs, composite_constructs$items, composite_constructs$weights),
-  ~ composite(name, items, weights = weight_mode)
-)
-
-# Combine all into the measurement model
-measurements <- constructs(
-  !!!reflective_measures,
-  !!!composite_measures
-)
-
-
-# Distinguish and mix composite measurement (used in PLS-PM)
-# or reflective (common-factor) measurement (used in CBSEM, CFA, and PLSc)
-# - We will first use composites in PLS-PM analysis
-# - Later we will convert the omposites into reflectives for CFA/CBSEM (step 3)
-measurements <- constructs(
-  composite("Image",        multi_items("IMAG", 1:5)),
-  composite("Expectation",  multi_items("CUEX", 1:3)),
-  composite("Value",        multi_items("PERV", 1:2)),
-  composite("Satisfaction", multi_items("CUSA", 1:3)),
-  interaction_term(iv = "Image", moderator = "Expectation")
-)
-
-
-
-
-
+per.assessment.sm.predictivePower_training_participation
+summary(per.assessment.sm.predictivePower_training_participation$results$ROC)
