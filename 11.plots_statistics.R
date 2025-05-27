@@ -11,14 +11,14 @@ per_data_clean<- read.csv("per_data_Binary.csv",sep=",")%>%
   dplyr::select(-X)
 
 per_selectedFactors<- rbind(
-  read.csv("results/direct/per/per_adoption_binary_selectedFactors.csv",sep=","),
-  read.csv("results/indirect/per/per_household_shock_recover_capacity_selectedFactors.csv",sep=","),
-  read.csv("results/indirect/per/per_influence_nr_frequency_selectedFactors.csv",sep=","),
-  read.csv("results/indirect/per/per_training_participation_selectedFactors.csv",sep=","))%>%
+  read.csv("results/per/direct/per_adoption_binary_selectedFactors.csv",sep=","),
+  read.csv("results/per/indirect/per_household_shock_recover_capacity_selectedFactors.csv",sep=","),
+  read.csv("results/per/indirect/per_influence_nr_frequency_selectedFactors.csv",sep=","),
+  read.csv("results/per/indirect/per_training_participation_selectedFactors.csv",sep=","))%>%
   rename("column_name_new"="selected_factors")%>%
   mutate(path="Complete path")
 
-length(per_selectedFactors$column_name_new) #47
+length(per_selectedFactors$column_name_new) #48
 
 per_selectedFactors<-per_selectedFactors%>%distinct(column_name_new, .keep_all = TRUE)
 length(per_selectedFactors$column_name_new) #33
@@ -124,13 +124,13 @@ per_dfs_adoption$adoption_label <- factor(per_dfs_adoption$adoption_label, level
 ggplot(per_dfs_adoption, aes(x = n_farmers,y= adoption_label, fill = factor(adoption))) +
   geom_bar(stat="identity", position=position_dodge())+
   scale_fill_manual(values = c("0" = "grey70", "1" = "forestgreen"),
-                  labels = c("Not-dopters", "Adopters"),
-                  name = "Adoption status") +
+                    labels = c("Not-dopters", "Adopters"),
+                    name = "Adoption status") +
   scale_x_continuous(expand = c(0, 0),limits = c(0,200),
                      breaks = c(0,50,100,150,200)) +
   labs(x = "Number of farmers",
        y = "")+
- 
+  
   theme(
     #panel.grid.major = element_blank(), 
     panel.grid.minor = element_blank(),
@@ -149,24 +149,19 @@ ggplot(per_dfs_adoption, aes(x = n_farmers,y= adoption_label, fill = factor(adop
 
 #landscape 12.17*7.48
 
-per_selectedFactors_direct<- rbind(
-  read.csv("results/direct/per/per_adoption_binary_selectedFactors.csv",sep=","))%>%
-  rename("column_name_new"="selected_factors")%>%
-  mutate(path="Direct path")
+per_selectedFactors_complete<-read_excel("factors_list.xlsx",sheet = "structural_model_afterAssess")%>%
+  filter(country=="peru")%>%
+  distinct(from, .keep_all = TRUE)%>%
+  mutate(path="Complete path")
 
 per_selectedFactors_plot<- read_excel("factors_list.xlsx",sheet = "structural_model_afterAssess")%>%
   filter(country=="peru")%>%
-  distinct(path,from, .keep_all = TRUE)
-  
-  #rbind(
-  #read.csv("results/indirect/per/per_household_shock_recover_capacity_selectedFactors.csv",sep=","),
-  #read.csv("results/indirect/per/per_influence_nr_frequency_selectedFactors.csv",sep=","),
-  #read.csv("results/indirect/per/per_training_participation_selectedFactors.csv",sep=","))%>%
-  rename("column_name_new"="selected_factors")%>%
-  distinct(column_name_new, .keep_all = TRUE)%>%
-  mutate(path="Indirect path")%>%
-  rbind(per_selectedFactors_direct,
-        per_selectedFactors)%>%
+  distinct(path,from, .keep_all = TRUE)%>%
+  mutate(path=case_when(
+    path=="indirect"~"Indirect path",
+    path=="direct"~"Direct path",
+    TRUE~"N"))%>%
+  rbind(per_selectedFactors_complete)%>%
   group_by(path,category_1)%>%
   summarise(freq = n())%>%
   ungroup()
@@ -189,21 +184,10 @@ sort(unique(per_selectedFactors_plot$category_1))
 ggplot(per_selectedFactors_plot, aes(x = freq,y= factor(path), fill = factor(category_1),
                                      color=factor(category_1))) +
   geom_bar(stat="identity")+
-  scale_x_continuous(expand = c(0, 0),limits = c(0,40))+
+  scale_x_continuous(expand = c(0, 0),limits = c(0,30))+
   labs(x = "Number of predictors",
        y = "")+
   scale_fill_manual(values=c("biophysical_context"= "#f0c602",
-                      "farm_management_characteristics"="#F09319",
-                      "farmers_behaviour"= "#ea6044",
-                      "financial_capital"="#d896ff",
-                      "natural_capital"=  "#87CEEB",
-                      "human_capital"="#6a57b8",
-                      "physical_capital"="#496491",
-                      "P&I_context_value_chain"="#92c46d",
-                      "P&I_context_knowledge"="#92c46d",
-                      "social_capital"= "#297d7d",
-                      "vulnerability_context"= "#602058"))+
-  scale_color_manual(values=c("biophysical_context"= "#f0c602",
                              "farm_management_characteristics"="#F09319",
                              "farmers_behaviour"= "#ea6044",
                              "financial_capital"="#d896ff",
@@ -214,6 +198,17 @@ ggplot(per_selectedFactors_plot, aes(x = freq,y= factor(path), fill = factor(cat
                              "P&I_context_knowledge"="#92c46d",
                              "social_capital"= "#297d7d",
                              "vulnerability_context"= "#602058"))+
+  scale_color_manual(values=c("biophysical_context"= "#f0c602",
+                              "farm_management_characteristics"="#F09319",
+                              "farmers_behaviour"= "#ea6044",
+                              "financial_capital"="#d896ff",
+                              "natural_capital"=  "#87CEEB",
+                              "human_capital"="#6a57b8",
+                              "physical_capital"="#496491",
+                              "P&I_context_value_chain"="#92c46d",
+                              "P&I_context_knowledge"="#92c46d",
+                              "social_capital"= "#297d7d",
+                              "vulnerability_context"= "#602058"))+
   theme(
     #panel.grid.major = element_blank(), 
     panel.grid.minor = element_blank(),
@@ -229,7 +224,7 @@ ggplot(per_selectedFactors_plot, aes(x = freq,y= factor(path), fill = factor(cat
     
     panel.background = element_rect(fill = "white"),
     plot.margin = unit(c(t=0.5,r=0.5,b=0.5,l=0.5), "cm"))
-  
+
 #landscape 12.17*10
 
 
