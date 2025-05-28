@@ -31,7 +31,7 @@ per_data_analysis<- per_data_analysis%>%
 
 names(per_data_analysis)
 str(per_data_analysis)
-dim(per_data_analysis)#[1] 200   33
+dim(per_data_analysis)#[1] 200   32
 summary(per_data_analysis)
 describe(per_data_analysis)
 
