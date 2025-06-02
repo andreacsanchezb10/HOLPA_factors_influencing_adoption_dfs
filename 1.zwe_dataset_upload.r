@@ -9,14 +9,22 @@ library(dplyr)
 library(purrr)
 
 # Define the function to process each sheet
-process_survey_data <- function(sheet_name, country_name, column_id_rename) {
+process_survey_data <- function(sheet_name, country_name) {
   survey_data <- read_excel(paste0(zwe_path,"zwe_holpa_household_survey_clean.xlsx"), sheet = sheet_name)
+  
+  column_id <- if ("_id" %in% names(survey_data)) {
+    "_id"
+  } else if ("_submission__id" %in% names(survey_data)) {
+    "_submission__id"
+  } else {
+    stop(paste("No ID column found in sheet:", sheet_name))
+  }
   
   # Apply transformations
   survey_data <- survey_data %>%
     mutate(country = country_name,
            sheet_id = sheet_name) %>%
-    rename("kobo_farmer_id" := !!sym(column_id_rename)) %>%
+    rename("kobo_farmer_id" := !!sym(column_id)) %>%
     slice(-1)
   
   return(survey_data)
@@ -147,10 +155,9 @@ f_global_survey <- read_excel("factors_list.xlsx",sheet = "fieldwork_survey")%>%
 zwe_path <- "C:/Users/andreasanchez/OneDrive - CGIAR/Bioversity/AI/HOLPA/HOLPA_data/Zimbabwe/zimbabwe_data_clean/" #household form
 
 zwe_h_choices <- read_excel(paste0(zwe_path,"zwe_holpa_household_form_clean.xlsx"), sheet = "choices")%>%
-  mutate(country= "zimbabwe",
-         name_new=NA)%>%
-  select("list_name","name","label::English (en)","country",name_new)%>%
-  rename("label_choice" = "label::English (en)")%>%
+  mutate(country= "zimbabwe",name_new=NA)%>%
+  select("list_name","name","label::English ((en))","country",name_new)%>%
+  rename("label_choice" = "label::English ((en))")%>%
   rename("name_choice" = "name")%>%
   distinct(list_name,name_choice,label_choice,name_new, .keep_all = TRUE)
 
@@ -191,39 +198,12 @@ print(f_column_mapping)
 zwe_f_survey<- read.csv(paste0(zwe_path,"zwe/zwe_fieldwork_format.csv"))
 colnames(zwe_f_survey) <- gsub("^X", "", colnames(zwe_f_survey))
 zwe_f_survey<-zwe_f_survey%>%
-  select(all_of(unique(f_column_mapping$name_question)),kobo_farmer_id,country)
+  select(all_of(unique(f_column_mapping$name_question)),kobo_farmer_id,country)%>%
+  mutate(kobo_farmer_id=as.character(kobo_farmer_id))
 
-#Soil results
-zwe_soil_results <- read_excel(paste0(zwe_path,"zwe_soil_results_250924.xlsx"), sheet = "Resultados suelos")%>%
-  rename("soil_main_crop"="NUEVA CLASIFICACION",
-         "kobo_farmer_id_fieldwork"="Código del \r\nencuestado" ,
-         "MO_percentage"="MO %",
-         "sand_percentage"="% Arena",
-         "clay_percentage"="% Arciclla",
-         "silt_percentage"=  "% Limo",
-         "soil_class_tx"="Clase Tx")%>%
-  filter(!is.na(kobo_farmer_id_fieldwork))%>%
-  mutate(soil_class_tx=case_when(
-    soil_class_tx=="Arcillo Arenoso"~ "Clayey Sandy",
-    soil_class_tx=="Arcillo Limoso"~ "Clayey Silty",
-    soil_class_tx=="Arcilloso"~ "Clayey",
-    soil_class_tx=="Arena"~ "Sandy",
-    soil_class_tx%in% c("Arena Franca","Arena Franco","Franco Arenosa","Franco Arenoso")~ "Sandy Loam",
-    soil_class_tx%in%c("Fraco", "Franco")~ "Loam",
-    soil_class_tx=="Franco Arcillo Arenoso"~ "Clayey Sandy Loam",
-    soil_class_tx=="Franco Arcillo Limoso"~ "Silty Clay Loam",
-    soil_class_tx%in%c("Franco arcilloso","Franco Arcilloso")~ "Clay Loam",
-    soil_class_tx=="Franco Limoso"~ "Silty Loam",
-    TRUE~ NA)) %>%
-  group_by(kobo_farmer_id_fieldwork)%>%
-  mutate(soil_pH_mean= mean(pH),
-         soil_MO_percentage_mean= mean(MO_percentage))%>%
-  ungroup()%>%
-  distinct(kobo_farmer_id_fieldwork, soil_pH_mean,soil_MO_percentage_mean, .keep_all = TRUE) %>%
-  select(kobo_farmer_id_fieldwork, soil_pH_mean,soil_MO_percentage_mean)%>%
-  left_join(read_excel(paste0(per_path,"farmer_id_houshold_fieldwork.xlsx"),sheet = "Cod campo_hogar")%>%
-              select("id_CAMPO", "id_HOGAR"),by=c("kobo_farmer_id_fieldwork"="id_CAMPO"))%>%
-  rename("kobo_farmer_id"="id_HOGAR")%>%select(-kobo_farmer_id_fieldwork)
+#Soil results 
+## TO CHECK!!
+zwe_soil_results <- read_excel(paste0(zwe_path,"zwe_soil_results_250924.xlsx"), sheet = "Resultados suelos")
 
 # Read all sheet names from zwe_household survey
 sheet_names <- excel_sheets(paste0(zwe_path,"zwe_holpa_household_survey_clean.xlsx"))
@@ -231,18 +211,18 @@ sheet_names
 
 # Define country name and column to rename (adjust accordingly)
 country_name <- "zimbabwe"  # Replace with actual country name
-column_id_rename <- "hid"  # Adjust to your specific column
+column_id_rename <- "_id"  # Adjust to your specific column
 
 # Process all sheets and create separate data frames in the environment
 walk(sheet_names, function(sheet) {
   df_name <- paste0("zwe", sheet)  # Create dynamic name
-  assign(df_name, process_survey_data(sheet, country_name, column_id_rename), envir = .GlobalEnv)
+  assign(df_name, process_survey_data(sheet, country_name), envir = .GlobalEnv)
 })
 
 
-zwe_maintable <- permaintable
-zwe_maintable$end_time <- as.numeric(zwe_maintable$end_time)
-zwe_maintable$end_time <- as.Date(zwe_maintable$end_time, origin = "1899-12-30")
+zwe_maintable <- `zweFinal HOLPA_Zimbabwe_Household`
+zwe_maintable$end <- as.numeric(zwe_maintable$end)
+zwe_maintable$end <- as.Date(zwe_maintable$end, origin = "1899-12-30")
 
 zwe_3_4_1_1_7_1_begin_repeat<-zwe_3_4_1_1_7_1_begin_repeat%>%
   rename("workers"="_3_4_1_1_7_1_calculate",
@@ -264,7 +244,7 @@ zwe_3_4_1_2_1_1_begin_repeat<-zwe_3_4_1_2_1_1_begin_repeat%>%
 zwe_3_4_1_1_7_2_begin_repeat<-zwe_3_4_1_1_7_2_begin_repeat%>%
   rename("workers"="_3_4_1_1_7_2_calculate",
          "num_seasons"="_3_4_1_1_7_2_1")%>%
-  left_join(zwe_3_4_1_2_7_2_1_begin_repeat,by=c("kobo_farmer_id","_3_4_1_1_7_2_begin_repeat_rowid","country"))%>%
+  left_join(zwe_3_4_1_2_7_2_1_begin_repeat,by=c("kobo_farmer_id","_index","country"))%>%
   rename("num_workers_season"="_3_4_1_2_7_2_3",
          "num_hours"="_3_4_1_2_7_2_4",
          "months"="_3_4_1_2_7_2_2")%>%
@@ -285,14 +265,12 @@ zwe_3_4_1_2_1_2_begin_repeat<-zwe_3_4_1_2_1_2_begin_repeat%>%
   rename("group_workers"="_3_4_1_2_1_2_calculate",
          "num_seasons"= "_3_4_1_2_1_2_1")%>%
   mutate(group_workers= case_when(
-    group_workers %in% c("adultos varones mayores (>65 años)","adultos mayores varones (>65 años)")~ paste0("hlabour_seasonal_adults_old_male"),
-    group_workers%in%c("Adultos varones (≥18 y ≤65 años)","adultos varones (≥18 y ≤65)")~paste0("hlabour_seasonal_adults_wa_male"),
-    group_workers%in%c("Mujeres adultas (≥18 y ≤65 años)","mujeres adultas (≥18 y ≤65)")~paste0("hlabour_seasonal_adults_wa_female"),
-    group_workers=="mujeres adultas mayores (>65 años)"~paste0("hlabour_seasonal_adults_old_female"),
-    group_workers=="niñas (<18 años)"~ paste0("hlabour_seasonal_children_female"),
-    group_workers=="niños varones (<18 años)"~paste0("hlabour_seasonal_children_male"),
+    group_workers %in% c("Male or Female adults (>65 years old)")~ paste0("hlabour_seasonal_adults_old"),
+    group_workers%in%c("Male adults (≥18 and ≤65 years old)")~paste0("hlabour_seasonal_adults_wa_male"),
+    group_workers%in%c("Female adults (≥18 and ≤65 years old)")~paste0("hlabour_seasonal_adults_wa_female"),
+    group_workers%in%c("Male or Female children (<18 years old)")~paste0("hlabour_seasonal_children"),
     TRUE ~ group_workers))%>%
-  left_join(zwe_3_4_1_2_1_2_1_begin_repeat,by=c("kobo_farmer_id","_3_4_1_2_1_2_begin_repeat_rowid","country"))%>%
+  left_join(zwe_3_4_1_2_1_2_1_begin_repeat,by=c("kobo_farmer_id","_index","country"))%>%
   rename("num_workers"="_3_4_1_2_1_2_1_3",
          "months"="_3_4_1_2_1_2_1_2",
          "num_hours"="_3_4_1_2_1_2_1_4")%>%
@@ -312,16 +290,13 @@ zwe_3_4_1_2_1_2_begin_repeat<-zwe_3_4_1_2_1_2_begin_repeat%>%
 zwe_3_3_3_2_begin_repeat<-zwe_3_3_3_2_begin_repeat%>%
   rename("cropland_practices"="_3_3_3_1_calculate_2",
          "cropland_practices_area"="_3_3_3_2_2")%>%
-  mutate(cropland_practices = str_extract(cropland_practices, "(?<=//).*"))%>%
-  practices_begin_group(.,.$cropland_practices,.$cropland_practices_area)%>%
-  mutate(sfs_burning_residues_area=0)
+  practices_begin_group(.,.$cropland_practices,.$cropland_practices_area)
 
 zwe_3_4_2_2_2_begin_repeat<-zwe_3_4_2_2_2_begin_repeat%>%
   rename("livestock_name_main"="_3_4_2_2_2_calculate",
          "livestock_main_breed_number"="_3_4_2_2_3",
          "livestock_main_animal_number"="_3_4_2_2_4")%>%
-  mutate(livestock_name_main=  str_extract(livestock_name_main, "(?<=//).*"),
-         livestock_main_breed_number = as.numeric(livestock_main_breed_number), 
+  mutate(livestock_main_breed_number = as.numeric(livestock_main_breed_number), 
          livestock_main_animal_number = as.numeric(livestock_main_animal_number)) %>%
   select(kobo_farmer_id,livestock_name_main,livestock_main_breed_number,livestock_main_animal_number)%>%
   distinct(kobo_farmer_id, livestock_name_main, .keep_all = TRUE) %>% 
@@ -334,12 +309,10 @@ zwe_3_3_4_1_3_begin_repeat<- zwe_3_3_4_1_3_begin_repeat%>%
   distinct(kobo_farmer_id, "_3_3_4_1_3_2", .keep_all = TRUE) 
 
 ##TO CHECK NEED TO UPDATE IN CASE THE DATA WAS UPDATED
-zwe_post_processing<- read.csv("HOLPA data post-processing_PER_inputs.csv")%>%
-  rename("main_crops"="crops_names",
+zwe_post_processing<-read.csv("HOLPA data post-processing_ZWE_inputs.csv")%>%
+  rename("main_crops"="main_crops_common_names",
          "production_unit"="production.unit")%>%
-  select(main_crops,production_unit,yield_conversion_unit_to_kg,yield_ref_rainfed_clean)%>%
-  mutate(production_unit = ifelse(str_detect(production_unit, "//"),
-                                  str_extract(production_unit, "(?<=//).*"),production_unit))%>%
+  select(main_crops,production_unit,yield_conversion_unit_to_kg,yield_ref_rainfed_clean)
   mutate(main_crops = str_replace(main_crops, "^(.)", ~str_to_upper(.x)))
 
 area_zwe_3_4_3_1_2_begin_repeat<-zwe_3_4_3_1_2_begin_repeat%>%
@@ -347,23 +320,25 @@ area_zwe_3_4_3_1_2_begin_repeat<-zwe_3_4_3_1_2_begin_repeat%>%
          "main_crops"="_3_4_3_1_3_calculate",
          "production_unit"= "_3_4_2_1_5_1_calculate",
          "main_crops_yield"= "_3_4_2_1_5_2")%>%
-  mutate(main_crops = str_extract(main_crops, "(?<=//).*"))%>%
-  mutate(production_unit = ifelse(str_detect(production_unit, "//"),
-                                  str_extract(production_unit, "(?<=//).*"),production_unit))%>%
   mutate(main_crops_cropland_area = as.numeric(main_crops_cropland_area),
          main_crops_yield = as.numeric(main_crops_yield))%>%
   mutate(main_crops = str_replace(main_crops, "^(.)", ~str_to_upper(.x)))%>%
   left_join(zwe_post_processing,by=c("main_crops","production_unit"))%>%
   mutate(main_crops_perennial= case_when(
-    main_crops%in% c("Aguaje","Avocado","Banana","Caimito","Camu camu","Cassava","Cocoa" ,"Cocona","Coconut","Humari","Lemon",
-                     "Papaya","Oil palm","Orange","Pijuayo","Pineapple",  "Pink grapefruit","Tangerine" )~ 1,TRUE~0))%>%
+    main_crops%in% c("Avocado","Banana", "Cotton","Mango" ,"Peaches")~ 1,
+    TRUE~0))%>%
   mutate(main_crops_annual= case_when(
-    main_crops%in% c("Bean","Black eye bean","Chili pepper", "Coriander","Cucumber","Maize","Melon", "Rice","Sachapapa","Watermelon"  )~ 1,TRUE~0))%>%
+    main_crops%in% c("Bambara nuts","Beans","Cabbages","Common bean" ,"Cowpea","Finger millet","Groundnuts","Maize",
+                     "Masau","Millet","Onion","Pepper","Potato","Rapoko","Rice", "Rosella","Roundnuts" ,"Sesame","Sorghum",
+                     "Soybeans","Sugarbeans", "Sunflower","Sweet potatoes","Tobacco","Tomatoes","Velvet  beans (mucuna)")~ 1,
+    TRUE~0))%>%
   mutate(main_crops_tree= case_when(
-    main_crops%in% c("Aguaje","Avocado","Caimito","Camu camu","Cocoa","Coconut", "Humari","Lemon","Papaya","Oil palm","Orange","Pijuayo","Pink grapefruit","Tangerine")~ 1,TRUE~0))%>%
-  mutate(main_crops_shrub= case_when(main_crops%in% c("Camu camu", "Cassava" , "Cocona")~ 1,TRUE~0))%>%
+    main_crops%in% c("Avocado","Mango","Peaches")~ 1,TRUE~0))%>%
+  mutate(main_crops_shrub= case_when(main_crops%in% c("Cotton","Masau" )~ 1,TRUE~0))%>%
   mutate(main_crops_herb= case_when(
-    main_crops%in% c("Banana" ,"Bean" ,"Black eye bean","chili pepper","Coriander","Cucumber","Maize","Melon","Pineapple","Rice","Sachapapa","Watermelon")~ 1,TRUE~0))%>%
+    main_crops%in% c("Banana","Bambara nuts","Beans","Cabbages","Common bean" ,"Cowpea","Finger millet","Groundnuts","Maize",
+                     "Millet","Onion","Pepper","Potato","Rapoko","Rice", "Rosella","Roundnuts" ,"Sesame","Sorghum",
+                     "Soybeans","Sugarbeans", "Sunflower","Sweet potatoes","Tobacco","Tomatoes","Velvet  beans (mucuna)")~ 1,TRUE~0))%>%
   mutate(production_kg_ha = (main_crops_yield*yield_conversion_unit_to_kg)/main_crops_cropland_area)%>%
   mutate(yield_ref_rainfed_clean = as.numeric(yield_ref_rainfed_clean)) %>%
   mutate(yield_to_ref_ratio = production_kg_ha/yield_ref_rainfed_clean) %>%
@@ -389,50 +364,25 @@ area_zwe_3_4_3_1_2_begin_repeat<-zwe_3_4_3_1_2_begin_repeat%>%
   mutate(main_crops_shrub=ifelse(num_main_crops_shrub>0,"1","0"))%>%
   mutate(main_crops_herb=ifelse(num_main_crops_herb>0,"1","0"))
 
-
-[21]       "zwe_3_4_3_1_2_begin_repeat"    
-[26]      "zwe_3_4_2_2_6_begin_repeat"     "zwe_3_4_2_3_2_begin_repeat"     "zwe_3_4_2_3_2_4_begin_repeat"          
-[36]                        "zwe_3_4_3_1_1_Corregido"        "zwe_3_4_3_4_2_begin_repeat"    
-[41] "zwe_3_4_3_3_1_1_Corregido"  
-
+sheet_names
+[1] "Final HOLPA_Zimbabwe_Household"                     
+[5]      "_1_4_2_7_begin_repeat"                "_3_4_1_2_7_2_1_begin_repeat"   
+[9]           "_3_4_3_1_1_begin_repeat"        "_3_4_2_2_6_begin_repeat"       
+[13] "_3_4_3_3_1_1_begin_repeat"              "_1_4_2_1_1_begin_repeat"         
+ 
 
 zwe_data<- zwe_maintable%>%
-  left_join(zwe_1_2_1_4_begin_group,by=c("kobo_farmer_id","country"))%>%
-  left_join(zwe_1_2_1_begin_group, by=c("kobo_farmer_id","country"))%>%
-  left_join(zwe_1_2_1_16_begin_group, by=c("kobo_farmer_id","country"))%>%
-  left_join(zwe_1_3_1_1_begin_group, by=c("kobo_farmer_id","country"))%>%
-  left_join(zwe_2_1_1_begin_group, by=c("kobo_farmer_id","country"))%>%
-  left_join(zwe_2_2_1_begin_group,by=c("kobo_farmer_id","country"))%>%
-  left_join(zwe_1_4_2_begin_group,by=c("kobo_farmer_id","country"))%>%
-  left_join(zwe_3_1_1_begin_group,by=c("kobo_farmer_id","country"))%>%
-  left_join(zwe_3_1_2_begin_group,by=c("kobo_farmer_id" ,"country"))%>%
-  left_join(zwe_3_1_3_begin_group,by=c("kobo_farmer_id" ,"country"))%>%
-  left_join(zwe_1_4_1_begin_group,by=c("kobo_farmer_id","country"))%>%
   left_join(zwe_3_4_1_1_7_1_begin_repeat, by=c("kobo_farmer_id"))%>%
   left_join(zwe_3_4_1_1_7_2_begin_repeat, by=c("kobo_farmer_id"))%>%
   left_join(zwe_3_4_1_2_1_1_begin_repeat, by=c("kobo_farmer_id"))%>%
   left_join(zwe_3_4_1_2_1_2_begin_repeat, by=c("kobo_farmer_id"))%>%
-  left_join(zwe_4_1_4_begin_group, by=c("kobo_farmer_id","country"))%>%
-  left_join(zwe_4_1_3_begin_group, by=c("kobo_farmer_id","country"))%>%
-  left_join(zwe_4_1_1_5_begin_group, by=c("kobo_farmer_id","country"))%>%
-  left_join(zwe_4_1_1_7_begin_group, by=c("kobo_farmer_id","country"))%>%
   left_join(zwe_3_3_3_2_begin_repeat, by=c("kobo_farmer_id"))%>%
-  left_join(zwe_4_1_7_1_begin_group, by=c("kobo_farmer_id","country"))%>%
-  left_join(zwe_4_2_1_begin_group, by=c("kobo_farmer_id","country"))%>%
-  left_join(zwe_3_3_4_begin_group, by=c("kobo_farmer_id","country"))%>%
-  left_join(zwe_2_8_4_begin_group, by=c("kobo_farmer_id","country"))%>%
-  left_join(zwe_3_3_1_begin_group, by=c("kobo_farmer_id","country"))%>%
-  left_join(zwe_2_12_1_begin_group, by=c("kobo_farmer_id","country"))%>%
-  left_join(zwe_2_3_1_begin_group, by=c("kobo_farmer_id","country"))%>%
-  left_join(zwe_3_2_1_3_1_begin_group, by=c("kobo_farmer_id","country"))%>%
-  left_join(zwe_2_4_1_begin_group, by=c("kobo_farmer_id","country"))%>%
   left_join(zwe_f_survey, by=c("kobo_farmer_id","country"))%>%
   left_join(zwe_3_4_2_2_2_begin_repeat, by=c("kobo_farmer_id"))%>%
-  left_join(zwe_soil_results, by=c("kobo_farmer_id"))%>%
+  #left_join(zwe_soil_results, by=c("kobo_farmer_id"))%>%
   left_join(zwe_3_3_4_1_3_begin_repeat, by=c("kobo_farmer_id","country"))%>%
   left_join(area_zwe_3_4_3_1_2_begin_repeat, by=c("kobo_farmer_id"))
 select(kobo_farmer_id,"_1_4_3_5")
-
 
 
 # Process all select_multiple columns
@@ -490,22 +440,12 @@ zwe_data<-zwe_data %>%
   select(-matches("-desc$"),
          -matches("^_"),
          -matches("^sheet_id"))
-#None responses
--"livestock_health_practice/none",
--"livestock_practices/none")
-print(colnames(zwe_data))
 
 #####################################
 ########## DATA CLEANNING -----
 #####################################
-### The 9999 in ethnicity refers to mestizo ethnicity for Zimbabwe
-sort(unique(zwe_data$ethnicity))
-zwe_data$ethnicity <- ifelse(zwe_data$ethnicity == "9999", "Mestizo", zwe_data$ethnicity) # convert the 9999 to mestizo
-sort(unique(zwe_data$ethnicity))
-
 ### TO CHECK: I need to standardize education level with the other countries options
 sort(unique(zwe_data$education_level))
-
 
 ### To check for inconsistencies between "soil_fertility_management_ecol_practices/5" (which indicates whether mulching was implemented) and 
 #"ecol_practices_mulching_area" (which records the area where mulching was applied)

@@ -5,7 +5,7 @@ library(stringr)
 library(tidyr)
 library(geosphere)
 
-
+###--- ALL: Ucayali, Peru ----
 per_data<- read.csv("per_data.csv",sep=",")
 global_survey<-read.csv("H_global_survey.csv",sep=",")
 
