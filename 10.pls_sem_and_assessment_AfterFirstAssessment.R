@@ -243,6 +243,44 @@ per_boot_model_summary_complete$validity
 per_boot_model_summary_complete$bootstrapped_paths
 
 plot(per_boot_model_complete, title = "")
+per_boot_model_summary_complete <- summary(per_boot_model_complete,alpha = 0.05)
+per_boot_model_summary_complete$bootstrapped_paths
+
+#income_stability  ->  household_shock_recover_capacity
+2 * (1 - pnorm(abs(4.910)))
+
+#income_sufficiency  ->  household_shock_recover_capacity
+2 * (1 - pnorm(abs(2.971)))
+
+governance_capacity  ->  household_shock_recover_capacity
+2 * (1 - pnorm(abs(3.827)))
+
+#years_farming_land  ->  household_shock_recover_capacity 
+2 * (1 - pnorm(abs(-3.966)))
+
+#income_spend_on_food_percentage  ->  household_shock_recover_capacity 
+2 * (1 - pnorm(abs(-2.410)))
+
+#distance_main_road  ->  household_shock_recover_capacity
+2 * (1 - pnorm(abs(-1.920)))
+
+#num_info_exchange_sources  ->  governance_capacity
+2 * (1 - pnorm(abs(4.302)))
+
+#environmental_quality  ->  governance_capacity
+2 * (1 - pnorm(abs(2.698)))
+
+#agroecol_perspective_3  ->  governance_capacity 
+2 * (1 - pnorm(abs(3.879)))
+
+#agroecol_perspective_7  ->  governance_capacity 
+2 * (1 - pnorm(abs(2.739)))
+
+#income_amount_onfarm  ->  governance_capacity  
+2 * (1 - pnorm(abs(-2.699)))
+
+#perception_associations_effectiveness  ->  governance_capacity  
+2 * (1 - pnorm(abs(-2.506)))
 
 #########################################################
 ##===  Assessing the reflective measurement models ====
