@@ -5,16 +5,16 @@ library(stringr)
 library(tidyr)
 library(geosphere)
 
-###--- ALL: Mbire and Murehwa, zimbabwe ----
-zwe_data<- read.csv("zwe_data.csv",sep=",")
 global_survey<-read.csv("H_global_survey.csv",sep=",")
 
 #############################################################    
 ########## DATA TYPE CONVERSION #####-----
 #############################################################
-
-###### --- NUMERICAL VARIABLES -----
-#### Convert continuous variables to numeric
+###### ----- ALL: Mbire and Murehwa, zimbabwe ####----
+zwe_data<- read.csv("zwe_data.csv",sep=",")
+names(zwe_data)
+#####---- NUMERICAL VARIABLES 
+#Convert continuous variables to numeric
 zwe_columns_numeric <- intersect(global_survey$column_name_new[global_survey$type_question %in% c( "decimal", "integer")], colnames(zwe_data))
 print(zwe_columns_numeric)  # Check if it holds expected values
 
@@ -23,8 +23,8 @@ zwe_data_clean<- zwe_data%>%
   mutate(across(starts_with("nonhired_labour_"), ~ replace_na(.x, 0)))%>%
   mutate(across(starts_with("hired_labour_"), ~ replace_na(.x, 0)))
 
-###### --- CATEGORICAL AND BINARY VARIABLES -----
-#### Convert categorical and binary to factor
+#####---- CATEGORICAL AND BINARY VARIABLES 
+#Convert categorical and binary to factor
 zwe_columns_numeric <- intersect(global_survey$column_name_new[global_survey$type_question %in% c( "decimal", "integer")], colnames(zwe_data))
 
 zwe_columns_factor <- intersect(global_survey$column_name_new[global_survey$type_question %in%c("calculate","select_multiple", "select_one","text" )], colnames(zwe_data_clean))
@@ -67,21 +67,14 @@ zwe_data_clean<-zwe_data_clean%>%
   mutate(soil_depth= round(soil_depth, digits=0))%>%
   #mutate(soil_depth=paste0("depth_",soil_depth))%>%
   #Year of assessment
-  mutate(year_assessment= str_extract(end_time, "^\\d{4}"))%>%
-  #Rainfall timing change
-  mutate(rainfall_timing_change_zweception= case_when(
-    rainfall_timing_change_perception.startearlier=="1"~"1",
-    rainfall_timing_change_perception.startlater=="1"~"1",
-    rainfall_timing_change_perception.unpredictable=="1"~"1",
-    rainfall_timing_change_perception.stopearlier=="1"~"1",
-    rainfall_timing_change_perception.stoplater=="1"~"1",
-    TRUE~"0"))%>%
-  #Drought experience
+  mutate(year_assessment= str_extract(end, "^\\d{4}"))%>%
+  #Drought experience -> EXCLUDED! IT WAS ANSWER IN THE WRONG WAY
   mutate(drought_experience= as.factor(drought_experience))%>%
-  mutate(drought_experience=case_when(drought_experience=="notsure"~"0",TRUE~drought_experience))%>%
-  #Flood experience
+  mutate(drought_experience=case_when(drought_experience%in%c("notsure")~"0",TRUE~drought_experience))%>%
+  #Flood experience -> EXCLUDED! IT WAS ANSWER IN THE WRONG WAY
   mutate(flood_experience= as.factor(flood_experience))%>%
-  mutate(flood_experience=case_when(flood_experience=="notsure"~"0",TRUE~flood_experience))
+  mutate(flood_experience=case_when(flood_experience%in%c("notsure")~"0",TRUE~flood_experience))
+
 
 ### FINANCIAL CAPITAL ----
 zwe_data_clean<-zwe_data_clean%>%
@@ -100,7 +93,7 @@ zwe_data_clean<-zwe_data_clean%>%
   mutate(income_amount_onfarm= rowSums(as.matrix(select(., c(income_amount_crop,
                                                              income_amount_livestock,
                                                              income_amount_fish))), na.rm = TRUE),
-         income_amount_onfarm=income_amount_onfarm/3.74)%>% #Exchange rate: 1 USD = 3.74 Peruvian Soles (World Bank, 2025).
+         income_amount_onfarm=income_amount_onfarm/3509.17)%>% #Exchange rate: 1 USD = 3509.17 Zimbabwean Dollar (World Bank, 2025).
   
   #Non-farm income amount
   mutate(income_amount_nonfarm= rowSums(as.matrix(select(., c(income_amount_family_business,
@@ -110,7 +103,7 @@ zwe_data_clean<-zwe_data_clean%>%
                                                               income_amount_leasing_land,
                                                               income_amount_subsidy,
                                                               income_amount_other))), na.rm = TRUE),
-         income_amount_nonfarm=income_amount_nonfarm/3.74)%>% #Exchange rate: 1 USD = 3.74 Peruvian Soles (World Bank, 2025).
+         income_amount_nonfarm=income_amount_nonfarm/3509.17)%>% #Exchange rate: 1 USD = 3509.17 Zimbabwean Dollar (World Bank, 2025).
   #Total income amount
   mutate(income_amount_total= income_amount_onfarm+income_amount_nonfarm)%>%
   #Access to credit
@@ -129,21 +122,24 @@ zwe_data_clean<-zwe_data_clean%>%
   #Reference: Marc BENOIT, Patrick VEYSSET Livestock unit calculation: a method based on energy requirements to refine the study of livestock farming systems
   mutate(livestock_count_tlu= 
            (livestock_main_animal_number_Cattle*1)+ #Cattle TLU=1
-           (livestock_main_animal_number_Pigs*0.2)+ #Pigs 0.2
            (livestock_main_animal_number_Chickens*0.01)+ #Poultry 0.01
+           (livestock_main_animal_number_Donkeys*0.5)+ #Donkey 0.01
            (livestock_main_animal_number_Ducks*0.01)+ #Poultry 0.01
-           (livestock_main_animal_number_Turkeys*0.01)+ #Poultry 0.01
-           (livestock_main_animal_number_Cuyes*0.01)+ #Cuyes 0.01
-           (livestock_main_animal_number_rabbits*0.02),
+           (livestock_main_animal_number_Goats*0.1)+ #Goats 0.1
+           (livestock_main_animal_number_Pigs*0.2)+ #Pigs 0.2
+           (livestock_main_animal_number_Sheep*0.1)+ #Sheeps 0.1
+           (livestock_main_animal_number_Turkeys*0.01), #Poultry 0.01
+           #(livestock_main_animal_number_Cuyes*0.01)+ #Cuyes 0.01
+           #(livestock_main_animal_number_rabbits*0.02),
          livestock_count_tlu=ifelse(is.na(livestock_count_tlu),0,livestock_count_tlu))%>% #Rabbits 0.01
   #Household held a debt
   mutate(household_held_debt=case_when(credit_payment_full=="0"~ "1",TRUE~"0"))%>%
   #High-cost roof materials
   mutate(high_cost_roof_material= case_when(
     roof_material.Galvanized_iron_or_aluminum_or_other_metal_sheets=="1"~"1",
-    roof_material._brick=="1"~"1",
-    roof_material.Concrete=="1"~"1",
-    roof_material._stone=="1"~"1",
+    roof_material.Concrete._brick._stone=="1"~"1",
+    #roof_material.Concrete=="1"~"1",
+    #roof_material._stone=="1"~"1",
     TRUE~"0"))%>%
   #High-cost walls materials
   mutate(high_cost_walls_material= case_when(
@@ -159,8 +155,6 @@ zwe_data_clean<-zwe_data_clean%>%
 zwe_data_clean<-zwe_data_clean%>%
   #Household head age
   mutate(age = 2025-year_birth)%>%
-  #Ethnicity
-  mutate(ethnicity= case_when(ethnicity %in% c("Ashaninka","Quechua")~ "Ashaninka or Quechua", TRUE~ ethnicity))%>%
   #Level of education farmer
   mutate(education_level_finished= case_when(
     education_level%in%c("1","4")~"1",
@@ -219,6 +213,9 @@ zwe_data_clean<-zwe_data_clean%>%
 ### NATURAL CAPITAL ----
 zwe_data_clean<-zwe_data_clean%>%
   # Farm size
+  mutate(land_tenure_own_area=land_tenure_own_area*0.404686,#convert to hectares
+         land_tenure_hold_area=land_tenure_hold_area*0.404686,#convert to hectares
+         land_tenure_lease_area=land_tenure_lease_area*0.404686)%>%#convert to hectares
   mutate(farm_size= land_tenure_own_area+land_tenure_lease_area+land_tenure_hold_area)%>%
   #Years of farming land
   mutate(years_farming_land = 2025-year_start_farming_land)%>%
@@ -412,24 +409,23 @@ zwe_data_clean<-zwe_data_clean%>%
 
 
 ### POLITICAL AND INSTITUTIONAL CONTEXT: Financial risk management ----
-per_data_clean<-per_data_clean%>%
+zwe_data_clean<-zwe_data_clean%>%
   #Access to insurance against agricultural losses
   mutate(insurance_agric_losses_access= case_when(insurance_agric_losses_level=="0" ~ "0",TRUE~ "1"))%>%
   #Amount of subsidy received as income support
   mutate(income_amount_subsidy= ifelse(is.na(income_amount_subsidy),0,income_amount_subsidy))%>%
   #Household with children attending school and receiving free meals
+  mutate(num_free_school_meals_perweek=as.numeric(num_free_school_meals_perweek))%>%
   mutate(access_free_school_meals_perweek= case_when(
     children_attend_school=="0" ~ "0",
     is.na(children_attend_school) ~ "0",
     children_attend_school=="1" & num_free_school_meals_perweek==0  ~ "2",
     children_attend_school=="1" & num_free_school_meals_perweek>0  ~ "5",
     TRUE~ NA))
-# mutate(access_free_school_meals_perweek= case_when(
-#  country=="zimbabwe" & access_free_school_meals_perweek=="5" ~ "1",
-# TRUE~ access_free_school_meals_perweek))
+
 
 ### POLITICAL AND INSTITUTIONAL CONTEXT: Knowledge ----
-per_data_clean<-per_data_clean%>%
+zwe_data_clean<-zwe_data_clean%>%
   mutate(
     #Number of training topics
     across(starts_with("training_"), ~ as.numeric(as.character(.))),
@@ -458,10 +454,10 @@ per_data_clean<-per_data_clean%>%
   mutate(access_info_exchange=ifelse(num_info_exchange_sources>0, "1","0"))
 
 ### POLITICAL AND INSTITUTIONAL CONTEXT: Land tenure ----
-per_data_clean<-per_data_clean%>%
+zwe_data_clean<-zwe_data_clean%>%
   mutate(
     #Land tenure status of hosehold: Own
-    land_tenure_own_status= ifelse(per_data_clean$land_tenure_own_area>0, "1","0"),
+    land_tenure_own_status= ifelse(zwe_data_clean$land_tenure_own_area>0, "1","0"),
     #Land tenure status of hosehold: Lease
     land_tenure_lease_status = ifelse(land_tenure_lease_area>0, "1","0"),
     #Land tenure status of hosehold:  HOLDS USE RIGHTS, either alone or jointly with someone else
@@ -474,10 +470,14 @@ per_data_clean<-per_data_clean%>%
     TRUE~ NA))%>%
   #Proportion of land owns
   mutate(land_tenure_own_proportion= (land_tenure_own_area/farm_size)*100,
+         land_tenure_own_proportion=ifelse(is.na(land_tenure_own_proportion),0,land_tenure_own_proportion),
          #Proportion of land  leases
          land_tenure_lease_proportion= (land_tenure_lease_area/farm_size)*100,
+         land_tenure_lease_proportion=ifelse(is.na(land_tenure_lease_proportion),0,land_tenure_lease_proportion),
          #Proportion of land hold use rights
-         land_tenure_hold_proportion= (land_tenure_hold_area/farm_size)*100)%>%
+         land_tenure_hold_proportion= (land_tenure_hold_area/farm_size)*100,
+         land_tenure_hold_proportion=ifelse(is.na(land_tenure_hold_proportion),0,land_tenure_hold_proportion))%>%
+
   #Proportion of land owns by a male member
   mutate(male_land_tenure_own_proportion= (male_land_tenure_own_area/land_tenure_own_area)*100,
          male_land_tenure_own_proportion= ifelse(is.na(male_land_tenure_own_proportion),0,male_land_tenure_own_proportion),
@@ -525,7 +525,7 @@ per_data_clean<-per_data_clean%>%
 
 
 ### POLITICAL AND INSTITUTIONAL CONTEXT: Value chain ----
-per_data_clean<-per_data_clean%>%
+zwe_data_clean<-zwe_data_clean%>%
   #Perception of price fairness: crops
   mutate(fair_price_crops= case_when(
     farm_products.Crops =="0"~ "0", #does not produce 
@@ -534,12 +534,12 @@ per_data_clean<-per_data_clean%>%
   #Perception of price fairness: livestock
   mutate(fair_price_livestock= case_when(
     farm_products.Livestock =="0"~ "0", #does not produce 
-    use_percentage_livestock_sales=="0"~ "6", #does not produce 
+    use_percentage_livestock_sales=="0"~ "0", #does not produce 
     TRUE~ fair_price_livestock))%>%
   #Perception of price fairness: fish
   mutate(fair_price_fish= case_when(
     farm_products.Fish =="0"~ "0", #does not produce 
-    use_percentage_fish_sales=="0"~ "6", #does not produce 
+    use_percentage_fish_sales=="0"~ "0", #does not produce 
     TRUE~ fair_price_fish))%>%
   #Perception of price fairness: wood
   mutate(fair_price_wood= case_when(
@@ -583,7 +583,7 @@ per_data_clean<-per_data_clean%>%
     TRUE~"0"))
 
 ### SOCIAL CAPITAL ----
-per_data_clean<-per_data_clean%>%
+zwe_data_clean<-zwe_data_clean%>%
   #Number of association/organization memberships
   mutate(across(starts_with("membership."), ~ as.numeric(as.character(.))))%>%
   mutate(num_membership = rowSums(select(., starts_with("membership.")), na.rm = TRUE) -
@@ -618,7 +618,7 @@ per_data_clean<-per_data_clean%>%
          support_provider_count= rowSums(select(., starts_with("support_provider.")) %>% mutate(across(everything(), as.numeric)), na.rm = TRUE))
 
 ### FARM MANAGEMENT CHARACTERISTICS ----
-per_data_clean<-per_data_clean%>%
+zwe_data_clean<-zwe_data_clean%>%
   #Farmer use chemical fertilizers
   rename("soil_fertility_management_chemical"="soil_fertility_management.1")%>%
   #Farmer use organic fertilizers or manure
@@ -629,6 +629,8 @@ per_data_clean<-per_data_clean%>%
   mutate(across(starts_with("farm_products."), ~ as.numeric(as.character(.))),
          num_farm_products = rowSums(across(starts_with("farm_products.")), na.rm = TRUE))%>%
   #Number of ecological practices use on cropland to improve soil quality and health
+  mutate(across(starts_with("soil_fertility_management_ecol_practices."),~replace_na(., 0)))%>%
+  mutate(across(starts_with("soil_fertility_management_ecol_practices."),~ifelse(. == "NA", 0, .)))%>%
   mutate(across(starts_with("soil_fertility_management_ecol_practices."), ~ as.numeric(as.character(.))),
          num_soil_fertility_ecol_practices = rowSums(across(starts_with("soil_fertility_management_ecol_practices.")), na.rm = TRUE))%>%
   #Use Chemical fungicides/pesticides/herbicides.
@@ -638,17 +640,22 @@ per_data_clean<-per_data_clean%>%
   #Use Ecological practices (e.g., crop rotation, planting repelling plants).
   rename("pest_management_ecol_practices"="pest_management.3")%>%
   #Number of ecological practices use on cropland to manage pests
+  mutate(across(starts_with("pest_management_ecol_practices."),~replace_na(., 0)))%>%
+  mutate(across(starts_with("pest_management_ecol_practices."),~ifelse(. == "NA", 0, .)))%>%
   mutate(across(starts_with("pest_management_ecol_practices."), ~ as.numeric(as.character(.))),
          num_pest_management_ecol_practices = rowSums(across(starts_with("pest_management_ecol_practices.")), na.rm = TRUE))%>%
-  #monoculture perennial
+  
+  #monoculture perennial adoption
+  mutate(sfs_monoculture_perennial_area=sfs_monoculture_perennial_area*0.404686)%>% #convert to hectares
   mutate(sfs_monoculture_perennial_adoption= case_when(sfs_monoculture_perennial_area>0~ "1", TRUE~ "0"))%>%
   #monoculture annual
+  mutate(sfs_monoculture_annual_area=sfs_monoculture_annual_area*0.404686)%>% #convert to hectares
   mutate(sfs_monoculture_annual_adoption= case_when(sfs_monoculture_annual_area>0~ "1", TRUE~ "0"))%>%
   #Land clearing
+  mutate(sfs_land_clearing_area=sfs_land_clearing_area*0.404686)%>% #convert to hectares
   mutate(sfs_land_clearing_adoption= case_when(sfs_land_clearing_area>0~ "1", TRUE~ "0"))%>%
-  #  #area burning residues
-  mutate(sfs_burning_residues_area= case_when(is.na(sfs_burning_residues_area)~ 0, TRUE~ sfs_burning_residues_area))%>%
   #adoption burning residues
+  mutate(sfs_burning_residues_area=sfs_burning_residues_area*0.404686)%>% #convert to hectares
   mutate(sfs_burning_residues_adoption= case_when(sfs_burning_residues_area>0~ "1", TRUE~ "0"))%>%
   #PERMANENT HOUSEHOLD LABOUR: total labour hours per year
   mutate(across(starts_with("num_workers_nhlabour_permanent_"), ~ ifelse(is.na(.) |. == 9999, 0, .)),
@@ -666,8 +673,8 @@ per_data_clean<-per_data_clean%>%
   #PERMANENT HIRED LABOUR: total labour hours per year
   mutate(across(starts_with("num_workers_hlabour_permanent_"), ~ ifelse(is.na(.) |. == 9999, 0, .)),
          across(starts_with("num_hours_hlabour_permanent_"), ~ ifelse(is.na(.) |. == 9999, 0, .)))%>%
-  mutate(total_labour_hours_hlabour_permanent_adults_wa_male= num_hours_hlabour_permanent_adults_wa_male*num_workers_hlabour_permanent_adults_wa_male*12*21)%>%
-  mutate(total_labour_hours_hlabour_permanent_adults_wa_female= num_hours_hlabour_permanent_adults_wa_female*num_workers_hlabour_permanent_adults_wa_female*12*21)%>%
+  #mutate(total_labour_hours_hlabour_permanent_adults_wa_male= num_hours_hlabour_permanent_adults_wa_male*num_workers_hlabour_permanent_adults_wa_male*12*21)%>%
+  #mutate(total_labour_hours_hlabour_permanent_adults_wa_female= num_hours_hlabour_permanent_adults_wa_female*num_workers_hlabour_permanent_adults_wa_female*12*21)%>%
   mutate(total_labour_hours_hlabour_permanent = rowSums(across(starts_with("total_labour_hours_hlabour_permanent_")), na.rm = TRUE))%>%
   #SEASONAL HIRED LABOUR: total labour hours per year
   mutate(across(starts_with("total_labour_hours_hlabour_seasonal_"), ~ ifelse(is.na(.) |. == 9999, 0, .)))%>%
@@ -685,12 +692,12 @@ per_data_clean<-per_data_clean%>%
          organic_fertilizer_amount_ha=organic_fertilizer_onfarm_amount_ha+organic_fertilizer_offfarm_amount_ha)%>%
   #Type of crop seeds
   mutate(seeds_certified_local= case_when(
-    seeds_certified_local %in%c("5")| # I don't know, or seeds are neither certified or locally adapted..
+    seeds_certified_local %in%c("5","NA")| # I don't know, or seeds are neither certified or locally adapted..
       is.na(seeds_certified_local)~"0", #Does not produce crops
     TRUE~seeds_certified_local))%>%
   #Are the livestock you keep exotic or local?
   mutate(livestock_exotic_local= case_when(
-    livestock_exotic_local %in%c("6","7")| #No exotic or local breeds are kept. | I don't know.
+    livestock_exotic_local %in%c("6","7","NA")| #No exotic or local breeds are kept. | I don't know.
       is.na(livestock_exotic_local)~"0", #Does not produce livestock
     TRUE~livestock_exotic_local))%>%
   #Use percentage
@@ -728,7 +735,7 @@ num_livestock_diseases_management_organic = rowSums(select(., c("livestock_disea
 
 
 ### FARMER BEHAVIOUR ----
-per_data_clean<- per_data_clean %>%
+zwe_data_clean<- zwe_data_clean %>%
   #Perceived climatic conditions as risk/shock
   mutate(perceived_shock_climate= case_when(
     str_detect(crop_damage_cause, "climate_change")~ "1",
@@ -764,7 +771,7 @@ per_data_clean<- per_data_clean %>%
 
 
 #Distance to the nearest farmer adopting DFS
-per_data_clean<-per_data_clean%>%
+zwe_data_clean<-zwe_data_clean%>%
   rowwise() %>%
   mutate(
     nearest_distance_dfs_km = tryCatch(
@@ -783,7 +790,7 @@ select(dfs_adoption_binary,nearest_distance)
 
 
 # Nearest farmer has adoption of DFS
-per_data_clean <- per_data_clean %>%
+zwe_data_clean <- zwe_data_clean %>%
   rowwise() %>%
   mutate(
     nearest_farmer_adopted = tryCatch(
@@ -804,7 +811,6 @@ per_data_clean <- per_data_clean %>%
         }},
       error = function(e) NA_real_)) %>%
   ungroup()
-select(dfs_adoption_binary,nearest_farmer_adopted)
 
 
 #Human well being score
@@ -817,7 +823,7 @@ mutate(across(starts_with("human_wellbeing_"), ~ as.numeric(as.factor(.))))%>%
 
 
 ### VULNERABILITY CONTEXT ----
-per_data_clean<-per_data_clean%>%
+zwe_data_clean<-zwe_data_clean%>%
   #Perceived credit repayment confidence
   mutate(credit_payment_hability= case_when(
     credit_payment_full== "1"~ "5",
@@ -839,7 +845,11 @@ per_data_clean<-per_data_clean%>%
   mutate(perceived_shock_count = rowSums(as.matrix(select(., starts_with("household_shock."))), na.rm = TRUE))%>%
   mutate(perceived_shock_count=case_when(household_shock.none==1~ perceived_shock_count-1,TRUE~perceived_shock_count))%>%
   #Absorptive strategies to cope with shock
-  mutate(household_shock_recover_activities.5 = NA)%>%
+  mutate(across(starts_with("household_shock_recover_activities."),~replace_na(., 0)))%>%
+  mutate(across(starts_with("household_shock_recover_activities."),~ifelse(. == "NA", 0, .)))%>%
+  
+  
+  #mutate(household_shock_recover_activities.5 = NA)%>%
   #mutate(household_shock_strategy_absorptive= case_when(
   #  household_shock_recover_activities.5=="1"~ "1", #Reduced area under cultivation
   #household_shock_recover_activities.6=="1"~ "1", #Reduced food consumption
@@ -868,14 +878,15 @@ mutate(across(starts_with("household_shock_recover_activities."), ~ as.numeric(a
   #Household applied shock coping strategy
   mutate(household_shock_strategy= case_when(household_shock_strategy_count>0~ "1", TRUE~"0")) 
 
-per_data_clean$nearest_distance_dfs_km
+zwe_data_clean$nearest_distance_dfs_km
 
 
 
-write.csv(per_data_clean,"per_data_clean.csv",row.names=FALSE)
+write.csv(zwe_data_clean,"zwe_data_clean.csv",row.names=FALSE)
 
-y<-per_data_clean%>%
-  select(nearest_distance_dfs_km,"farmer_agency_1", "farmer_agency_3",sales_channel_crops.direct_to_consumer,
+y<-zwe_data_clean%>%
+  select(land_tenure_own_proportion,income_spend_on_food_percentage,"farmer_agency_1", "farmer_agency_3",
+         sales_channel_crops.direct_to_consumer,
          starts_with("sales_channel_crops.")
          
   )

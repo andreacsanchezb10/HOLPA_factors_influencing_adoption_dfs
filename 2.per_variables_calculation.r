@@ -534,12 +534,12 @@ per_data_clean<-per_data_clean%>%
   #Perception of price fairness: livestock
   mutate(fair_price_livestock= case_when(
     farm_products.Livestock =="0"~ "0", #does not produce 
-    use_percentage_livestock_sales=="0"~ "6", #does not produce 
+    use_percentage_livestock_sales=="0"~ "0", #does not produce 
     TRUE~ fair_price_livestock))%>%
   #Perception of price fairness: fish
   mutate(fair_price_fish= case_when(
     farm_products.Fish =="0"~ "0", #does not produce 
-    use_percentage_fish_sales=="0"~ "6", #does not produce 
+    use_percentage_fish_sales=="0"~ "0", #does not produce 
     TRUE~ fair_price_fish))%>%
   #Perception of price fairness: wood
   mutate(fair_price_wood= case_when(

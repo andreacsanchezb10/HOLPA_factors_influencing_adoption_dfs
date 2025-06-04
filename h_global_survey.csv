@@ -6,6 +6,10 @@ NA,"_longitude",NA,"longitude",NA,NA
 NA,"_latitude",NA,"latitude",NA,NA
 NA,"_elevation",NA,"farm_elevation",NA,NA
 NA,"_precision",NA,"precision",NA,NA
+NA,"__1_3_latitude",NA,"latitude",NA,NA
+NA,"__1_3_longitude",NA,"longitude",NA,NA
+NA,"__1_3_altitude",NA,"farm_elevation",NA,NA
+NA,"__1_3_precision",NA,"precision",NA,NA
 "decimal","_1_2_1_7","For how many years have you lived in this community?","years_in_community","decimal",NA
 "integer","_1_2_1_8","Year of birth","year_birth","integer",NA
 "select_one 1_2_1_9","_1_2_1_9","Gender","gender","select_one","1_2_1_9"

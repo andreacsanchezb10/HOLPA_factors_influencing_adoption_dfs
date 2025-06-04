@@ -125,11 +125,7 @@ global_choices <- read_excel("factors_list.xlsx",sheet = "holpa_choices")%>%
   rename("name_choice" = "name")%>%
   mutate(country="global",
          name_new=as.character(name_new))
-#name_choice= if_else(is.na(name_new),name_choice,name_new))
-mutate(name_new= case_when(
-  name_choice %in% c("notsure","9999")~"unknown",
-  list_name =="3_4_4_1"& name_choice=="7"~"unknown",
-  TRUE~name_new ) )
+
 write.csv(global_choices,"global_choices.csv",row.names=FALSE)
 
 
@@ -218,7 +214,6 @@ walk(sheet_names, function(sheet) {
   df_name <- paste0("zwe", sheet)  # Create dynamic name
   assign(df_name, process_survey_data(sheet, country_name), envir = .GlobalEnv)
 })
-
 
 zwe_maintable <- `zweFinal HOLPA_Zimbabwe_Household`
 zwe_maintable$end <- as.numeric(zwe_maintable$end)
@@ -365,7 +360,6 @@ area_zwe_3_4_3_1_2_begin_repeat<-zwe_3_4_3_1_2_begin_repeat%>%
   mutate(main_crops_herb=ifelse(num_main_crops_herb>0,"1","0"))
 
 sheet_names
-[1] "Final HOLPA_Zimbabwe_Household"                     
 [5]      "_1_4_2_7_begin_repeat"                "_3_4_1_2_7_2_1_begin_repeat"   
 [9]           "_3_4_3_1_1_begin_repeat"        "_3_4_2_2_6_begin_repeat"       
 [13] "_3_4_3_3_1_1_begin_repeat"              "_1_4_2_1_1_begin_repeat"         
@@ -382,7 +376,6 @@ zwe_data<- zwe_maintable%>%
   #left_join(zwe_soil_results, by=c("kobo_farmer_id"))%>%
   left_join(zwe_3_3_4_1_3_begin_repeat, by=c("kobo_farmer_id","country"))%>%
   left_join(area_zwe_3_4_3_1_2_begin_repeat, by=c("kobo_farmer_id"))
-select(kobo_farmer_id,"_1_4_3_5")
 
 
 # Process all select_multiple columns
@@ -392,23 +385,15 @@ select_multiple<-h_global_survey%>%
 zwe_select_multiple_cols <- intersect(colnames(zwe_data), unique(select_multiple$name_question))
 zwe_select_multiple_cols
 
-zwe_select_multiple <- zwe_data %>%
-  select(kobo_farmer_id,all_of(zwe_select_multiple_cols)) %>%
-  pivot_longer(cols =-kobo_farmer_id, names_to = "name_question", values_to = "name_choice")%>%   # Reshape to long format
-  separate_rows(name_choice, sep = ",") %>%  # Split multiple responses into separate rows
-  left_join(h_global_survey%>%select(name_question, column_name_new),by="name_question")%>%
-  mutate(value = 1) %>% # Assign 1 for presence
-  mutate(column_name_new= if_else(is.na(column_name_new),name_question,column_name_new))%>%
-  pivot_wider(id_cols=kobo_farmer_id,names_from = c(column_name_new, name_choice), values_from = value,
-              names_sep = "/", values_fill = 0) %>%
-  dplyr::select(-matches("/NA$"))
+names(zwe_data)
+
 
 # add select_multiple responses
 zwe_data<-zwe_data%>%
   select(!all_of(zwe_select_multiple_cols)) 
 
-zwe_data<-zwe_data%>%
-  left_join(zwe_select_multiple, by=c("kobo_farmer_id"))
+#zwe_data<-zwe_data%>%
+ # left_join(zwe_select_multiple, by=c("kobo_farmer_id"))
 
 
 #####################################
@@ -431,15 +416,34 @@ rename_vector
 # Rename only matching columns
 colnames(zwe_data) <- ifelse(existing_cols %in% names(rename_vector), rename_vector[existing_cols], existing_cols)
 
+# Create a vector of all prefixes that may appear before the "/"
+slash_prefixes <- names(rename_vector)
+slash_prefixes
+
+
+# Function to replace prefix in slash-column names
+rename_slash_columns <- function(col_name) {
+  matched_prefix <- slash_prefixes[startsWith(col_name, paste0(slash_prefixes, "/"))]
+  if (length(matched_prefix) == 1) {
+    return(sub(paste0("^", matched_prefix, "/"), paste0(rename_vector[[matched_prefix]], "/"), col_name))
+  } else {
+    return(col_name)
+  }
+}
+
+# Apply to all column names
+colnames(zwe_data) <- sapply(colnames(zwe_data), rename_slash_columns)
+
+
 # Check the updated column names
 print(colnames(zwe_data))
 
 #####################################
 ########## DATA SELECTION ----
-zwe_data<-zwe_data %>% 
-  select(-matches("-desc$"),
-         -matches("^_"),
-         -matches("^sheet_id"))
+#zwe_data<-zwe_data %>% 
+ # select(-matches("-desc$"),
+  #       -matches("^_"),
+   #      -matches("^sheet_id"))
 
 #####################################
 ########## DATA CLEANNING -----
@@ -479,6 +483,10 @@ sort(unique(zwe_data$gender))
 str(zwe_data$marital_status)
 str(zwe_data$gender)
 
+
+#Remove respondents that are not farmers
+zwe_data<-zwe_data%>%
+  filter(kobo_farmer_id!="274186917")
 
 names(zwe_data)
 write.csv(zwe_data,"zwe_data.csv",row.names=FALSE)
