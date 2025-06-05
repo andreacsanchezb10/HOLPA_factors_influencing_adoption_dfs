@@ -56,8 +56,8 @@ hlabour_begin_group <- function(data,group_workers,num_workers,hours, permanent_
            num_hours= as.numeric(hours))%>%
     mutate(group_workers= case_when(
       group_workers %in% c("Male adults not of working age (>64 years old)")~ paste0("hlabour_",permanent_seasonal,"_adults_old_male"),
-      group_workers%in%c("Male adults (>14 and <65 years old)")~paste0("hlabour_",permanent_seasonal,"_adults_wa_male"),
-      group_workers%in%c("Female adults (>14 and <65 years old)")~paste0("hlabour_",permanent_seasonal,"_adults_wa_female"),
+      group_workers%in%c("Male adults (≥18 and ≤65 years old)")~paste0("hlabour_",permanent_seasonal,"_adults_wa_male"),
+      group_workers%in%c("Female adults (≥18 and ≤65 years old)")~paste0("hlabour_",permanent_seasonal,"_adults_wa_female"),
       group_workers=="Female adults not of working age (>64 years old)"~paste0("hlabour_",permanent_seasonal,"_adults_old_female"),
       group_workers=="Female children (<15 years old)"~ paste0("hlabour_",permanent_seasonal,"_children_female"),
       group_workers=="Male children (<15 years old)"~paste0("hlabour_",permanent_seasonal,"_children_male"),
@@ -85,8 +85,8 @@ practices_begin_group <- function(data, cropland_practices,cropland_practices_ar
       cropland_practices %in%c("Mulching")~ "ecol_practices_mulching_area",
       cropland_practices %in%c("Natural strips/vegetation" )~ "dfs_strip_vegetation_area",
       cropland_practices %in%c("Pollinator/Flower_strips")~ "dfs_strip_polinator_area",
+      cropland_practices %in%c("Pull-push")~ "dfs_pullpush_area",
       #good agricultural practices
-      cropland_practices %in%c("Push-pull")~ "ecol_practices_pushpull_area",
       TRUE ~ cropland_practices))%>%
     select(kobo_farmer_id,cropland_practices,cropland_practices_area)%>%
     pivot_wider(id_cols=kobo_farmer_id, names_from = cropland_practices, values_from = cropland_practices_area,values_fill = "0")
@@ -316,6 +316,7 @@ area_zwe_3_4_3_1_2_begin_repeat<-zwe_3_4_3_1_2_begin_repeat%>%
          "production_unit"= "_3_4_2_1_5_1_calculate",
          "main_crops_yield"= "_3_4_2_1_5_2")%>%
   mutate(main_crops_cropland_area = as.numeric(main_crops_cropland_area),
+         main_crops_cropland_area=main_crops_cropland_area*0.404686,#convert to hectares
          main_crops_yield = as.numeric(main_crops_yield))%>%
   mutate(main_crops = str_replace(main_crops, "^(.)", ~str_to_upper(.x)))%>%
   left_join(zwe_post_processing,by=c("main_crops","production_unit"))%>%
@@ -338,7 +339,7 @@ area_zwe_3_4_3_1_2_begin_repeat<-zwe_3_4_3_1_2_begin_repeat%>%
   mutate(yield_ref_rainfed_clean = as.numeric(yield_ref_rainfed_clean)) %>%
   mutate(yield_to_ref_ratio = production_kg_ha/yield_ref_rainfed_clean) %>%
   mutate(yield_gap = ifelse(yield_to_ref_ratio>1 , 0, 
-                            ifelse(yield_to_ref_ratio == 0, NA, (1- yield_to_ref_ratio)*100))) %>%
+                            ifelse(yield_to_ref_ratio == 0, NA, (1-yield_to_ref_ratio)*100))) %>%
   #Area of three main crops grown
   group_by(kobo_farmer_id)%>%
   mutate(total_main_crops_cropland_area= sum(main_crops_cropland_area),
@@ -490,4 +491,11 @@ zwe_data<-zwe_data%>%
 
 names(zwe_data)
 write.csv(zwe_data,"zwe_data.csv",row.names=FALSE)
+
+names()
+
+x<-zwe_data%>%
+  select(household_shock.5)
+names(zwe_data)
+sort(unique(zwe_data$`household_shock/9`))
 

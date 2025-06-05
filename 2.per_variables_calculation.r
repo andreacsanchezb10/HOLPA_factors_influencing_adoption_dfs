@@ -707,26 +707,6 @@ per_data_clean<-per_data_clean%>%
   mutate(honey_sale= case_when(use_percentage_honey_sales!="0"~ "1",    TRUE~"0"))
 
 
-
-
-
-
-    #Number of practices implemented to keep animals on the farm healthy and happy?
-    across(starts_with("livestock_health_practice."), ~ as.numeric(as.character(.))),
-    num_livestock_health_practice = rowSums(across(starts_with("livestock_health_practice.")), na.rm = TRUE),
-    #Number of management practices used to manage livestock diseases in the last 12 months
-    across(starts_with("livestock_diseases_management."), ~ as.numeric(as.character(.))),
-    num_livestock_diseases_management= rowSums(across(starts_with("livestock_diseases_management.")), na.rm = TRUE),
-    #Number of ORGANIC management practices used to manage livestock diseases in the last 12 months
-    num_livestock_diseases_management_organic = rowSums(select(., c("livestock_diseases_management.3",
-                                                                    "livestock_diseases_management.4",
-                                                                    "livestock_diseases_management.5",
-                                                                    "livestock_diseases_management.6")),na.rm = TRUE),
-    #Number of CHEMICAL management practices used to manage livestock diseases in the last 12 months
-    num_livestock_diseases_management_organic = rowSums(select(., c("livestock_diseases_management.1",
-                                                                    "livestock_diseases_management.2")),na.rm = TRUE))
-
-
 ### FARMER BEHAVIOUR ----
 per_data_clean<- per_data_clean %>%
   #Perceived climatic conditions as risk/shock
@@ -756,11 +736,6 @@ per_data_clean<- per_data_clean %>%
     farmer_agency_1!=0 &farmer_agency_3!=0 ~ rowMedians(as.matrix(select(., c(farmer_agency_1, farmer_agency_3))), na.rm = TRUE),
     TRUE~ NA))%>%
   mutate(farmer_agency_1_3= round(farmer_agency_1_3, digits=0))
-  
-
-    
-    
-    
   
 
 #Distance to the nearest farmer adopting DFS

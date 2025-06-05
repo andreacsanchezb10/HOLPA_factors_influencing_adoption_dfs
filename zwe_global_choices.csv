@@ -1231,6 +1231,10 @@ NA,NA,NA,NA,NA,NA,"_longitude",NA,"longitude",NA,NA
 NA,NA,NA,NA,NA,NA,"_latitude",NA,"latitude",NA,NA
 NA,NA,NA,NA,NA,NA,"_elevation",NA,"farm_elevation",NA,NA
 NA,NA,NA,NA,NA,NA,"_precision",NA,"precision",NA,NA
+NA,NA,NA,NA,NA,NA,"__1_3_latitude",NA,"latitude",NA,NA
+NA,NA,NA,NA,NA,NA,"__1_3_longitude",NA,"longitude",NA,NA
+NA,NA,NA,NA,NA,NA,"__1_3_altitude",NA,"farm_elevation",NA,NA
+NA,NA,NA,NA,NA,NA,"__1_3_precision",NA,"precision",NA,NA
 NA,NA,NA,NA,NA,"decimal","_1_2_1_7","For how many years have you lived in this community?","years_in_community","decimal",NA
 NA,NA,NA,NA,NA,"integer","_1_2_1_8","Year of birth","year_birth","integer",NA
 NA,NA,NA,NA,NA,"text","_1_2_1_11","Ethnicity","ethnicity","text",NA
