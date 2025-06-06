@@ -185,11 +185,6 @@ zwe_data_clean<-zwe_data_clean%>%
   #Farm is not profitable
   mutate(financial_deficit= case_when(financial_deficit=="2"~"0",TRUE~financial_deficit))
 
-x<-zwe_data_clean %>%
-  select(high_cost_roof_material,roof_material.Galvanized_iron_or_aluminum_or_other_metal_sheets,
-         roof_material.Concrete._brick._stone
-         )
-
 
 ### HUMAN CAPITAL ----
 zwe_data_clean<-zwe_data_clean%>%
@@ -567,7 +562,6 @@ zwe_data_clean<-zwe_data_clean%>%
     TRUE ~ NA))
 
 
-
 ### POLITICAL AND INSTITUTIONAL CONTEXT: Value chain ----
 zwe_data_clean<-zwe_data_clean%>%
   #Perception of price fairness: crops
@@ -817,16 +811,14 @@ zwe_data_clean<-zwe_data_clean%>%
         distGeo(
           cbind(longitude, latitude),
           cbind(
-            (per_data_clean$longitude[
-              per_data_clean$dfs_adoption_binary == "1" & per_data_clean$longitude != longitude & per_data_clean$latitude != latitude]),
-            (per_data_clean$latitude[
-              per_data_clean$dfs_adoption_binary == "1" & per_data_clean$longitude != longitude & per_data_clean$latitude != latitude]))),
+            (zwe_data_clean$longitude[
+              zwe_data_clean$dfs_adoption_binary == "1" & zwe_data_clean$longitude != longitude & zwe_data_clean$latitude != latitude]),
+            (zwe_data_clean$latitude[zwe_data_clean$dfs_adoption_binary == "1" & zwe_data_clean$longitude != longitude & zwe_data_clean$latitude != latitude]))),
         na.rm = TRUE) / 1000,  # Convert meters to kilometers
       error = function(e) NA_real_)) %>%
   ungroup()
-select(dfs_adoption_binary,nearest_distance)
 
-sort(unique(zwe_data_clean$household_shock.9))
+sort(unique(zwe_data_clean$nearest_distance_dfs_km))
 
 # Nearest farmer has adoption of DFS
 zwe_data_clean <- zwe_data_clean %>%
@@ -838,19 +830,20 @@ zwe_data_clean <- zwe_data_clean %>%
         distances <- distGeo(
           cbind(longitude, latitude),
           cbind(
-            (per_data_clean$longitude[per_data_clean$kobo_farmer_id != kobo_farmer_id]),
-            (per_data_clean$latitude[per_data_clean$kobo_farmer_id != kobo_farmer_id])))
+            (zwe_data_clean$longitude[zwe_data_clean$kobo_farmer_id != kobo_farmer_id]),
+            (zwe_data_clean$latitude[zwe_data_clean$kobo_farmer_id != kobo_farmer_id])))
         # Find the index of the nearest farmer
         nearest_index <- which.min(distances)
         # Check if the nearest farmer has adoption == "1"
         if (length(nearest_index) > 0) {
-          as.numeric(per_data_clean$dfs_adoption_binary[per_data_clean$kobo_farmer_id != kobo_farmer_id][nearest_index] == "1")
+          as.numeric(zwe_data_clean$dfs_adoption_binary[zwe_data_clean$kobo_farmer_id != kobo_farmer_id][nearest_index] == "1")
         } else {
           NA_real_  # No valid neighbors found
         }},
       error = function(e) NA_real_)) %>%
   ungroup()
 
+zwe_data_clean$nearest_farmer_adopted
 
 #Human well being score
 mutate(across(starts_with("human_wellbeing_"), ~ as.numeric(as.factor(.))))%>%
@@ -918,7 +911,7 @@ mutate(across(starts_with("household_shock_recover_activities."), ~ as.numeric(a
   mutate(household_shock_strategy= case_when(household_shock_strategy_count>0~ "1", TRUE~"0")) 
 
 zwe_data_clean$nearest_distance_dfs_km
-
+zwe_data_clean$yield_gap_median
 
 write.csv(zwe_data_clean,"zwe_data_clean.csv",row.names=FALSE)
 
@@ -926,7 +919,6 @@ y<-zwe_data_clean%>%
   select(perceived_shock_climate,numHA_nhlabour_permanent_total,land_tenure_own_proportion,income_spend_on_food_percentage,"farmer_agency_1", "farmer_agency_3",
          sales_channel_crops.direct_to_consumer,
          starts_with("sales_channel_crops.")
-         
   )
 
 

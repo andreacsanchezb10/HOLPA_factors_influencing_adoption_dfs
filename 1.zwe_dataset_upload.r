@@ -339,7 +339,7 @@ area_zwe_3_4_3_1_2_begin_repeat<-zwe_3_4_3_1_2_begin_repeat%>%
   mutate(yield_ref_rainfed_clean = as.numeric(yield_ref_rainfed_clean)) %>%
   mutate(yield_to_ref_ratio = production_kg_ha/yield_ref_rainfed_clean) %>%
   mutate(yield_gap = ifelse(yield_to_ref_ratio>1 , 0, 
-                            ifelse(yield_to_ref_ratio == 0, NA, (1-yield_to_ref_ratio)*100))) %>%
+                            ifelse(yield_to_ref_ratio == 0, NA, (1-yield_to_ref_ratio)*100)))%>% 
   #Area of three main crops grown
   group_by(kobo_farmer_id)%>%
   mutate(total_main_crops_cropland_area= sum(main_crops_cropland_area),
