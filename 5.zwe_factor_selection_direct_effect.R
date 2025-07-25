@@ -49,7 +49,7 @@ nzv_factors
 zwe_data_nzvFiltered<- zwe_data_analysis[, -nzv_list]
 zwe_data_nzvFiltered
 
-dim(zwe_data_nzvFiltered) #200 farmers; 194 variables retained
+dim(zwe_data_nzvFiltered) #201 farmers; 208 variables retained
 
 c<-as.data.frame(c(colnames(zwe_data_nzvFiltered)))%>%
   rename("column_name_new"="c(colnames(zwe_data_nzvFiltered))")%>%
@@ -67,18 +67,18 @@ ggplot(data=c, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(zwe_data_nzvFiltered) #200 farmers; 5 outcomes, 189 factors retained
-#[1] 200 194
+dim(zwe_data_nzvFiltered) #201 farmers; 9 outcomes, 199 factors retained
+#[1] 201 208
 
 ##=== STEP 2: REMOVE IRRELEVANT FACTORS ======
 sort(unique(factors_list_analysis$zimbabwe_remove_adoption_status))
-zwe_irrelevant_list<- intersect(factors_list_analysis$column_name_new[factors_list_analysis$zimbabwe_remove_adoption_status %in%c("irrelevant")],colnames(zwe_data_nzvFiltered))
+zwe_irrelevant_list<- intersect(factors_list_analysis$column_name_new[factors_list_analysis$zimbabwe_remove_adoption_status %in%c("irrelevant","not_available")],colnames(zwe_data_nzvFiltered))
 zwe_irrelevant_list
 
 zwe_data_irrelevantFiltered<- zwe_data_nzvFiltered%>%
   dplyr::select(-all_of(zwe_irrelevant_list))
 
-dim(zwe_data_irrelevantFiltered) #200 farmers; 175 variables retained
+dim(zwe_data_irrelevantFiltered) #201 farmers; 203 variables retained
 names(zwe_data_irrelevantFiltered)
 
 b<-as.data.frame(c(colnames(zwe_data_irrelevantFiltered)))%>%
@@ -97,8 +97,8 @@ ggplot(data=b, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(zwe_data_irrelevantFiltered) #200 farmers; 5 outcomes, 170 factors retained
-#[1] 200 175
+dim(zwe_data_irrelevantFiltered) #201 farmers; 9 outcomes, 194 factors retained
+#[1] 200 203
 
 ##=== STEP 3: CHECK FOR CORRELATION ACROSS FACTORS ======
 # Function to calculate Spearman's correlation
@@ -494,28 +494,27 @@ zwe_picked_power <- 8  # Optionally automate this later
 zwe_adoptionBinary <- zwe_data_redundantFiltered$dfs_adoption_binary
 zwe_factors <- zwe_data_redundantFiltered %>% select(-dfs_adoption_binary)
 
-time_taken <- system.time({
-  zwe_adoption_binary_results <- feature_selection_algorithms(zwe_factors, zwe_adoptionBinary, zwe_picked_power, 
-                                                              file_name = "results/direct/zwe/zwe_adoption_binary")
-})
+zwe_adoption_binary_results <- feature_selection_algorithms(zwe_factors, zwe_adoptionBinary, zwe_picked_power, 
+                                                              file_name = "results/zwe/direct/zwe_adoption_binary")
+
 
 # Plot accuracy vs number of selected factors
-zwe_adoptionBinary_acc_ff<- read.csv("results/direct/zwe/zwe_adoption_binary_accValAllFuzzyForest.csv",sep=",") 
-zwe_adoptionBinary_acc_rf<- read.csv("results/direct/zwe/zwe_adoption_binary_accValAllRandomForest.csv",sep=",") 
-zwe_adoptionBinary_acc_cf<- read.csv("results/direct/zwe/zwe_adoption_binary_accValAllCForest.csv",sep=",") 
+zwe_adoptionBinary_acc_ff<- read.csv("results/zwe/direct/zwe_adoption_binary_accValAllFuzzyForest.csv",sep=",") 
+zwe_adoptionBinary_acc_rf<- read.csv("results/zwe/direct/zwe_adoption_binary_accValAllRandomForest.csv",sep=",") 
+zwe_adoptionBinary_acc_cf<- read.csv("results/zwe/direct/zwe_adoption_binary_accValAllCForest.csv",sep=",") 
 
 plot_accuracy_vs_features(zwe_adoptionBinary_acc_ff,zwe_adoptionBinary_acc_rf, zwe_adoptionBinary_acc_cf,
                           method_name = "A) Mbire and Murehwa Zimbabwe: Dependent variable = Adoption Binary",13,13)
 #11.5*9.5 pdf landscape
 
-zwe_adoptionBinary_selectFactors_cf<- read.csv("results/direct/zwe/zwe_adoption_binary_featureSelectedCForest.csv",sep=",") 
-zwe_adoptionBinary_selectFactors_ff<- read.csv("results/direct/zwe/zwe_adoption_binary_featureSelectedFuzzyForest.csv",sep=",") 
-zwe_adoptionBinary_selectFactors_rf<- read.csv("results/direct/zwe/zwe_adoption_binary_featureSelectedRandomForest.csv",sep=",") 
+zwe_adoptionBinary_selectFactors_cf<- read.csv("results/zwe/direct/zwe_adoption_binary_featureSelectedCForest.csv",sep=",") 
+zwe_adoptionBinary_selectFactors_ff<- read.csv("results/zwe/direct/zwe_adoption_binary_featureSelectedFuzzyForest.csv",sep=",") 
+zwe_adoptionBinary_selectFactors_rf<- read.csv("results/zwe/direct/zwe_adoption_binary_featureSelectedRandomForest.csv",sep=",") 
 
 zwe_adoptionBinary_selectedFactors_freq<-selected_factors_freq(zwe_adoptionBinary_selectFactors_cf,
                                                                zwe_adoptionBinary_selectFactors_ff,
                                                                zwe_adoptionBinary_selectFactors_rf)
-write.csv(zwe_adoptionBinary_selectedFactors_freq, "results/direct/zwe/zwe_adoption_binary_selectedFactors_freq.csv")
+write.csv(zwe_adoptionBinary_selectedFactors_freq, "results/zwe/direct/zwe_adoption_binary_selectedFactors_freq.csv")
 
 ## Extract the best 13 factors
 zwe_adoptionBinary_selectedFactors<-zwe_adoptionBinary_selectedFactors_freq%>%
@@ -523,7 +522,7 @@ zwe_adoptionBinary_selectedFactors<-zwe_adoptionBinary_selectedFactors_freq%>%
   slice_max(order_by = frequency, n = 13)%>%
   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
-write.csv(zwe_adoptionBinary_selectedFactors, "results/direct/zwe/zwe_adoption_binary_selectedFactors.csv")
+write.csv(zwe_adoptionBinary_selectedFactors, "results/zwe/direct/zwe_adoption_binary_selectedFactors.csv")
 
 # Select only the selected factors from database
 zwe_data_adoptionBinary_selectedFactors<- zwe_data_analysis%>%
@@ -532,7 +531,7 @@ zwe_data_adoptionBinary_selectedFactors<- zwe_data_analysis%>%
   
 dim(zwe_data_adoptionBinary_selectedFactors)#[1] 200   14 variables; 13 factors
 
-write.csv(zwe_data_adoptionBinary_selectedFactors, "results/direct/zwe/zwe_data_adoption_binary_selectedFactors.csv")
+write.csv(zwe_data_adoptionBinary_selectedFactors, "results/zwe/direct/zwe_data_adoption_binary_selectedFactors.csv")
 
 create_cor_df <- function(data,selected_factors) {
   data_num<-data %>% 
