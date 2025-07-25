@@ -500,22 +500,22 @@ time_taken <- system.time({
 })
 
 # Plot accuracy vs number of selected factors
-per_adoptionBinary_acc_ff<- read.csv("results/direct/per/per_adoption_binary_accValAllFuzzyForest.csv",sep=",") 
-per_adoptionBinary_acc_rf<- read.csv("results/direct/per/per_adoption_binary_accValAllRandomForest.csv",sep=",") 
-per_adoptionBinary_acc_cf<- read.csv("results/direct/per/per_adoption_binary_accValAllCForest.csv",sep=",") 
+per_adoptionBinary_acc_ff<- read.csv("results/per/direct/per_adoption_binary_accValAllFuzzyForest.csv",sep=",") 
+per_adoptionBinary_acc_rf<- read.csv("results/per/direct/per_adoption_binary_accValAllRandomForest.csv",sep=",") 
+per_adoptionBinary_acc_cf<- read.csv("results/per/direct/per_adoption_binary_accValAllCForest.csv",sep=",") 
 
 plot_accuracy_vs_features(per_adoptionBinary_acc_ff,per_adoptionBinary_acc_rf, per_adoptionBinary_acc_cf,
                           method_name = "A) Ucayali Peru: Dependent variable = Adoption Binary",13,13)
 #11.5*9.5 pdf landscape
 
-per_adoptionBinary_selectFactors_cf<- read.csv("results/direct/per/per_adoption_binary_featureSelectedCForest.csv",sep=",") 
-per_adoptionBinary_selectFactors_ff<- read.csv("results/direct/per/per_adoption_binary_featureSelectedFuzzyForest.csv",sep=",") 
-per_adoptionBinary_selectFactors_rf<- read.csv("results/direct/per/per_adoption_binary_featureSelectedRandomForest.csv",sep=",") 
+per_adoptionBinary_selectFactors_cf<- read.csv("results/per/direct/per_adoption_binary_featureSelectedCForest.csv",sep=",") 
+per_adoptionBinary_selectFactors_ff<- read.csv("results/per/direct/per_adoption_binary_featureSelectedFuzzyForest.csv",sep=",") 
+per_adoptionBinary_selectFactors_rf<- read.csv("results/per/direct/per_adoption_binary_featureSelectedRandomForest.csv",sep=",") 
 
 per_adoptionBinary_selectedFactors_freq<-selected_factors_freq(per_adoptionBinary_selectFactors_cf,
                                                                per_adoptionBinary_selectFactors_ff,
                                                                per_adoptionBinary_selectFactors_rf)
-write.csv(per_adoptionBinary_selectedFactors_freq, "results/direct/per/per_adoption_binary_selectedFactors_freq.csv")
+write.csv(per_adoptionBinary_selectedFactors_freq, "results/per/direct/per_adoption_binary_selectedFactors_freq.csv")
 
 ## Extract the best 13 factors
 per_adoptionBinary_selectedFactors<-per_adoptionBinary_selectedFactors_freq%>%
@@ -523,7 +523,7 @@ per_adoptionBinary_selectedFactors<-per_adoptionBinary_selectedFactors_freq%>%
   slice_max(order_by = frequency, n = 13)%>%
   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
-write.csv(per_adoptionBinary_selectedFactors, "results/direct/per/per_adoption_binary_selectedFactors.csv")
+write.csv(per_adoptionBinary_selectedFactors, "results/per/direct/per_adoption_binary_selectedFactors.csv")
 
 # Select only the selected factors from database
 per_data_adoptionBinary_selectedFactors<- per_data_analysis%>%
@@ -532,7 +532,7 @@ per_data_adoptionBinary_selectedFactors<- per_data_analysis%>%
   
 dim(per_data_adoptionBinary_selectedFactors)#[1] 200   14 variables; 13 factors
 
-write.csv(per_data_adoptionBinary_selectedFactors, "results/direct/per/per_data_adoption_binary_selectedFactors.csv")
+write.csv(per_data_adoptionBinary_selectedFactors, "results/per/direct/per_data_adoption_binary_selectedFactors.csv")
 
 create_cor_df <- function(data,selected_factors) {
   data_num<-data %>% 
