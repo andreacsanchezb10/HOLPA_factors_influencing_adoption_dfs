@@ -10,9 +10,9 @@ library(ggplot2)
 library(reshape2)
 library(psych)
 
-per_data_clean<- read.csv("per_data_clean.csv",sep=",")
+zwe_data_clean<- read.csv("zwe_data_clean.csv",sep=",")
 global_survey<-read.csv("h_global_survey.csv",sep=",")
-per_global_choices<-read.csv("per_global_choices.csv",sep=",")
+zwe_global_choices<-read.csv("zwe_global_choices.csv",sep=",")
 factors_list <- read_excel("factors_list.xlsx",sheet = "factors_list")
 
 #############################################################
@@ -68,17 +68,17 @@ summary_stats_factor <- function(df,factor_valid_columns,categorical_choices,fac
 
 ###### --- NUMERICAL VARIABLES -----
 ### Summary statistics
-columns_numeric <- intersect(factors_list$column_name_new[factors_list$metric_type == "continuous"], colnames(per_data_clean))
+columns_numeric <- intersect(factors_list$column_name_new[factors_list$metric_type == "continuous"], colnames(zwe_data_clean))
 print(columns_numeric)  # Check if it holds expected values
 
-per_summary_numerical <- summary_stats_num(per_data_clean,columns_numeric)
-sort(unique(per_summary_numerical$factor))
+zwe_summary_numerical <- summary_stats_num(zwe_data_clean,columns_numeric)
+sort(unique(zwe_summary_numerical$factor))
 
-write.csv(per_summary_numerical,"per_summary_numerical.csv",row.names=FALSE)
+write.csv(zwe_summary_numerical,"zwe_summary_numerical.csv",row.names=FALSE)
 
 ### Histogram plots for each numerical variable
 plot_list <- lapply(columns_numeric, function(col) {
-  ggplot(per_data_clean, aes(x = .data[[col]])) +
+  ggplot(zwe_data_clean, aes(x = .data[[col]])) +
     geom_histogram(bins = 30, fill = "steelblue", color = "black", alpha = 0.7) +
     labs(title = col) +
     theme_minimal()
@@ -88,7 +88,7 @@ histogram_plot <- wrap_plots(plot_list) + plot_annotation(title = "Histograms of
 print(histogram_plot)
 
 ### Scatterplot Matrix
-long_data <- melt(per_data_clean, id.vars = "dfs_adoption_binary", measure.vars = columns_numeric)
+long_data <- melt(zwe_data_clean, id.vars = "dfs_adoption_binary", measure.vars = columns_numeric)
 
 ggplot(long_data, aes(x = dfs_adoption_binary, y =  value, color = dfs_adoption_binary)) +
   geom_point(alpha = 0.5) +
@@ -96,8 +96,8 @@ ggplot(long_data, aes(x = dfs_adoption_binary, y =  value, color = dfs_adoption_
   theme_minimal()
 
 ### Boxplot Matrix 
-featurePlot(x = per_data_clean[,columns_numeric], 
-            y = as.factor(per_data_clean$dfs_adoption_binary), 
+featurePlot(x = zwe_data_clean[,columns_numeric], 
+            y = as.factor(zwe_data_clean$dfs_adoption_binary), 
             plot = "box", 
             ## Pass in options to bwplot() 
             scales = list(y = list(relation="free"),
@@ -107,7 +107,7 @@ featurePlot(x = per_data_clean[,columns_numeric],
 
 ###### --- CATEGORICAL AND BINARY VARIABLES -----
 ### Summary statistics
-per_categorical_choices<-per_global_choices%>%
+zwe_categorical_choices<-zwe_global_choices%>%
   mutate(name_new=as.character(name_new),
          name_choice= if_else(is.na(name_new),name_choice,name_new))%>%
   select(column_name_new,name_choice,label_choice,type_question)%>%
@@ -117,36 +117,36 @@ per_categorical_choices<-per_global_choices%>%
 
 ### For factor and binary variables
 #(select_one)
-columns_factor_so <- intersect(factors_list$column_name_new[factors_list$metric_type %in%c("categorical","binary")], colnames(per_data_clean))
+columns_factor_so <- intersect(factors_list$column_name_new[factors_list$metric_type %in%c("categorical","binary")], colnames(zwe_data_clean))
 print(columns_factor_so)  # Check if it holds expected values
 
 #(select_multiple)
-columns_factor_sm <- intersect(per_categorical_choices$column_name_new2[per_categorical_choices$type_question %in%c("select_multiple")], colnames(per_data_clean))
+columns_factor_sm <- intersect(zwe_categorical_choices$column_name_new2[zwe_categorical_choices$type_question %in%c("select_multiple")], colnames(zwe_data_clean))
 print(columns_factor_sm)  # Check if it holds expected values
 
 columns_factor<-c(columns_factor_so, columns_factor_sm)
 print(columns_factor)  # Check if it holds expected values
 
-per_summary_categorical <- summary_stats_factor(per_data_clean,columns_factor,per_categorical_choices,factors_list)
-sort(unique(per_summary_categorical$column_name_new2))
+zwe_summary_categorical <- summary_stats_factor(zwe_data_clean,columns_factor,zwe_categorical_choices,factors_list)
+sort(unique(zwe_summary_categorical$column_name_new2))
 
-print(per_summary_categorical)  # Check if it holds expected values
-sort(unique(per_summary_categorical$factor))
-write.csv(per_summary_categorical,"per_summary_categorical.csv",row.names=FALSE)
+print(zwe_summary_categorical)  # Check if it holds expected values
+sort(unique(zwe_summary_categorical$factor))
+write.csv(zwe_summary_categorical,"zwe_summary_categorical.csv",row.names=FALSE)
 
 ### Boxplot Matrix
 # Define the number of variables per plot
-num_per_plot <- 36  # Adjust as needed
+num_zwe_plot <- 36  # Adjust as needed
 
 # Split categorical variables into chunks
-split_vars <- split(columns_factor, ceiling(seq_along(columns_factor) / num_per_plot))
+split_vars <- split(columns_factor, ceiling(seq_along(columns_factor) / num_zwe_plot))
 
 # Loop over chunks and generate separate plots
 for (i in seq_along(split_vars)) {
   subset_vars <- split_vars[[i]]
   
   # Convert data to long format for the subset
-  long_data_subset <- melt(per_data_clean, id.vars = "dfs_adoption_binary", measure.vars = subset_vars)
+  long_data_subset <- melt(zwe_data_clean, id.vars = "dfs_adoption_binary", measure.vars = subset_vars)
   
   p <- ggplot(long_data_subset) +
     geom_bar(position =  "stack", aes(x = value, fill = dfs_adoption_binary)) +
@@ -171,7 +171,7 @@ library(reshape2)
 num_per_plot <- 36  # Adjust as needed
 
 # Convert categorical variables to factors (if not already)
-per_data_clean[, columns_factor] <- lapply(per_data_clean[, columns_factor], as.factor)
+zwe_data_clean[, columns_factor] <- lapply(zwe_data_clean[, columns_factor], as.factor)
 
 # Split categorical variables into chunks
 split_vars <- split(columns_factor, ceiling(seq_along(columns_factor) / num_per_plot))
@@ -181,7 +181,7 @@ for (i in seq_along(split_vars)) {
   subset_vars <- split_vars[[i]]
   
   # Convert data to long format for the subset
-  long_data_subset <- melt(per_data_clean, id.vars = "dfs_adoption_binary", measure.vars = subset_vars)
+  long_data_subset <- melt(zwe_data_clean, id.vars = "dfs_adoption_binary", measure.vars = subset_vars)
   
   # Ensure dfs_adoption_binary is a factor
   long_data_subset$dfs_adoption_binary <- as.factor(long_data_subset$dfs_adoption_binary)
