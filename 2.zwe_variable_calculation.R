@@ -191,30 +191,25 @@ zwe_data_clean<-zwe_data_clean%>%
   #Household head age
   mutate(age = 2025-year_birth)%>%
   #Level of education farmer
+  mutate(across(starts_with("education_years_finished"),~ as.numeric(as.character(.))))%>%
   mutate(education_level_finished= case_when(
-    education_level%in%c("1","4")~"1",
-    education_level%in%c("2","11")~"0",
-    education_level%in%c("3","6","8")~"2",
-    education_level%in%c("5","7","9","10")  ~"3",
+    education_level%in%c("0")~"0",
+    education_level%in%c("1") & education_years_finished_primary<7~"0",
+    education_level%in%c("1") & education_years_finished_primary==7~"1",
+    education_level%in%c("2") & education_years_finished_secondary<7~"1",
+    education_level%in%c("2") & education_years_finished_secondary==7~"2",
+    education_level%in%c("3") & education_years_finished_tertiary<10~"2",
+    education_level%in%c("3") & education_years_finished_tertiary==10~"3",
     TRUE~NA))%>%
   #Level of education of most male household members
-  mutate(education_level_male_finished= case_when(
+  mutate(education_level_male= case_when(
     is.na(education_level_male)~"0",
-    education_level_male%in%c("1","4")~"1",
-    education_level_male%in%c("2","11")~"0",
-    education_level_male%in%c("3","6","8")~"2",
-    education_level_male%in%c("5","7","9","10")  ~"3",
-    TRUE~NA))%>%
+    TRUE~education_level_male))%>%
   #Level of education of most female household members
-  mutate(education_level_female_finished= case_when(
+  mutate(education_level_female= case_when(
     is.na(education_level_female)~"0",
-    education_level_female%in%c("1","4")~"1",
-    education_level_female%in%c("2","11")~"0",
-    education_level_female%in%c("3","6","8")~"2",
-    education_level_female%in%c("5","7","9","10")  ~"3",
-    TRUE~NA))%>%
-  #Level of education of most household members
-  mutate(education_level_household_finished= pmax(education_level_finished, education_level_male_finished, education_level_female_finished, na.rm = TRUE))%>%
+    TRUE~education_level_female))%>%
+  
   #Total adults (18-65 years old) in household
   mutate(num_adults_wa = num_adults_wa_male+num_adults_wa_female,
          #Total adults (>65 years old) in household
@@ -916,7 +911,8 @@ zwe_data_clean$yield_gap_median
 write.csv(zwe_data_clean,"zwe_data_clean.csv",row.names=FALSE)
 
 y<-zwe_data_clean%>%
-  select(perceived_shock_climate,numHA_nhlabour_permanent_total,land_tenure_own_proportion,income_spend_on_food_percentage,"farmer_agency_1", "farmer_agency_3",
+  select(livestock_count_tlu,
+perceived_shock_climate,numHA_nhlabour_permanent_total,land_tenure_own_proportion,income_spend_on_food_percentage,"farmer_agency_1", "farmer_agency_3",
          sales_channel_crops.direct_to_consumer,soil_MO_percentage_mean,
          starts_with("sales_channel_crops.")
   )

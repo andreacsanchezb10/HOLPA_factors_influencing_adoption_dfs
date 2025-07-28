@@ -17,6 +17,9 @@ NA,"__1_3_precision",NA,"precision",NA,NA
 "text","_1_2_1_11","Ethnicity","ethnicity","text",NA
 "select_one 4_1_1_1","_4_1_1_1","Can you read and write in any language?","read_write","select_one","4_1_1_1"
 "select_one 1_2_1_12_1","_1_2_1_12_1","What is the highest level of school you attended?","education_level","select_one","1_2_1_12_1"
+"select_one 1_2_1_12_1_1","_1_2_1_12_1_1","What is the highest [YEAR/CLASS] you completed at Primary education level?","education_years_finished_primary","select_one","1_2_1_12_1_1"
+"select_one 1_2_1_12_1_2","_1_2_1_12_1_2","What is the highest [YEAR/CLASS] you completed at Secondary education level?","education_years_finished_secondary","select_one","1_2_1_12_1_2"
+"select_one 1_2_1_12_1_3","_1_2_1_12_1_3","What is the highest [YEAR/CLASS] you completed at Terciary education level?","education_years_finished_tertiary","select_one","1_2_1_12_1_3"
 "select_one 1_2_1_13_1","_1_2_1_13_1","What was your main occupation in the last 12 months?","occupation_primary","select_one","1_2_1_13_1"
 "select_one 1_2_1_13_2_1","_1_2_1_13_2_1","Do you have any additional occupation(s)?","occupation_secondary","select_one","1_2_1_13_2_1"
 "select_multiple 1_2_1_13_2_2","_1_2_1_13_2_2","What was your other occupation(s) in the last 12 months?","occupation_secondary_list","select_multiple","1_2_1_13_2_2"

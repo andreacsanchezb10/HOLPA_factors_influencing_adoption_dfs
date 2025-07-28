@@ -13,14 +13,15 @@ sort(unique(factors_list$category_1))
 
 zwe_data_clean<- read.csv("zwe_data_clean.csv",sep=",")
 sort(unique(zwe_data_clean$soil_erosion_perception))
-zwe_summary_categorical<-read.csv("zwe_summary_categorical.csv",sep=",") #541
-zwe_summary_numerical<-read.csv("zwe_summary_numerical.csv",sep=",")  #80 factors
+zwe_summary_categorical<-read.csv("zwe_summary_categorical.csv",sep=",") #620
+zwe_summary_numerical<-read.csv("zwe_summary_numerical.csv",sep=",")  #79 factors
 
 factors_category<-zwe_summary_numerical%>%dplyr::select(column_name_new, category_1,sub_category)%>%
   rbind(zwe_summary_categorical%>%dplyr::select(column_name_new,category_1,sub_category))%>%
   distinct()
 
 sort(unique(zwe_data_clean$province))
+sort(unique(zwe_data_clean$district))
 
 #### Select the factors that were listed as important for adoption according to:
 # - data availability
@@ -40,7 +41,7 @@ rownames(zwe_data_analysis) <- zwe_data_analysis$kobo_farmer_id
 zwe_data_analysis<- zwe_data_analysis%>%
   dplyr::select(-kobo_farmer_id)
 
-dim(zwe_data_analysis) #201 farmers; 280 variables evaluated
+dim(zwe_data_analysis) #200 farmers; 278 variables evaluated
 
 a<-as.data.frame(c(colnames(zwe_data_analysis)))%>%
   rename("column_name_new"="c(colnames(zwe_data_analysis))")%>%
@@ -58,8 +59,8 @@ ggplot(data=a, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(zwe_data_analysis) #201 farmers; 20 outcomes; 260 factors; 
-#[1] 201 280
+dim(zwe_data_analysis) #200 farmers; 20 outcomes; 258 factors; 
+#[1] 200 281
 
 
 #############################################################    
@@ -74,6 +75,7 @@ print(columns_categorical)  # Check if it holds expected values
 zwe_data_analysis<- zwe_data_analysis%>%
   mutate(across(all_of(columns_categorical), as.factor))
 sort(unique(zwe_data_analysis$main_crops_annual ))
+
 
 ###### --- NUMERICAL VARIABLES -----
 #### Convert continuous variables to numeric
@@ -126,7 +128,7 @@ dummies <- predict(dummies, newdata = zwe_data_analysis)%>%
 str(dummies)
 zwe_data_Binary <- zwe_data_analysis%>%
   cbind(dummies)%>%
-  dplyr::select(-all_of(columns_categorical_nominal))
+  dplyr::select(-all_of(valid_nominals))
 
 
 cols_to_remove <- sapply(binary_factors, function(col) {
@@ -173,8 +175,8 @@ ggplot(data=b, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(zwe_data_Binary) #201 farmers; 20 outcomes; 347 factors
-#[1] 200 367
+dim(zwe_data_Binary) #200 farmers; 20 outcomes; 349 factors
+#[1] 200 369
 
 write.csv(zwe_data_Binary,"zwe_data_Binary.csv",row.names=TRUE)
 

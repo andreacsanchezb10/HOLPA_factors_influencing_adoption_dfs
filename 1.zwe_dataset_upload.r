@@ -508,7 +508,7 @@ write.csv(zwe_data,"zwe_data.csv",row.names=FALSE)
 names()
 
 x<-zwe_data%>%
-  select(household_shock.5)
+  select(household_shock.5,education_years_finished_primary)
 names(zwe_data)
 sort(unique(zwe_data$`household_shock/9`))
 
