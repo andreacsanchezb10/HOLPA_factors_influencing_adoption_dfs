@@ -917,7 +917,7 @@ write.csv(zwe_data_clean,"zwe_data_clean.csv",row.names=FALSE)
 
 y<-zwe_data_clean%>%
   select(perceived_shock_climate,numHA_nhlabour_permanent_total,land_tenure_own_proportion,income_spend_on_food_percentage,"farmer_agency_1", "farmer_agency_3",
-         sales_channel_crops.direct_to_consumer,
+         sales_channel_crops.direct_to_consumer,soil_MO_percentage_mean,
          starts_with("sales_channel_crops.")
   )
 

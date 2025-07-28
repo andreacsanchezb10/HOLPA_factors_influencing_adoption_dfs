@@ -198,9 +198,17 @@ zwe_f_survey<-zwe_f_survey%>%
   mutate(kobo_farmer_id=as.character(kobo_farmer_id))
 
 #Soil results 
-## TO CHECK!!
-zwe_soil_results <- read_excel(paste0(zwe_path,"zwe_soil_results_250924.xlsx"), sheet = "Resultados suelos")
-
+## TO CHECK!! WHY THERE ARE DUPLICATED FARMERS? I ASKED TO GATIEN ON TEAMS
+zwe_soil_results <- read.csv(paste0(zwe_path,"zwe_soil_results.csv"))%>%
+  slice(-1)%>%
+  rename("MO_percentage"="percentC")%>%
+  select(household_id,farmer,MO_percentage)%>%
+  group_by(household_id,farmer)%>%
+  mutate(soil_MO_percentage_mean= mean(MO_percentage))%>%
+  ungroup()%>%
+  distinct(household_id,farmer,soil_MO_percentage_mean, .keep_all = TRUE) 
+  
+  
 # Read all sheet names from zwe_household survey
 sheet_names <- excel_sheets(paste0(zwe_path,"zwe_holpa_household_survey_clean.xlsx"))
 sheet_names
@@ -374,7 +382,7 @@ zwe_data<- zwe_maintable%>%
   left_join(zwe_3_3_3_2_begin_repeat, by=c("kobo_farmer_id"))%>%
   left_join(zwe_f_survey, by=c("kobo_farmer_id","country"))%>%
   left_join(zwe_3_4_2_2_2_begin_repeat, by=c("kobo_farmer_id"))%>%
-  #left_join(zwe_soil_results, by=c("kobo_farmer_id"))%>%
+  left_join(zwe_soil_results, by=c("household_id","farmer"))%>%
   left_join(zwe_3_3_4_1_3_begin_repeat, by=c("kobo_farmer_id","country"))%>%
   left_join(area_zwe_3_4_3_1_2_begin_repeat, by=c("kobo_farmer_id"))
 
@@ -392,10 +400,6 @@ names(zwe_data)
 # add select_multiple responses
 zwe_data<-zwe_data%>%
   select(!all_of(zwe_select_multiple_cols)) 
-
-#zwe_data<-zwe_data%>%
- # left_join(zwe_select_multiple, by=c("kobo_farmer_id"))
-
 
 #####################################
 ########## RENAME COLUMN NAMES ----
@@ -485,9 +489,18 @@ str(zwe_data$marital_status)
 str(zwe_data$gender)
 
 
-#Remove respondents that are not farmers
+zwe_data %>%
+  select(household_id, farmer,"_1_2_1_4_1")%>%
+  group_by(household_id, farmer) %>%
+  filter(n() > 1) %>%
+  ungroup()
+
 zwe_data<-zwe_data%>%
-  filter(kobo_farmer_id!="274186917")
+  #Remove respondents that are not farmers
+  filter(kobo_farmer_id!="274186917")%>%
+  #Remove duplicate farmer
+  filter(kobo_farmer_id!="274119031")
+  
 
 names(zwe_data)
 write.csv(zwe_data,"zwe_data.csv",row.names=FALSE)
