@@ -16,11 +16,10 @@ zwe_data_analysis<-  read.csv("zwe_data_Binary.csv",sep=",")
 rownames(zwe_data_analysis) <- zwe_data_analysis$X
 zwe_data_analysis<- zwe_data_analysis%>%
   dplyr::select(-X)%>%
-  rename("pest_management_ecol_practices.biological-control"="pest_management_ecol_practices.biological.control")%>%
-  select(education_level_female)
+  rename("pest_management_ecol_practices.biological-control"="pest_management_ecol_practices.biological.control")
 
-dim(zwe_data_analysis) #200 farmers; 20 outcomes; 347 factors
-#[1] 200 367
+dim(zwe_data_analysis) #200 farmers; 20 outcomes; 349 factors
+#[1] 200 369
 
 #############################################################    
 ########### FACTOR SELECTION ----
@@ -51,7 +50,7 @@ nzv_factors
 zwe_data_nzvFiltered<- zwe_data_analysis[, -nzv_list]
 zwe_data_nzvFiltered
 
-dim(zwe_data_nzvFiltered) #200 farmers; 209 variables retained
+dim(zwe_data_nzvFiltered) #200 farmers; 211 variables retained
 
 c<-as.data.frame(c(colnames(zwe_data_nzvFiltered)))%>%
   rename("column_name_new"="c(colnames(zwe_data_nzvFiltered))")%>%
@@ -69,8 +68,8 @@ ggplot(data=c, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(zwe_data_nzvFiltered) #200 farmers; 9 outcomes, 200 factors retained
-#[1] 200 209
+dim(zwe_data_nzvFiltered) #200 farmers; 9 outcomes, 202 factors retained
+#[1] 200 211
 
 ##=== STEP 2: REMOVE IRRELEVANT FACTORS ======
 sort(unique(factors_list_analysis$zimbabwe_remove_adoption_status))
@@ -80,12 +79,12 @@ zwe_irrelevant_list
 zwe_data_irrelevantFiltered<- zwe_data_nzvFiltered%>%
   dplyr::select(-all_of(zwe_irrelevant_list))
 
-dim(zwe_data_irrelevantFiltered) #200 farmers; 204 variables retained
+dim(zwe_data_irrelevantFiltered) #200 farmers; 206 variables retained
 names(zwe_data_irrelevantFiltered)
 
 b<-as.data.frame(c(colnames(zwe_data_irrelevantFiltered)))%>%
   rename("column_name_new"="c(colnames(zwe_data_irrelevantFiltered))")%>%
-  left_join(factors_list_analysis%>%select(category_1,column_name_new,constructs,constructs_type), by="column_name_new")
+  left_join(factors_list_analysis%>%select(category_1,column_name_new,constructs,constructs_type), by="column_name_new")%>%
   group_by(category_1) %>%
   mutate(column_name_new_count = n()) %>%
   tally()
@@ -99,8 +98,8 @@ ggplot(data=b, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(zwe_data_irrelevantFiltered) #200 farmers; 9 outcomes, 195 factors retained
-#[1] 200 204
+dim(zwe_data_irrelevantFiltered) #200 farmers; 9 outcomes, 187 factors retained
+#[1] 200 196
 
 ##=== STEP 3: CHECK FOR CORRELATION ACROSS FACTORS ======
 # Function to calculate Spearman's correlation
@@ -176,7 +175,7 @@ zwe_redundant_list
 zwe_data_redundantFiltered<- zwe_data_irrelevantFiltered%>%
   dplyr::select(-all_of(zwe_redundant_list))
 
-dim(zwe_data_redundantFiltered) #200 farmers; 147 variables
+dim(zwe_data_redundantFiltered) #200 farmers; 178 variables
 names(zwe_data_redundantFiltered)
 
 d<-as.data.frame(c(colnames(zwe_data_redundantFiltered)))%>%
@@ -200,8 +199,8 @@ ggplot(data=d, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(zwe_data_redundantFiltered)#200 farmers; 1 outcomes, 146 factors retained
-#[1] 200 147
+dim(zwe_data_redundantFiltered)#200 farmers; 1 outcomes, 175 factors retained
+#[1] 200 176
 
 ##=== STEP 5: CHECK FOR CORRELATION ACROSS RETAINED FACTORS ======
 zwe_factors_list_analysis2 <- as.data.frame(colnames(zwe_data_redundantFiltered))%>%

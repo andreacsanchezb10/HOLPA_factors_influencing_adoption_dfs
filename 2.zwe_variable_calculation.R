@@ -692,6 +692,7 @@ zwe_data_clean<-zwe_data_clean%>%
   #adoption burning residues
   mutate(sfs_burning_residues_area=sfs_burning_residues_area*0.404686)%>% #convert to hectares
   mutate(sfs_burning_residues_adoption= case_when(sfs_burning_residues_area>0~ "1", TRUE~ "0"))%>%
+  
   #PERMANENT HOUSEHOLD LABOUR: total labour hours per year
   mutate(across(starts_with("num_workers_nhlabour_permanent_"), ~ ifelse(is.na(.) |. == 9999, 0, .)),
          across(starts_with("num_hours_nhlabour_permanent_"), ~ ifelse(is.na(.) |. == 9999, 0, .)))%>%
