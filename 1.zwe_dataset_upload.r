@@ -315,7 +315,7 @@ zwe_3_3_4_1_3_begin_repeat<- zwe_3_3_4_1_3_begin_repeat%>%
 zwe_post_processing<-read.csv("HOLPA data post-processing_ZWE_inputs.csv")%>%
   rename("main_crops"="main_crops_common_names",
          "production_unit"="production.unit")%>%
-  select(main_crops,production_unit,yield_conversion_unit_to_kg,yield_ref_rainfed_clean)
+  select(main_crops,production_unit,yield_conversion_unit_to_kg,yield_ref_rainfed_clean,yield_ref_irr_clean)
   mutate(main_crops = str_replace(main_crops, "^(.)", ~str_to_upper(.x)))
 
 area_zwe_3_4_3_1_2_begin_repeat<-zwe_3_4_3_1_2_begin_repeat%>%
@@ -344,10 +344,15 @@ area_zwe_3_4_3_1_2_begin_repeat<-zwe_3_4_3_1_2_begin_repeat%>%
                      "Millet","Onion","Pepper","Potato","Rapoko","Rice", "Rosella","Roundnuts" ,"Sesame","Sorghum",
                      "Soybeans","Sugarbeans", "Sunflower","Sweet potatoes","Tobacco","Tomatoes","Velvet  beans (mucuna)")~ 1,TRUE~0))%>%
   mutate(production_kg_ha = (main_crops_yield*yield_conversion_unit_to_kg)/main_crops_cropland_area)%>%
-  mutate(yield_ref_rainfed_clean = as.numeric(yield_ref_rainfed_clean)) %>%
-  mutate(yield_to_ref_ratio = production_kg_ha/yield_ref_rainfed_clean) %>%
+  mutate(yield_ref_clean=case_when(is.na(yield_ref_rainfed_clean)~yield_ref_irr_clean,
+                                   TRUE~yield_ref_rainfed_clean))%>%
+  mutate(yield_ref_clean = as.numeric(yield_ref_clean)) %>%
+  mutate(yield_to_ref_ratio = production_kg_ha/yield_ref_clean) %>%
   mutate(yield_gap = ifelse(yield_to_ref_ratio>1 , 0, 
-                            ifelse(yield_to_ref_ratio == 0, NA, (1-yield_to_ref_ratio)*100)))%>% 
+                            ifelse(yield_to_ref_ratio == 0, 100, 
+                                   
+                                   (1-yield_to_ref_ratio)*100)))%>% 
+
   #Area of three main crops grown
   group_by(kobo_farmer_id)%>%
   mutate(total_main_crops_cropland_area= sum(main_crops_cropland_area),
@@ -499,8 +504,16 @@ zwe_data<-zwe_data%>%
   #Remove respondents that are not farmers
   filter(kobo_farmer_id!="274186917")%>%
   #Remove duplicate farmer
-  filter(kobo_farmer_id!="274119031")
+  filter(kobo_farmer_id!="274119031")%>%
+  #Remove respondent produce only livestock
+  filter(kobo_farmer_id!="275740254")
   
+colSums(is.na(zwe_data)) %>%
+  sort(decreasing = TRUE)
+
+
+x<-zwe_data%>%
+  select(kobo_farmer_id,yield_gap_median)
 
 names(zwe_data)
 write.csv(zwe_data,"zwe_data.csv",row.names=FALSE)

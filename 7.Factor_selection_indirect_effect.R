@@ -8,7 +8,7 @@ library(tibble)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-factors_list_analysis<-read_excel("factors_list.xlsx",sheet = "factors_list_analysis")
+factors_list_analysis<-read_excel("factors_list.prueba.xlsx",sheet = "factors_list_analysis")
 sort(unique(factors_list_analysis$category_1))
 
 per_data_indirect<-read.csv("per_data_logistic_regression_direct.csv",sep=",")
@@ -85,8 +85,8 @@ names(per_training_participation_redundantFiltered)
 ##=== Run for influence_nr_frequency ====
 per_influence_nr_frequency_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_influence_nr_frequency",
                                                              per_data_analysis )
-dim(per_influence_nr_frequency_redundantFiltered)#200 farmers; 1 outcomes, 59 factors retained
-#[1] 200  60
+dim(per_influence_nr_frequency_redundantFiltered)#200 farmers; 1 outcomes, 58 factors retained
+#[1] 200  59
 names(per_influence_nr_frequency_redundantFiltered)
 
 
@@ -732,21 +732,21 @@ per_influence_nr_frequency_factors
  
 per_influence_nr_frequency_results <- feature_selection_continuous_algorithms(
   per_influence_nr_frequency_factors, per_influence_nr_frequency,
-  per_data_influence_nr_frequency_picked_power, file_name = "indirect/per/per_influence_nr_frequency")
+  per_data_influence_nr_frequency_picked_power, file_name = "per/indirect/per_influence_nr_frequencyprueba")
  
 # Plot accuracy vs number of selected factors
-per_influence_nr_frequency_acc_ff<- read.csv("results/indirect/per/per_influence_nr_frequency_accValAllFuzzyForest.csv",sep=",") 
-per_influence_nr_frequency_acc_rf<- read.csv("results/indirect/per/per_influence_nr_frequency_accValAllRandomForest.csv",sep=",") 
-per_influence_nr_frequency_acc_cf<- read.csv("results/indirect/per/per_influence_nr_frequency_accValAllCForest.csv",sep=",") 
+per_influence_nr_frequency_acc_ff<- read.csv("results/per/indirect/per_influence_nr_frequencyprueba_accValAllFuzzyForest.csv",sep=",") 
+per_influence_nr_frequency_acc_rf<- read.csv("results/per/indirect/per_influence_nr_frequencyprueba_accValAllRandomForest.csv",sep=",") 
+per_influence_nr_frequency_acc_cf<- read.csv("results/per/indirect/per_influence_nr_frequencyprueba_accValAllCForest.csv",sep=",") 
  
 
 plot_accuracy_vs_features(per_influence_nr_frequency_acc_ff,per_influence_nr_frequency_acc_rf, per_influence_nr_frequency_acc_cf,
-                           method_name = "Dependent variable: influence_nr_frequency",9,8)
+                           method_name = "Dependent variable: influence_nr_frequency",11,8)
 #11.5*7.5 pdf landscape
  
-per_influence_nr_frequency_selectFactors_cf<- read.csv("results/indirect/per/per_influence_nr_frequency_featureSelectedCForest.csv",sep=",") 
-per_influence_nr_frequency_selectFactors_ff<- read.csv("results/indirect/per/per_influence_nr_frequency_featureSelectedFuzzyForest.csv",sep=",") 
-per_influence_nr_frequency_selectFactors_rf<- read.csv("results/indirect/per/per_influence_nr_frequency_featureSelectedRandomForest.csv",sep=",") 
+per_influence_nr_frequency_selectFactors_cf<- read.csv("results/per/indirect/per_influence_nr_frequencyprueba_featureSelectedCForest.csv",sep=",") 
+per_influence_nr_frequency_selectFactors_ff<- read.csv("results/per/indirect/per_influence_nr_frequencyprueba_featureSelectedFuzzyForest.csv",sep=",") 
+per_influence_nr_frequency_selectFactors_rf<- read.csv("results/per/indirect/per_influence_nr_frequencyprueba_featureSelectedRandomForest.csv",sep=",") 
  
 per_influence_nr_frequency_selectedFactors_freq<-selected_factors_freq(per_influence_nr_frequency_selectFactors_cf,
                                                                      per_influence_nr_frequency_selectFactors_ff,
@@ -755,21 +755,14 @@ write.csv(per_influence_nr_frequency_selectedFactors_freq, "results/indirect/per
  
 ## Extract the best 9 factors
 per_influence_nr_frequency_selectedFactors<-per_influence_nr_frequency_selectedFactors_freq%>%
-   filter(NumFeatures=="featNum9")%>%
-   slice_max(order_by = frequency, n =9)%>%
+   filter(NumFeatures=="featNum11")%>%
+   slice_max(order_by = frequency, n =11)%>%
    left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
  
-write.csv(per_influence_nr_frequency_selectedFactors, "results/indirect/per/per_influence_nr_frequency_selectedFactors.csv")
+write.csv(per_influence_nr_frequency_selectedFactors, "results/indirect/per/per_influence_nr_frequencyprueba_selectedFactors.csv")
  
  # Select only the selected factors from database
- 
- per_data_governance_capacity_selectedFactors<- per_data_analysis%>%
-   select(dfs_adoption_binary,
-          all_of(per_adoptionBinary_selectedFactors$selected_factors))
- 
- dim(per_data_governance_capacity_selectedFactors)#[1] 200   24; 23 factors
- 
- write.csv(per_data_governance_capacity_selectedFactors, "results/indirect/per_data_influence_nr_selectedFactors.csv")
+
  
  create_cor_df <- function(data,selected_factors) {
    data_num<-data %>% 

@@ -18,8 +18,8 @@ zwe_data_analysis<- zwe_data_analysis%>%
   dplyr::select(-X)%>%
   rename("pest_management_ecol_practices.biological-control"="pest_management_ecol_practices.biological.control")
 
-dim(zwe_data_analysis) #200 farmers; 20 outcomes; 349 factors
-#[1] 200 369
+dim(zwe_data_analysis) #199 farmers; 20 outcomes; 349 factors
+#[1] 199 368
 
 #############################################################    
 ########### FACTOR SELECTION ----
@@ -50,7 +50,7 @@ nzv_factors
 zwe_data_nzvFiltered<- zwe_data_analysis[, -nzv_list]
 zwe_data_nzvFiltered
 
-dim(zwe_data_nzvFiltered) #200 farmers; 211 variables retained
+dim(zwe_data_nzvFiltered) #199 farmers; 211 variables retained
 
 c<-as.data.frame(c(colnames(zwe_data_nzvFiltered)))%>%
   rename("column_name_new"="c(colnames(zwe_data_nzvFiltered))")%>%
@@ -68,8 +68,8 @@ ggplot(data=c, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(zwe_data_nzvFiltered) #200 farmers; 9 outcomes, 202 factors retained
-#[1] 200 211
+dim(zwe_data_nzvFiltered) #199 farmers; 9 outcomes, 202 factors retained
+#[1] 199 211
 
 ##=== STEP 2: REMOVE IRRELEVANT FACTORS ======
 sort(unique(factors_list_analysis$zimbabwe_remove_adoption_status))
@@ -79,7 +79,7 @@ zwe_irrelevant_list
 zwe_data_irrelevantFiltered<- zwe_data_nzvFiltered%>%
   dplyr::select(-all_of(zwe_irrelevant_list))
 
-dim(zwe_data_irrelevantFiltered) #200 farmers; 206 variables retained
+dim(zwe_data_irrelevantFiltered) #200 farmers; 181 variables retained
 names(zwe_data_irrelevantFiltered)
 
 b<-as.data.frame(c(colnames(zwe_data_irrelevantFiltered)))%>%
@@ -98,8 +98,8 @@ ggplot(data=b, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(zwe_data_irrelevantFiltered) #200 farmers; 9 outcomes, 187 factors retained
-#[1] 200 196
+dim(zwe_data_irrelevantFiltered) #199 farmers; 9 outcomes, 172 factors retained
+#[1] 199 181
 
 ##=== STEP 3: CHECK FOR CORRELATION ACROSS FACTORS ======
 # Function to calculate Spearman's correlation
@@ -175,7 +175,7 @@ zwe_redundant_list
 zwe_data_redundantFiltered<- zwe_data_irrelevantFiltered%>%
   dplyr::select(-all_of(zwe_redundant_list))
 
-dim(zwe_data_redundantFiltered) #200 farmers; 178 variables
+dim(zwe_data_redundantFiltered) #199 farmers; 154 variables
 names(zwe_data_redundantFiltered)
 
 d<-as.data.frame(c(colnames(zwe_data_redundantFiltered)))%>%
@@ -199,8 +199,8 @@ ggplot(data=d, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(zwe_data_redundantFiltered)#200 farmers; 1 outcomes, 175 factors retained
-#[1] 200 176
+dim(zwe_data_redundantFiltered)#200 farmers; 1 outcomes, 153 factors retained
+#[1] 199 154
 
 ##=== STEP 5: CHECK FOR CORRELATION ACROSS RETAINED FACTORS ======
 zwe_factors_list_analysis2 <- as.data.frame(colnames(zwe_data_redundantFiltered))%>%
@@ -214,6 +214,10 @@ str(zwe_data_redundantFiltered_cor)
 plot_correlation_betw_category(zwe_data_redundantFiltered_cor)
 sort(unique(zwe_data_redundantFiltered$district))
 sort(unique(zwe_data_redundantFiltered$crop_type))
+
+colSums(is.na(zwe_data_redundantFiltered)) %>%
+  sort(decreasing = TRUE)
+
 
 ##=== STEP 6: FUZZY FOREST FACTOR SELECTION ======
 ## Advantages
@@ -500,12 +504,12 @@ zwe_adoption_binary_results <- feature_selection_algorithms(zwe_factors, zwe_ado
 
 
 # Plot accuracy vs number of selected factors
-zwe_adoptionBinary_acc_ff<- read.csv("results/zwe/direct/zwe_adoption_binary_accValAllFuzzyForest.csv",sep=",") 
+zwe_adoptionBinary_acc_ff<- read.csv("results/zwe/direct/zwe_adoption_binary_accValAllFuzzyForest.csv",sep=",")
 zwe_adoptionBinary_acc_rf<- read.csv("results/zwe/direct/zwe_adoption_binary_accValAllRandomForest.csv",sep=",") 
 zwe_adoptionBinary_acc_cf<- read.csv("results/zwe/direct/zwe_adoption_binary_accValAllCForest.csv",sep=",") 
 
 plot_accuracy_vs_features(zwe_adoptionBinary_acc_ff,zwe_adoptionBinary_acc_rf, zwe_adoptionBinary_acc_cf,
-                          method_name = "A) Mbire and Murehwa Zimbabwe: Dependent variable = Adoption Binary",13,13)
+                          method_name = "A) Mbire and Murehwa Zimbabwe: Dependent variable = Adoption Binary",15,14)
 #11.5*9.5 pdf landscape
 
 zwe_adoptionBinary_selectFactors_cf<- read.csv("results/zwe/direct/zwe_adoption_binary_featureSelectedCForest.csv",sep=",") 
@@ -517,10 +521,10 @@ zwe_adoptionBinary_selectedFactors_freq<-selected_factors_freq(zwe_adoptionBinar
                                                                zwe_adoptionBinary_selectFactors_rf)
 write.csv(zwe_adoptionBinary_selectedFactors_freq, "results/zwe/direct/zwe_adoption_binary_selectedFactors_freq.csv")
 
-## Extract the best 13 factors
+## Extract the best 14 factors
 zwe_adoptionBinary_selectedFactors<-zwe_adoptionBinary_selectedFactors_freq%>%
-  filter(NumFeatures=="featNum13")%>%
-  slice_max(order_by = frequency, n = 13)%>%
+  filter(NumFeatures=="featNum19")%>%
+  slice_max(order_by = frequency, n = 19)%>%
   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
 write.csv(zwe_adoptionBinary_selectedFactors, "results/zwe/direct/zwe_adoption_binary_selectedFactors.csv")

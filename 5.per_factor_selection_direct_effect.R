@@ -9,7 +9,7 @@ library(corrplot)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-factors_list_analysis<-read_excel("factors_list.xlsx",sheet = "factors_list_analysis")
+factors_list_analysis<-read_excel("factors_list.prueba.xlsx",sheet = "factors_list_analysis")
 sort(unique(factors_list_analysis$category_1))
 
 per_data_analysis<-  read.csv("per_data_Binary.csv",sep=",")
@@ -72,7 +72,7 @@ dim(per_data_nzvFiltered) #200 farmers; 5 outcomes, 189 factors retained
 
 ##=== STEP 2: REMOVE IRRELEVANT FACTORS ======
 sort(unique(factors_list_analysis$peru_remove_adoption_status))
-per_irrelevant_list<- intersect(factors_list_analysis$column_name_new[factors_list_analysis$peru_remove_adoption_status %in%c("irrelevant")],colnames(per_data_nzvFiltered))
+per_irrelevant_list<- intersect(factors_list_analysis$column_name_new[factors_list_analysis$peru_remove_adoption_status %in%c("irrelevant","na")],colnames(per_data_nzvFiltered))
 per_irrelevant_list
 
 per_data_irrelevantFiltered<- per_data_nzvFiltered%>%
@@ -156,15 +156,15 @@ plot_correlation_betw_category <- function(cor_df) {
   return(plots)
 }
 
-per_factors_list <- as.data.frame(colnames(per_data_nzvFiltered))%>%
-  rename("column_name_new"= "colnames(per_data_nzvFiltered)")%>%
+per_factors_list <- as.data.frame(colnames(per_data_irrelevantFiltered))%>%
+  rename("column_name_new"= "colnames(per_data_irrelevantFiltered)")%>%
   left_join(factors_list_analysis%>%select(column_name_new, category_1),by="column_name_new")%>%
   filter(category_1!="outcome")
 
-per_data_nzvFiltered_cor<-create_cor_df(per_data_nzvFiltered,per_factors_list)
-str(per_data_nzvFiltered_cor)
+per_data_irrelevantFiltered_cor<-create_cor_df(per_data_irrelevantFiltered,per_factors_list)
+str(per_data_irrelevantFiltered_cor)
 
-plot_correlation_betw_category(per_data_nzvFiltered_cor)
+plot_correlation_betw_category(per_data_irrelevantFiltered_cor)
 
 ##=== STEP 4: REMOVE REDUNDANT FACTORS ======
 sort(unique(factors_list_analysis$peru_remove_adoption_status))
@@ -496,7 +496,7 @@ per_factors <- per_data_redundantFiltered %>% select(-dfs_adoption_binary)
 
 time_taken <- system.time({
   per_adoption_binary_results <- feature_selection_algorithms(per_factors, per_adoptionBinary, per_picked_power, 
-                                                              file_name = "results/direct/per/per_adoption_binary")
+                                                              file_name = "results/per/direct/per_adoption_binary")
 })
 
 # Plot accuracy vs number of selected factors
@@ -505,7 +505,7 @@ per_adoptionBinary_acc_rf<- read.csv("results/per/direct/per_adoption_binary_acc
 per_adoptionBinary_acc_cf<- read.csv("results/per/direct/per_adoption_binary_accValAllCForest.csv",sep=",") 
 
 plot_accuracy_vs_features(per_adoptionBinary_acc_ff,per_adoptionBinary_acc_rf, per_adoptionBinary_acc_cf,
-                          method_name = "A) Ucayali Peru: Dependent variable = Adoption Binary",13,13)
+                          method_name = "A) Ucayali Peru: Dependent variable = Adoption Binary",14,13)
 #11.5*9.5 pdf landscape
 
 per_adoptionBinary_selectFactors_cf<- read.csv("results/per/direct/per_adoption_binary_featureSelectedCForest.csv",sep=",") 
@@ -517,10 +517,10 @@ per_adoptionBinary_selectedFactors_freq<-selected_factors_freq(per_adoptionBinar
                                                                per_adoptionBinary_selectFactors_rf)
 write.csv(per_adoptionBinary_selectedFactors_freq, "results/per/direct/per_adoption_binary_selectedFactors_freq.csv")
 
-## Extract the best 13 factors
+## Extract the best 14 factors
 per_adoptionBinary_selectedFactors<-per_adoptionBinary_selectedFactors_freq%>%
-  filter(NumFeatures=="featNum13")%>%
-  slice_max(order_by = frequency, n = 13)%>%
+  filter(NumFeatures=="featNum14")%>%
+  slice_max(order_by = frequency, n = 14)%>%
   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
 write.csv(per_adoptionBinary_selectedFactors, "results/per/direct/per_adoption_binary_selectedFactors.csv")
@@ -537,7 +537,7 @@ write.csv(per_data_adoptionBinary_selectedFactors, "results/per/direct/per_data_
 create_cor_df <- function(data,selected_factors) {
   data_num<-data %>% 
     mutate(across(everything(), as.numeric))%>%
-    select(all_of(per_adoptionBinary_selectedFactors$selected_factors))
+    select(dfs_adoption_binary,all_of(per_adoptionBinary_selectedFactors$selected_factors))
   
   cor_matrix <- cor(data_num,
                     method = "spearman", use = "pairwise.complete.obs")

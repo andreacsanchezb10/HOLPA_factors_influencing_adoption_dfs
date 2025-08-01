@@ -8,9 +8,9 @@ library(ggplot2)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-factors_list_analysis<-read_excel("factors_list.xlsx",sheet = "factors_list_analysis")
+factors_list_analysis<-read_excel("factors_list.prueba.xlsx",sheet = "factors_list_analysis")
 
-per_structural_model<-read_excel("factors_list.xlsx",sheet = "structural_model")%>%
+per_structural_model<-read_excel("factors_list.prueba.xlsx",sheet = "structural_model")%>%
   filter(country=="peru")
 
 per_measurement_model<- read_excel("factors_list.xlsx",sheet = "measurement_model")%>%
