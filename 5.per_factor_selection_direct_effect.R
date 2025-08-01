@@ -506,7 +506,7 @@ per_adoptionBinary_acc_cf<- read.csv("results/per/direct/per_adoption_binary_acc
 
 plot_accuracy_vs_features(per_adoptionBinary_acc_ff,per_adoptionBinary_acc_rf, per_adoptionBinary_acc_cf,
                           method_name = "A) Ucayali Peru: Dependent variable = Adoption Binary",14,13)
-#11.5*9.5 pdf landscape
+#9.5*11.5 pdf landscape
 
 per_adoptionBinary_selectFactors_cf<- read.csv("results/per/direct/per_adoption_binary_featureSelectedCForest.csv",sep=",") 
 per_adoptionBinary_selectFactors_ff<- read.csv("results/per/direct/per_adoption_binary_featureSelectedFuzzyForest.csv",sep=",") 
@@ -530,7 +530,7 @@ per_data_adoptionBinary_selectedFactors<- per_data_analysis%>%
   select(dfs_adoption_binary,
     all_of(per_adoptionBinary_selectedFactors$selected_factors))
   
-dim(per_data_adoptionBinary_selectedFactors)#[1] 200   14 variables; 13 factors
+dim(per_data_adoptionBinary_selectedFactors)#[1] 200   16 variables; 15 factors
 
 write.csv(per_data_adoptionBinary_selectedFactors, "results/per/direct/per_data_adoption_binary_selectedFactors.csv")
 

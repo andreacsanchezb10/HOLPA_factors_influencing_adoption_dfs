@@ -9,11 +9,11 @@ library(ggplot2)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-factors_list_analysis<-read_excel("factors_list.xlsx",sheet = "factors_list_analysis")
+factors_list_analysis<-read_excel("factors_list.prueba.xlsx",sheet = "factors_list_analysis")
 
-per_structural_model<-read_excel("factors_list.xlsx",sheet = "structural_model")
+#per_structural_model<-read_excel("factors_list.xlsx",sheet = "structural_model")
 
-per_direct_predictors<- read.csv("results/direct/per/per_adoption_binary_selectedFactors.csv")
+per_direct_predictors<- read.csv("results/per/direct/per_adoption_binary_selectedFactors.csv")
   select(path,category_1,constructs, column_name_new,constructs,factor, constructs_type,weights,country)%>%
   filter(country=="peru")%>%
   filter(str_detect(path, "^direct"))
@@ -32,7 +32,7 @@ per_data_analysis<- per_data_analysis%>%
 
 names(per_data_analysis)
 str(per_data_analysis)
-dim(per_data_analysis)#[1] 200   14
+dim(per_data_analysis)#[1] 200   16
 summary(per_data_analysis)
 describe(per_data_analysis)
 
@@ -67,7 +67,7 @@ plot_correlation_betw_category <- function(cor_df, factor_info_df) {
   
   # Step 2: Assign order to factors based on category order and factor name
   factor_levels <- factor_info_df %>%
-    filter(category_1 != "outcome") %>%
+    #filter(category_1 != "outcome") %>%
     mutate(
       category_order = match(category_1, ordered_categories)
     ) %>%
@@ -109,7 +109,7 @@ plot_correlation_betw_category <- function(cor_df, factor_info_df) {
 
 per_factors_list <- as.data.frame(colnames(per_data_analysis))%>%
   rename("column_name_new"= "colnames(per_data_analysis)")%>%
-  left_join(factors_list_analysis%>%select(column_name_new, category_1),by="column_name_new")%>%
+  left_join(factors_list_analysis%>%select(column_name_new, category_1),by="column_name_new")
   filter(category_1!="outcome")
 
 per_data_analysis_cor<-create_cor_df(per_data_analysis,per_factors_list)
@@ -132,7 +132,7 @@ summary(per_logit_model)
 
 library(sjPlot)
 
-tab_model(per_logit_model, show.ci = FALSE, file = "results/direct/per/per_logit_model_table.html")
+tab_model(per_logit_model, show.ci = FALSE, file = "results/per/direct/per_logit_model_table.html")
 
 exp(coef(per_logit_model))
 per_logit_model.results<-as.data.frame(exp(cbind(OR = coef(per_logit_model), confint(per_logit_model))))
