@@ -13,7 +13,7 @@ factors_list_analysis<-read_excel("factors_list.prueba.xlsx",sheet = "factors_li
 per_structural_model<-read_excel("factors_list.prueba.xlsx",sheet = "structural_model")%>%
   filter(country=="peru")
 
-per_measurement_model<- read_excel("factors_list.xlsx",sheet = "measurement_model")%>%
+per_measurement_model<- read_excel("factors_list.prueba.xlsx",sheet = "measurement_model")%>%
   select(category_1,path,constructs, column_name_new,constructs,factor, constructs_type,weights,country)%>%
   filter(country=="peru")
 
@@ -29,9 +29,9 @@ per_data_analysis<- per_data_analysis%>%
   select(all_of(per_measurement_model$column_name_new))%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))
 
-names(per_data_analysis)
+sort(names(per_data_analysis))
 str(per_data_analysis)
-dim(per_data_analysis)#[1] 200   33
+dim(per_data_analysis)#[1] 200   38
 summary(per_data_analysis)
 describe(per_data_analysis)
 
@@ -204,12 +204,13 @@ per_structural_model_formula<-do.call(seminr::relationships, c(
   per_structural_model_formula))
 
 per_structural_model_formula
-
 str(per_data_analysis)
 #################################################################################
 ##===  Estimating the PLS-SEM model: Direct and indirect effect on adoption ======
 #################################################################################
 ## STEP 1: PLS-SEM model ----
+per_measurement_model_formula
+per_structural_model_formula
 per_pls_sem_model_complete <- estimate_pls(data = per_data_analysis,
                                          measurement_model = per_measurement_model_formula,
                                          structural_model = per_structural_model_formula)
