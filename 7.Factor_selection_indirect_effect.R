@@ -602,7 +602,7 @@ per_household_shock_recover_capacity_acc_cf<- read.csv("results/per/indirect/per
 plot_accuracy_vs_features(per_household_shock_recover_capacity_acc_ff,
                           per_household_shock_recover_capacity_acc_rf, 
                           per_household_shock_recover_capacity_acc_cf,
-                          method_name = "Dependent variable: Household recovery recovery capacity from shocks",13,12)
+                          method_name = "Dependent variable: Household recovery recovery capacity from shocks",17,12)
 #11.5*7.5 pdf landscape
 
 per_household_shock_recover_capacity_selectFactors_cf<- read.csv("results/per/indirect/per_household_shock_recover_capacity_featureSelectedCForest.csv",sep=",") 
@@ -612,15 +612,15 @@ per_household_shock_recover_capacity_selectFactors_rf<- read.csv("results/per/in
 per_household_shock_recover_capacity_selectedFactors_freq<-selected_factors_freq(per_household_shock_recover_capacity_selectFactors_cf,
                                                                                  per_household_shock_recover_capacity_selectFactors_ff,
                                                                                  per_household_shock_recover_capacity_selectFactors_rf)
-write.csv(per_household_shock_recover_capacity_selectedFactors_freq, "results/indirect/per/per_household_shock_recover_capacity_selectedFactors_freq.csv")
+write.csv(per_household_shock_recover_capacity_selectedFactors_freq, "results/per/indirect/per_household_shock_recover_capacity_selectedFactors_freq.csv")
 
-## Extract the best 13 factors
+## Extract the best 17 factors
 per_household_shock_recover_capacity_selectedFactors<-per_household_shock_recover_capacity_selectedFactors_freq%>%
-  filter(NumFeatures=="featNum13")%>%
-  slice_max(order_by = frequency, n = 13)%>%
+  filter(NumFeatures=="featNum17")%>%
+  slice_max(order_by = frequency, n = 17)%>%
   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
-write.csv(per_household_shock_recover_capacity_selectedFactors, "results/indirect/per/per_household_shock_recover_capacity_selectedFactors.csv")
+write.csv(per_household_shock_recover_capacity_selectedFactors, "results/per/indirect/per_household_shock_recover_capacity_selectedFactors.csv")
 
 # Select only the selected factors from database
 
@@ -628,9 +628,9 @@ per_data_household_shock_recover_capacity_selectedFactors<- per_data_analysis%>%
   select(dfs_adoption_binary,
          all_of(per_household_shock_recover_capacity_selectedFactors$selected_factors))
 
-dim(per_data_household_shock_recover_capacity_selectedFactors)#[1] 200   15; 14 factors
+dim(per_data_household_shock_recover_capacity_selectedFactors)#[1] 200   18; 17 factors
 
-write.csv(per_household_shock_recover_capacity_selectedFactors, "results/indirect/per/per_data_household_shock_recover_capacity_selectedFactors.csv")
+write.csv(per_household_shock_recover_capacity_selectedFactors, "results/per/indirect/per_data_household_shock_recover_capacity_selectedFactors.csv")
 
 create_cor_df <- function(data,selected_factors) {
   data_num<-data %>% 
@@ -663,25 +663,25 @@ str(per_training_participation_factors)
 
 per_training_participation_results <- feature_selection_binary_algorithms(
   per_training_participation_factors, per_training_participation,
-  per_data_training_participation_picked_power, file_name = "indirect/per/per_training_participation")
+  per_data_training_participation_picked_power, file_name = "per/indirect/per_training_participation")
 
 # Plot accuracy vs number of selected factors
-per_training_participation_acc_ff<- read.csv("results/indirect/per/per_training_participation_accValAllFuzzyForest.csv",sep=",") 
-per_training_participation_acc_rf<- read.csv("results/indirect/per/per_training_participation_accValAllRandomForest.csv",sep=",") 
-per_training_participation_acc_cf<- read.csv("results/indirect/per/per_training_participation_accValAllCForest.csv",sep=",") 
+per_training_participation_acc_ff<- read.csv("results/per/indirect/per_training_participation_accValAllFuzzyForest.csv",sep=",") 
+per_training_participation_acc_rf<- read.csv("results/per/indirect/per_training_participation_accValAllRandomForest.csv",sep=",") 
+per_training_participation_acc_cf<- read.csv("results/per/indirect/per_training_participation_accValAllCForest.csv",sep=",") 
 
 plot_accuracy_vs_features(per_training_participation_acc_ff,per_training_participation_acc_rf, per_training_participation_acc_cf,
                           method_name = "A) Dependent variable: training participation",12,5)
 #11.5*7.5 pdf landscape
 
-per_training_participation_selectFactors_cf<- read.csv("results/indirect/per/per_training_participation_featureSelectedCForest.csv",sep=",") 
-per_training_participation_selectFactors_ff<- read.csv("results/indirect/per/per_training_participation_featureSelectedFuzzyForest.csv",sep=",") 
-per_training_participation_selectFactors_rf<- read.csv("results/indirect/per/per_training_participation_featureSelectedRandomForest.csv",sep=",") 
+per_training_participation_selectFactors_cf<- read.csv("results/per/indirect/per_training_participation_featureSelectedCForest.csv",sep=",") 
+per_training_participation_selectFactors_ff<- read.csv("results/per/indirect/per_training_participation_featureSelectedFuzzyForest.csv",sep=",") 
+per_training_participation_selectFactors_rf<- read.csv("results/per/indirect/per_training_participation_featureSelectedRandomForest.csv",sep=",") 
 
 per_training_participation_selectedFactors_freq<-selected_factors_freq(per_training_participation_selectFactors_cf,
   per_training_participation_selectFactors_ff,
   per_training_participation_selectFactors_rf)
-write.csv(per_training_participation_selectedFactors_freq, "results/indirect/per/per_training_participation_selectedFactors_freq.csv")
+write.csv(per_training_participation_selectedFactors_freq, "results/per/indirect/per_training_participation_selectedFactors_freq.csv")
 
 ## Extract the best 12 factors
 per_training_participation_selectedFactors<-per_training_participation_selectedFactors_freq%>%
@@ -689,7 +689,7 @@ per_training_participation_selectedFactors<-per_training_participation_selectedF
   slice_max(order_by = frequency, n = 12)%>%
   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
-write.csv(per_training_participation_selectedFactors, "results/indirect/per/per_training_participation_selectedFactors.csv")
+write.csv(per_training_participation_selectedFactors, "results/per/indirect/per_training_participation_selectedFactors.csv")
 
 # Select only the selected factors from database
 
@@ -697,9 +697,9 @@ per_data_training_participation_selectedFactors<- per_data_analysis%>%
   select(training_participation,
          all_of(per_training_participation_selectedFactors$selected_factors))
 
-dim(per_data_training_participation_selectedFactors)#[1] 200   24; 13 factors
+dim(per_data_training_participation_selectedFactors)#[1] 200   13; 12 factors
 
-write.csv(per_data_training_participation_selectedFactors, "results/indirect/per/per_data_training_participation_selectedFactorss.csv")
+write.csv(per_data_training_participation_selectedFactors, "results/per/indirect/per_data_training_participation_selectedFactorss.csv")
 
 create_cor_df <- function(data,selected_factors) {
   data_num<-data %>% 
@@ -735,31 +735,31 @@ per_influence_nr_frequency_results <- feature_selection_continuous_algorithms(
   per_data_influence_nr_frequency_picked_power, file_name = "per/indirect/per_influence_nr_frequencyprueba")
  
 # Plot accuracy vs number of selected factors
-per_influence_nr_frequency_acc_ff<- read.csv("results/per/indirect/per_influence_nr_frequencyprueba_accValAllFuzzyForest.csv",sep=",") 
-per_influence_nr_frequency_acc_rf<- read.csv("results/per/indirect/per_influence_nr_frequencyprueba_accValAllRandomForest.csv",sep=",") 
-per_influence_nr_frequency_acc_cf<- read.csv("results/per/indirect/per_influence_nr_frequencyprueba_accValAllCForest.csv",sep=",") 
+per_influence_nr_frequency_acc_ff<- read.csv("results/per/indirect/per_influence_nr_frequency_accValAllFuzzyForest.csv",sep=",") 
+per_influence_nr_frequency_acc_rf<- read.csv("results/per/indirect/per_influence_nr_frequency_accValAllRandomForest.csv",sep=",") 
+per_influence_nr_frequency_acc_cf<- read.csv("results/per/indirect/per_influence_nr_frequency_accValAllCForest.csv",sep=",") 
  
 
 plot_accuracy_vs_features(per_influence_nr_frequency_acc_ff,per_influence_nr_frequency_acc_rf, per_influence_nr_frequency_acc_cf,
                            method_name = "Dependent variable: influence_nr_frequency",11,8)
 #11.5*7.5 pdf landscape
  
-per_influence_nr_frequency_selectFactors_cf<- read.csv("results/per/indirect/per_influence_nr_frequencyprueba_featureSelectedCForest.csv",sep=",") 
-per_influence_nr_frequency_selectFactors_ff<- read.csv("results/per/indirect/per_influence_nr_frequencyprueba_featureSelectedFuzzyForest.csv",sep=",") 
-per_influence_nr_frequency_selectFactors_rf<- read.csv("results/per/indirect/per_influence_nr_frequencyprueba_featureSelectedRandomForest.csv",sep=",") 
+per_influence_nr_frequency_selectFactors_cf<- read.csv("results/per/indirect/per_influence_nr_frequency_featureSelectedCForest.csv",sep=",") 
+per_influence_nr_frequency_selectFactors_ff<- read.csv("results/per/indirect/per_influence_nr_frequency_featureSelectedFuzzyForest.csv",sep=",") 
+per_influence_nr_frequency_selectFactors_rf<- read.csv("results/per/indirect/per_influence_nr_frequency_featureSelectedRandomForest.csv",sep=",") 
  
 per_influence_nr_frequency_selectedFactors_freq<-selected_factors_freq(per_influence_nr_frequency_selectFactors_cf,
                                                                      per_influence_nr_frequency_selectFactors_ff,
                                                                      per_influence_nr_frequency_selectFactors_rf)
-write.csv(per_influence_nr_frequency_selectedFactors_freq, "results/indirect/per/per_influence_nr_selectedFactors_freq.csv")
+write.csv(per_influence_nr_frequency_selectedFactors_freq, "results/per/indirect/per_influence_nr_selectedFactors_freq.csv")
  
-## Extract the best 9 factors
+## Extract the best 11 factors
 per_influence_nr_frequency_selectedFactors<-per_influence_nr_frequency_selectedFactors_freq%>%
    filter(NumFeatures=="featNum11")%>%
    slice_max(order_by = frequency, n =11)%>%
    left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
  
-write.csv(per_influence_nr_frequency_selectedFactors, "results/indirect/per/per_influence_nr_frequencyprueba_selectedFactors.csv")
+write.csv(per_influence_nr_frequency_selectedFactors, "results/per/indirect/per_influence_nr_frequencyprueba_selectedFactors.csv")
  
  # Select only the selected factors from database
 
