@@ -228,7 +228,7 @@ per_pls_sem_summary_complete$descriptives$statistics
 #- Number of iterations that the PLS-SEM algorithm needed to converge 
 #This number should be lower than the maximum number of iterations (e.g., 300)
 per_pls_sem_summary_complete$iterations 
-#[1] 1
+#[1] 9
 
 per_pls_sem_summary_complete$descriptives$statistics$constructs
 
@@ -294,7 +294,7 @@ per_assessment.mmr.step1<- as.data.frame(per_pls_sem_summary_complete$loadings)%
     TRUE~"Please check"))%>%
   select(category_1,constructs,factors,factor, reliability,constructs_type,weights,reliability_assessment)
 
-write.csv(per_assessment.mmr.step1,"results/direct/per_assessment.mmr.step1.csv",row.names=FALSE)
+write.csv(per_assessment.mmr.step1,"results/per/per_assessment.mmr.step1.csv",row.names=FALSE)
 
 #INTERPRETATION: check if indicator loadings of the reflective measured constructs are above or bellow 0.708
 #Rather than automatically eliminating indicators 
@@ -346,7 +346,7 @@ head(per_reliability)
 #variance that make up the construct (Hair et al., 2022).
 
 # Inspect the composite reliability AND Convergent validity
-per_assessment.mmr.step2.3<- as.data.frame(per_pls_sem_model_complete$reliability)%>%
+per_assessment.mmr.step2.3<- as.data.frame(per_pls_sem_summary_complete$reliability)%>%
   tibble::rownames_to_column("constructs")%>%
   left_join(per_constructs_def%>%select(category_1,constructs,constructs_type),by="constructs")%>%
   filter(constructs %in%c(per_reflective_constructs_list))%>%
@@ -374,7 +374,7 @@ per_assessment.mmr.step2.3<- as.data.frame(per_pls_sem_model_complete$reliabilit
 
 plot(per_pls_sem_summary_direct$reliability)
 
-write.csv(per_assessment.mmr.step2.3,"results/direct/per_assessment.mmr.step2.3.csv",row.names=FALSE)
+write.csv(per_assessment.mmr.step2.3,"results/per/per_assessment.mmr.step2.3.csv",row.names=FALSE)
 
 ## STEP 4: Assess discriminant validity ====
 #This metric measures the extent to which a construct is empirically distinct from other constructs in the structural model
@@ -389,7 +389,8 @@ write.csv(per_assessment.mmr.step2.3,"results/direct/per_assessment.mmr.step2.3.
 #satisfaction, and loyalty. In such a setting, an HTMT value above 0.90 would 
 #suggest that discriminant validity is not present. But when constructs are conceptually 
 #more distinct, a lower, more conservative, threshold value is suggested, such as 0.85 (Henseler et al., 2015).
-per_assessment.mmr.step4<- as.data.frame(per_pls_sem_model_complete$validity$htmt)%>%
+per_pls_sem_summary_complete$validity$htmt
+per_assessment.mmr.step4<- as.data.frame(per_pls_sem_summary_complete$validity$htmt)%>%
   tibble::rownames_to_column("constructs1")%>%
   left_join(per_constructs_def%>%select(constructs,constructs_type),by=c("constructs1"="constructs"))%>%
   filter(constructs1 %in%c(per_reflective_constructs_list))%>%
@@ -401,7 +402,7 @@ filter(!is.na(correlation),
   rowwise() 
 
 head(per_assessment.mmr.step4)
-write.csv(per_assessment.mmr.step4,"results/direct/per_assessment.mmr.step4.csv",row.names=FALSE)
+write.csv(per_assessment.mmr.step4,"results/per/per_assessment.mmr.step4.csv",row.names=FALSE)
 
 
 # Extract the bootstrapped HTMT 
@@ -442,8 +443,8 @@ per_boot_model_summary_complete <- summary(per_boot_model_complete,alpha = 0.05)
 #CHECK: if T Stats is >1.96
 per_boot_model_summary_complete$bootstrapped_weights
 
-per_assessment.mmf.step2
 per_assessment.mmf.step2<- as.data.frame(per_boot_model_summary_complete$bootstrapped_weights)
+per_assessment.mmf.step2
 
 # Inspect the boostrapping results for the outer loadings
 per_boot_model_summary_complete$bootstrapped_loadings
@@ -500,12 +501,11 @@ per_composite_mode_B
 per_data_logistic_regression_direct<- per_pls_sem_model_complete.construct_scores%>%
   select(all_of(per_composite_mode_B))%>%
   cbind(per_observed_vars)
-write.csv(per_data_logistic_regression_direct, "per_data_logistic_regression_direct.csv")
+write.csv(per_data_logistic_regression_direct, "results/per/per_data_logistic_regression_direct.csv")
 
 
 ## STEP 4: Apply the logistic regression model ====
 #https://stats.oarc.ucla.edu/r/dae/logit-regression/
-
 per_direct_dfs_adoption<-per_data_logistic_regression_direct%>%
   select(all_of(per_structural_model%>%
                   filter(country=="peru",to=="dfs_adoption_binary",from!="environmental_quality")%>%
@@ -521,8 +521,6 @@ summary(per_logit_model_dfs_adoption)
 
 exp(coef(per_logit_model_dfs_adoption))
 per_logit_model_dfs_adoption.results<-as.data.frame(exp(cbind(OR = coef(per_logit_model_dfs_adoption), confint(per_logit_model_dfs_adoption))))
-
-
 
 per_direct_training_participation<-per_data_logistic_regression_direct%>%
   select(all_of(per_structural_model%>%
@@ -567,18 +565,18 @@ pR2(per_logit_model_training_participation)
 # Dependent variable: continues -> PLS-SEM results
 per_pls_sem_model_complete
 rownames(per_pls_sem_model_complete$data) <- as.character(1:nrow(per_pls_sem_model_complete$data))
-
+per_pls_sem_model_complete
 per.assessment.sm.predictivePower<-seminr::predict_pls( model = per_pls_sem_model_complete,
                                                 technique = predict_DA,
                                                 noFolds = 10,
                                                 reps = 10)
 per.assessment.sm.predictivePower_summary<- summary(per.assessment.sm.predictivePower)
-
+per.assessment.sm.predictivePower_summary
 # Analyze the distribution of prediction error 
 par(mfrow=c(1,4)) 
 plot(per.assessment.sm.predictivePower_summary, indicator = "dfs_adoption_binary") 
 plot(per.assessment.sm.predictivePower_summary, indicator = "training_participation") 
-plot(per.assessment.sm.predictivePower_summary, indicator = "influence_nr_frequency") 
+plot(per.assessment.sm.predictivePower_summary, indicator = "governance_involvement") 
 plot(per.assessment.sm.predictivePower_summary, indicator = "household_shock_recover_capacity") 
 par(mfrow=c(1,1))
 
@@ -594,6 +592,8 @@ per_direct_dfs_adoption$dfs_adoption_binary <- factor(
   labels = c("No", "Yes")  # "Yes" = positive class
 )
 set.seed(123)
+library(caret)
+
 per.assessment.sm.predictivePower_dfs_adoption <- train(
   dfs_adoption_binary ~ ., 
   data = per_direct_dfs_adoption, 
