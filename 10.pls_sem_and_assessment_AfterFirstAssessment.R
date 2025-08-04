@@ -8,12 +8,12 @@ library(ggplot2)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-factors_list_analysis<-read_excel("factors_list.xlsx",sheet = "factors_list_analysis")
+factors_list_analysis<-read_excel("factors_list.prueba.xlsx",sheet = "factors_list_analysis")
 
-per_structural_model_afterAssess<-read_excel("factors_list.xlsx",sheet = "structural_model_afterAssess")%>%
+per_structural_model_afterAssess<-read_excel("factors_list.prueba.xlsx",sheet = "structural_model_afterAssess")%>%
   filter(country=="peru")
 
-per_measurement_model_afterAssess<- read_excel("factors_list.xlsx",sheet = "measurement_model_afterAssess")%>%
+per_measurement_model_afterAssess<- read_excel("factors_list.prueba.xlsx",sheet = "measurement_model_afterAssess")%>%
   select(category_1,path,constructs, column_name_new,constructs,factor, constructs_type,weights,country)%>%
   filter(country=="peru")
 
@@ -31,7 +31,7 @@ per_data_analysis<- per_data_analysis%>%
 
 names(per_data_analysis)
 str(per_data_analysis)
-dim(per_data_analysis)#[1] 200   32
+dim(per_data_analysis)#[1] 200   38
 summary(per_data_analysis)
 describe(per_data_analysis)
 
@@ -252,7 +252,7 @@ per_boot_model_summary_complete$bootstrapped_paths
 #income_sufficiency  ->  household_shock_recover_capacity
 2 * (1 - pnorm(abs(2.971)))
 
-governance_capacity  ->  household_shock_recover_capacity
+#governance_involvement  ->  household_shock_recover_capacity
 2 * (1 - pnorm(abs(3.827)))
 
 #years_farming_land  ->  household_shock_recover_capacity 
@@ -264,22 +264,22 @@ governance_capacity  ->  household_shock_recover_capacity
 #distance_main_road  ->  household_shock_recover_capacity
 2 * (1 - pnorm(abs(-1.920)))
 
-#num_info_exchange_sources  ->  governance_capacity
+#num_info_exchange_sources  ->  governance_involvement
 2 * (1 - pnorm(abs(4.302)))
 
-#environmental_quality  ->  governance_capacity
+#environmental_quality  ->  governance_involvement
 2 * (1 - pnorm(abs(2.698)))
 
-#agroecol_perspective_3  ->  governance_capacity 
+#agroecol_perspective_3  ->  governance_involvement 
 2 * (1 - pnorm(abs(3.879)))
 
-#agroecol_perspective_7  ->  governance_capacity 
+#agroecol_perspective_7  ->  governance_involvement 
 2 * (1 - pnorm(abs(2.739)))
 
-#income_amount_onfarm  ->  governance_capacity  
+#income_amount_onfarm  ->  governance_involvement  
 2 * (1 - pnorm(abs(-2.699)))
 
-#perception_associations_effectiveness  ->  governance_capacity  
+#perception_associations_effectiveness  ->  governance_involvement  
 2 * (1 - pnorm(abs(-2.506)))
 
 #########################################################
@@ -330,7 +330,7 @@ per_assessment.mmr.step1<- as.data.frame(per_pls_sem_summary_complete$loadings)%
     TRUE~"Please check"))%>%
   select(category_1,constructs,factors,factor, reliability,constructs_type,weights,reliability_assessment)
 
-write.csv(per_assessment.mmr.step1,"results/direct/per_assessment.mmr.step1.csv",row.names=FALSE)
+write.csv(per_assessment.mmr.step1,"results/per/per_final_model_assessment.mmr.step1.csv",row.names=FALSE)
 
 #INTERPRETATION: check if indicator loadings of the reflective measured constructs are above or bellow 0.708
 #Rather than automatically eliminating indicators 
@@ -382,7 +382,7 @@ head(per_reliability)
 #variance that make up the construct (Hair et al., 2022).
 
 # Inspect the composite reliability AND Convergent validity
-per_assessment.mmr.step2.3<- as.data.frame(per_pls_sem_model_complete$reliability)%>%
+per_assessment.mmr.step2.3<- as.data.frame(per_pls_sem_summary_complete$reliability)%>%
   tibble::rownames_to_column("constructs")%>%
   left_join(per_constructs_def%>%select(category_1,constructs,constructs_type),by="constructs")%>%
   filter(constructs %in%c(per_reflective_constructs_list))%>%
@@ -410,7 +410,7 @@ per_assessment.mmr.step2.3<- as.data.frame(per_pls_sem_model_complete$reliabilit
 
 plot(per_pls_sem_summary_direct$reliability)
 
-write.csv(per_assessment.mmr.step2.3,"results/direct/per_assessment.mmr.step2.3.csv",row.names=FALSE)
+write.csv(per_assessment.mmr.step2.3,"results/per/per_final_model_assessment.mmr.step2.3.csv",row.names=FALSE)
 
 ## STEP 4: Assess discriminant validity ====
 #This metric measures the extent to which a construct is empirically distinct from other constructs in the structural model
@@ -425,7 +425,7 @@ write.csv(per_assessment.mmr.step2.3,"results/direct/per_assessment.mmr.step2.3.
 #satisfaction, and loyalty. In such a setting, an HTMT value above 0.90 would 
 #suggest that discriminant validity is not present. But when constructs are conceptually 
 #more distinct, a lower, more conservative, threshold value is suggested, such as 0.85 (Henseler et al., 2015).
-per_assessment.mmr.step4<- as.data.frame(per_pls_sem_model_complete$validity$htmt)%>%
+per_assessment.mmr.step4<- as.data.frame(per_pls_sem_summary_complete$validity$htmt)%>%
   tibble::rownames_to_column("constructs1")%>%
   left_join(per_constructs_def%>%select(constructs,constructs_type),by=c("constructs1"="constructs"))%>%
   filter(constructs1 %in%c(per_reflective_constructs_list))%>%
@@ -437,7 +437,7 @@ filter(!is.na(correlation),
   rowwise() 
 
 head(per_assessment.mmr.step4)
-write.csv(per_assessment.mmr.step4,"results/direct/per_assessment.mmr.step4.csv",row.names=FALSE)
+write.csv(per_assessment.mmr.step4,"results/per/per_final_model_assessment.mmr.step4.csv",row.names=FALSE)
 
 
 # Extract the bootstrapped HTMT 
@@ -490,7 +490,7 @@ per_boot_model_summary_complete$bootstrapped_loadings
 ## STEP 1: Extract the latent constructs ====
 per_pls_sem_model_complete$construct_scores
 per_pls_sem_model_complete.construct_scores<-as.data.frame(per_pls_sem_model_complete$construct_scores)
-
+per_pls_sem_model_complete.construct_scores
 head(per_pls_sem_model_complete.construct_scores)
 normalize_min_max <- function(x) {
   (x - min(x)) / (max(x) - min(x))
@@ -536,7 +536,7 @@ per_composite_mode_B
 per_data_logistic_regression_direct<- per_pls_sem_model_complete.construct_scores%>%
   select(all_of(per_composite_mode_B))%>%
   cbind(per_observed_vars)
-write.csv(per_data_logistic_regression_direct, "per_data_logistic_regression_direct.csv")
+write.csv(per_data_logistic_regression_direct, "results/per/per_final_model_data_logistic_regression_direct.csv")
 
 
 ## STEP 4: Apply the logistic regression model ====
@@ -585,7 +585,7 @@ per_assessment.sm.vif<-per_pls_sem_summary_complete$vif_antecedents%>%
   map_df(~ tibble(variable = names(.x), VIF = .x), .id = "construct")%>%
   left_join(factors_list_analysis%>%select(category_1,column_name_new,factor),by=c("variable"="column_name_new"))
 
-write.csv(per_assessment.sm.vif,"results/per/per_assessment.sm.vif.csv",row.names=FALSE)
+write.csv(per_assessment.sm.vif,"results/per/per_final_model_assessment.sm.vif.csv",row.names=FALSE)
 
 ## STEP 2: Explanatory power ====
 # Dependent variable: continues -> PLS-SEM results
@@ -612,7 +612,7 @@ per.assessment.sm.predictivePower_summary
 par(mfrow=c(1,4)) 
 plot(per.assessment.sm.predictivePower_summary, indicator = "dfs_adoption_binary") 
 plot(per.assessment.sm.predictivePower_summary, indicator = "training_participation") 
-plot(per.assessment.sm.predictivePower_summary, indicator = "governance_capacity") 
+plot(per.assessment.sm.predictivePower_summary, indicator = "governance_involvement") 
 plot(per.assessment.sm.predictivePower_summary, indicator = "household_shock_recover_capacity") 
 par(mfrow=c(1,1))
 
