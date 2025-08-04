@@ -3,25 +3,25 @@ library(readxl)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-factors_list_analysis<-read_excel("factors_list.xlsx",sheet = "factors_list_analysis")
+factors_list_analysis<-read_excel("factors_list.prueba.xlsx",sheet = "factors_list_analysis")
 
-per_structural_model<-read_excel("factors_list.xlsx",sheet = "structural_model")
+per_structural_model<-read_excel("factors_list.prueba.xlsx",sheet = "structural_model")
 
 per_data_clean<- read.csv("per_data_Binary.csv",sep=",")%>%
   dplyr::select(-X)
-
+read.csv("results/per/indirect/per_influence_nr_frequency_selectedFactors.csv",sep=",")
 per_selectedFactors<- rbind(
-  read.csv("results/direct/per/per_adoption_binary_selectedFactors.csv",sep=","),
-  read.csv("results/indirect/per/per_household_shock_recover_capacity_selectedFactors.csv",sep=","),
-  read.csv("results/indirect/per/per_influence_nr_frequency_selectedFactors.csv",sep=","),
-  read.csv("results/indirect/per/per_training_participation_selectedFactors.csv",sep=","))%>%
+  read.csv("results/per/direct/per_adoption_binary_selectedFactors.csv",sep=","),
+  read.csv("results/per/indirect/per_household_shock_recover_capacity_selectedFactors.csv",sep=","),
+  read.csv("results/per/indirect/per_influence_nr_frequency_selectedFactors.csv",sep=","),
+  read.csv("results/per/indirect/per_training_participation_selectedFactors.csv",sep=","))%>%
   rename("column_name_new"="selected_factors")%>%
   mutate(path="Complete path")
 
-length(per_selectedFactors$column_name_new) #47
+length(per_selectedFactors$column_name_new) #55
 
 per_selectedFactors<-per_selectedFactors%>%distinct(column_name_new, .keep_all = TRUE)
-length(per_selectedFactors$column_name_new) #33
+length(per_selectedFactors$column_name_new) #37
 sort(per_selectedFactors$column_name_new) #35
 
 #############################################################    
@@ -33,7 +33,7 @@ per_data_analysis<- per_data_clean%>%
 
 names(per_data_analysis)
 str(per_data_analysis)
-dim(per_data_analysis)#[1] 200   34
+dim(per_data_analysis)#[1] 200   38
 summary(per_data_analysis)
 describe(per_data_analysis)
 
@@ -150,11 +150,11 @@ ggplot(per_dfs_adoption, aes(x = n_farmers,y= adoption_label, fill = factor(adop
 #landscape 12.17*7.48
 
 per_selectedFactors_direct<- rbind(
-  read.csv("results/direct/per/per_adoption_binary_selectedFactors.csv",sep=","))%>%
+  read.csv("results/per/direct/per_adoption_binary_selectedFactors.csv",sep=","))%>%
   rename("column_name_new"="selected_factors")%>%
   mutate(path="Direct path")
 
-per_selectedFactors_plot<- read_excel("factors_list.xlsx",sheet = "structural_model_afterAssess")%>%
+per_selectedFactors_plot<- read_excel("factors_list.prueba.xlsx",sheet = "structural_model_afterAssess")%>%
   filter(country=="peru")%>%
   distinct(path,from, .keep_all = TRUE)
   
