@@ -226,7 +226,7 @@ per_pls_sem_summary_complete$descriptives$statistics
 #- Number of iterations that the PLS-SEM algorithm needed to converge 
 #This number should be lower than the maximum number of iterations (e.g., 300)
 per_pls_sem_summary_complete$iterations 
-#[1] 1
+#[1] 8
 
 per_pls_sem_summary_complete$descriptives$statistics$constructs
 
@@ -246,41 +246,31 @@ plot(per_boot_model_complete, title = "")
 per_boot_model_summary_complete <- summary(per_boot_model_complete,alpha = 0.05)
 per_boot_model_summary_complete$bootstrapped_paths
 
-#income_stability  ->  household_shock_recover_capacity
-2 * (1 - pnorm(abs(4.910)))
+per_pls_sem_results<-as.data.frame(per_boot_model_summary_complete$bootstrapped_paths)
+per_pls_sem_results$path <- rownames(per_pls_sem_results)
+split_paths <- do.call(rbind, strsplit(per_pls_sem_results$path, "\\s*->\\s*"))
+# Add new columns
+per_pls_sem_results$from <- split_paths[, 1]
+per_pls_sem_results$to <- split_paths[, 2]
 
-#income_sufficiency  ->  household_shock_recover_capacity
-2 * (1 - pnorm(abs(2.971)))
+# Reorder columns if desired
+per_pls_sem_results <- per_pls_sem_results[, c("from", "to", setdiff(names(per_pls_sem_results), c("from", "to", "path")))]
+rownames(per_pls_sem_results) <- per_pls_sem_results$paths
+per_pls_sem_results
+class(per_pls_sem_results)
+per_pls_sem_results<-per_pls_sem_results%>%
+  rename("tvalue"=`T Stat.`)%>%
+  mutate(pvalue = 2 * (1 - pnorm(abs(tvalue))),
+         significance = case_when(
+           pvalue < 0.001 ~ "***",
+           pvalue < 0.01  ~ "**",
+           pvalue < 0.05  ~ "*",
+           pvalue < 0.1   ~ ".",
+           TRUE            ~ ""
+         )
+  )
 
-#governance_involvement  ->  household_shock_recover_capacity
-2 * (1 - pnorm(abs(3.827)))
-
-#years_farming_land  ->  household_shock_recover_capacity 
-2 * (1 - pnorm(abs(-3.966)))
-
-#income_spend_on_food_percentage  ->  household_shock_recover_capacity 
-2 * (1 - pnorm(abs(-2.410)))
-
-#distance_main_road  ->  household_shock_recover_capacity
-2 * (1 - pnorm(abs(-1.920)))
-
-#num_info_exchange_sources  ->  governance_involvement
-2 * (1 - pnorm(abs(4.302)))
-
-#environmental_quality  ->  governance_involvement
-2 * (1 - pnorm(abs(2.698)))
-
-#agroecol_perspective_3  ->  governance_involvement 
-2 * (1 - pnorm(abs(3.879)))
-
-#agroecol_perspective_7  ->  governance_involvement 
-2 * (1 - pnorm(abs(2.739)))
-
-#income_amount_onfarm  ->  governance_involvement  
-2 * (1 - pnorm(abs(-2.699)))
-
-#perception_associations_effectiveness  ->  governance_involvement  
-2 * (1 - pnorm(abs(-2.506)))
+write.csv(per_pls_sem_results, "results/per/per_final_results_pls-sem_model.csv")
 
 #########################################################
 ##===  Assessing the reflective measurement models ====
@@ -541,6 +531,7 @@ write.csv(per_data_logistic_regression_direct, "results/per/per_final_model_data
 
 ## STEP 4: Apply the logistic regression model ====
 #https://stats.oarc.ucla.edu/r/dae/logit-regression/
+library(broom)
 per_direct_dfs_adoption<-per_data_logistic_regression_direct%>%
   select(all_of(per_structural_model_afterAssess%>%
                   filter(country=="peru",to=="dfs_adoption_binary",from!="environmental_quality")%>%
@@ -554,9 +545,18 @@ per_logit_model_dfs_adoption <- glm(dfs_adoption_binary ~ .,
                                     family = binomial(link = "logit"))
 summary(per_logit_model_dfs_adoption)
 
-exp(coef(per_logit_model_dfs_adoption))
-per_logit_model_dfs_adoption.results<-as.data.frame(exp(cbind(OR = coef(per_logit_model_dfs_adoption), confint(per_logit_model_dfs_adoption))))
 
+per_logit_model_dfs_adoption_results <- tidy(per_logit_model_dfs_adoption)
+per_logit_model_dfs_adoption_results
+
+exp(coef(per_logit_model_dfs_adoption))
+per_logit_model_dfs_adoption_results.OR<-as.data.frame(exp(cbind(OR = coef(per_logit_model_dfs_adoption), confint(per_logit_model_dfs_adoption))))
+per_logit_model_dfs_adoption_results.OR$term <- rownames(per_logit_model_dfs_adoption_results.OR)
+
+per_logit_model_dfs_adoption_results_all <- per_logit_model_dfs_adoption_results %>%
+  left_join(per_logit_model_dfs_adoption_results.OR, by = "term")
+
+write.csv(per_logit_model_dfs_adoption_results_all, "results/per/per_final_results_logit_model_dfs_adoption.csv")
 
 per_direct_training_participation<-per_data_logistic_regression_direct%>%
   select(all_of(per_structural_model_afterAssess%>%
@@ -571,10 +571,18 @@ per_logit_model_training_participation <- glm(training_participation ~ .,
                                               data = per_direct_training_participation, 
                                               family = binomial(link = "logit"))
 summary(per_logit_model_training_participation)
+per_logit_model_training_participation_results <- tidy(per_logit_model_training_participation)
+per_logit_model_training_participation_results
 
 exp(coef(per_logit_model_training_participation))
-per_logit_model_training_participation.results<-as.data.frame(exp(cbind(OR = coef(per_logit_model_training_participation), confint(per_logit_model_training_participation))))
+per_logit_model_training_participation_results.OR<-as.data.frame(exp(cbind(OR = coef(per_logit_model_training_participation), confint(per_logit_model_training_participation))))
 
+per_logit_model_training_participation_results.OR$term <- rownames(per_logit_model_training_participation_results.OR)
+
+per_logit_model_training_participaton_results_all <- per_logit_model_training_participation_results %>%
+  left_join(per_logit_model_training_participation_results.OR, by = "term")
+
+write.csv(per_logit_model_training_participaton_results_all, "results/per/per_final_results_logit_model_training_participation.csv")
 
 #########################################################
 ##===  Assessing the structural model----

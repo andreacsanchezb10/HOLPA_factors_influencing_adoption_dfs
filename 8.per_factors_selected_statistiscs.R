@@ -14,7 +14,8 @@ rownames(per_data_analysis) <- per_data_analysis$X
 
 per_data_analysis<- per_data_analysis%>%
   dplyr::select(-X)%>%
-  select(all_of(per_measurement_model_afterAssess$column_name_new),)%>%
+  select(all_of(per_measurement_model_afterAssess$column_name_new),
+         nr_management_opinion,perception_associations_effectiveness)%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))%>%
   mutate(crop_type= case_when(
     crop_type.cacao==1~"cacao",
