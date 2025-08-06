@@ -79,8 +79,8 @@ names(per_household_shock_recover_capacity_redundantFiltered)
 
 ##=== Run for training_participation ====
 per_training_participation_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_training_participation",per_data_analysis )
-dim(per_training_participation_redundantFiltered)#200 farmers; 1 outcomes, 27 factors retained
-#[1] 200  28
+dim(per_training_participation_redundantFiltered)#200 farmers; 1 outcomes, 29 factors retained
+#[1] 200  30
 names(per_training_participation_redundantFiltered)
 ##=== Run for influence_nr_frequency ====
 per_influence_nr_frequency_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_influence_nr_frequency",
@@ -563,10 +563,10 @@ selected_factors_freq <- function(select_factors_cf,
       rename("Run"="X")%>%
       tidyr::pivot_longer(-Run, names_to = "NumFeatures", values_to = "selected_factors") %>%
       mutate(algorithm = algo_name)%>%
-      separate_rows(selected_factors, sep = ",")
+      tidyr::separate_rows(selected_factors, sep = ",")
   }
-  
-  selected_factors <- bind_rows(
+
+    selected_factors <- bind_rows(
     process_df(select_factors_cf, "Conditional Inference Forest"),
     process_df(select_factors_ff, "Fuzzy Forest"),
     process_df(select_factors_rf, "Random Forest")
@@ -614,7 +614,7 @@ per_household_shock_recover_capacity_selectedFactors_freq<-selected_factors_freq
                                                                                  per_household_shock_recover_capacity_selectFactors_rf)
 write.csv(per_household_shock_recover_capacity_selectedFactors_freq, "results/per/indirect/per_household_shock_recover_capacity_selectedFactors_freq.csv")
 
-## Extract the best 17 factors
+## Extract the best 13 factors
 per_household_shock_recover_capacity_selectedFactors<-per_household_shock_recover_capacity_selectedFactors_freq%>%
   filter(NumFeatures=="featNum13")%>%
   slice_max(order_by = frequency, n = 13)%>%
