@@ -73,8 +73,8 @@ feature_selection <- function(factors_list_analysis,remove_colum, data_analysis)
   }
 ##=== Run household_shock_recover_capacity ----
 per_household_shock_recover_capacity_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_household_shock_recover_capacity",per_data_analysis )
-dim(per_household_shock_recover_capacity_redundantFiltered)#200 farmers; 1 outcomes, 102 factors retained
-#[1] 200 103
+dim(per_household_shock_recover_capacity_redundantFiltered)#200 farmers; 1 outcomes, 104 factors retained
+#[1] 200 105
 names(per_household_shock_recover_capacity_redundantFiltered)
 
 ##=== Run for training_participation ====
