@@ -3,13 +3,14 @@ library(readxl)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-factors_list_analysis<-read_excel("factors_list.prueba.xlsx",sheet = "factors_list_analysis")
+factors_list_analysis<-read_excel("factors_list.pruebaNEW.xlsx",sheet = "factors_list_analysis")
 
 per_measurement_model_afterAssess<- read_excel("factors_list.prueba.xlsx",sheet = "measurement_model_afterAssess")%>%
   select(category_1,path,constructs, column_name_new,constructs,factor, constructs_type,weights,country)%>%
   filter(country=="peru")
 
-per_data_analysis<-  read.csv("per_data_Binary.csv",sep=",")
+per_data_analysis<-  read.csv("per_data_Binary.csv",sep=",")%>%
+  filter(crop_type.camucamu==0)
 rownames(per_data_analysis) <- per_data_analysis$X
 
 per_data_analysis<- per_data_analysis%>%
@@ -19,7 +20,6 @@ per_data_analysis<- per_data_analysis%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))%>%
   mutate(crop_type= case_when(
     crop_type.cacao==1~"cacao",
-    crop_type.camucamu==1~"camucamu",
     TRUE~"fruittrees"  ))
 
 table(per_data_analysis$crop_type)
@@ -28,12 +28,11 @@ table(per_data_analysis$crop_type)
 
 table(per_data_analysis$dfs_adoption_binary)
 #0   1 
-#144  56
+#75  55
 
 table(per_data_analysis$crop_type,per_data_analysis$dfs_adoption_binary)
 #0  1
 #cacao      20 50
-#camucamu   69  1
 #fruittrees 55  5
 
 library(tidyr)
@@ -190,7 +189,7 @@ per_summary_numerical <- create_continuous_summary_table(per_data_analysis, colu
                                            description),by=c("variable"="column_name_new"))%>%
   select(category_1,factor,description,"variable",    metric,  
          "cacao_adopters" ,"cacao_non_adopters",      "cacao_Total",
-         "camucamu_adopters","camucamu_non_adopters","camucamu_Total" ,
+         
          "fruittrees_adopters" ,"fruittrees_non_adopters","fruittrees_Total" , 
          "total_adopters" ,"total_non_adopters","total_total")
 
@@ -212,7 +211,6 @@ per_summary_categorical <- create_custom_summary_table(per_data_analysis, column
                                            description),by=c("variable"="column_name_new"))%>%
   select(category_1,factor,description,"variable", "value" ,     
          "cacao_adopters" ,"cacao_non_adopters",      "cacao_Total",
-         "camucamu_adopters","camucamu_non_adopters","camucamu_Total" ,
          "fruittrees_adopters" ,"fruittrees_non_adopters","fruittrees_Total" , 
          "total_adopters" ,"total_non_adopters","total_total")%>%
   mutate(value= case_when(

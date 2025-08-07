@@ -9,7 +9,7 @@ library(ggplot2)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-factors_list_analysis<-read_excel("factors_list.prueba.xlsx",sheet = "factors_list_analysis")
+factors_list_analysis<-read_excel("factors_list.pruebaNEW.xlsx",sheet = "factors_list_analysis")
 
 #per_structural_model<-read_excel("factors_list.xlsx",sheet = "structural_model")
 
@@ -23,7 +23,8 @@ sort(unique(per_direct_predictors$constructs))
 #############################################################    
 ########## SELECTED FACTORS #####-----
 #############################################################
-per_data_analysis<-read.csv("per_data_Binary.csv",sep=",")
+per_data_analysis<-read.csv("per_data_Binary.csv",sep=",")%>%
+  filter(crop_type.camucamu==0)
 rownames(per_data_analysis) <- per_data_analysis$X
 per_data_analysis<- per_data_analysis%>%
   dplyr::select(-X)%>%
@@ -32,7 +33,7 @@ per_data_analysis<- per_data_analysis%>%
 
 names(per_data_analysis)
 str(per_data_analysis)
-dim(per_data_analysis)#[1] 200   16
+dim(per_data_analysis)#[1] 200   14
 summary(per_data_analysis)
 describe(per_data_analysis)
 

@@ -8,14 +8,15 @@ library(tibble)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-factors_list_analysis<-read_excel("factors_list.prueba.xlsx",sheet = "factors_list_analysis")
+factors_list_analysis<-read_excel("factors_list.pruebaNEW.xlsx",sheet = "factors_list_analysis")
 sort(unique(factors_list_analysis$category_1))
 
 per_data_indirect<-read.csv("per_data_logistic_regression_direct.csv",sep=",")
 rownames(per_data_indirect) <- per_data_indirect$X
 per_data_indirect<-per_data_indirect
 
-per_data_analysis<-  read.csv("per_data_Binary.csv",sep=",")
+per_data_analysis<-  read.csv("per_data_Binary.csv",sep=",")%>%
+  filter(crop_type.camucamu==0)
 rownames(per_data_analysis) <- per_data_analysis$X
 per_data_analysis<- per_data_analysis%>%
   dplyr::select(-X)%>%
@@ -80,7 +81,7 @@ names(per_household_shock_recover_capacity_redundantFiltered)
 ##=== Run for training_participation ====
 per_training_participation_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_training_participation",per_data_analysis )
 dim(per_training_participation_redundantFiltered)#200 farmers; 1 outcomes, 29 factors retained
-#[1] 200  30
+#[1] 200  35
 names(per_training_participation_redundantFiltered)
 ##=== Run for influence_nr_frequency ====
 per_influence_nr_frequency_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_influence_nr_frequency",
@@ -652,7 +653,7 @@ per_data_household_shock_recover_capacity_selected_factors_cor<-create_cor_df(pe
 ##=== Run for training_participation ====
 per_data_training_participation_numeric <- prepare_numeric_matrix(per_training_participation_redundantFiltered)
 sft_data_training_participation <- run_soft_threshold(per_data_training_participation_numeric, dataset_name = "per_data_nzvFiltered")
-per_data_training_participation_picked_power <- 7  # Optionally automate this later
+per_data_training_participation_picked_power <- 6  # Optionally automate this later
 
 per_training_participation <- per_training_participation_redundantFiltered$training_participation
 str(per_training_participation)
@@ -671,7 +672,7 @@ per_training_participation_acc_rf<- read.csv("results/per/indirect/per_training_
 per_training_participation_acc_cf<- read.csv("results/per/indirect/per_training_participation_accValAllCForest.csv",sep=",") 
 
 plot_accuracy_vs_features(per_training_participation_acc_ff,per_training_participation_acc_rf, per_training_participation_acc_cf,
-                          method_name = "A) Dependent variable: training participation",12,5)
+                          method_name = "A) Dependent variable: training participation",10,5)
 #11.5*7.5 pdf landscape
 
 per_training_participation_selectFactors_cf<- read.csv("results/per/indirect/per_training_participation_featureSelectedCForest.csv",sep=",") 
@@ -683,10 +684,10 @@ per_training_participation_selectedFactors_freq<-selected_factors_freq(per_train
   per_training_participation_selectFactors_rf)
 write.csv(per_training_participation_selectedFactors_freq, "results/per/indirect/per_training_participation_selectedFactors_freq.csv")
 
-## Extract the best 12 factors
+## Extract the best 11 factors
 per_training_participation_selectedFactors<-per_training_participation_selectedFactors_freq%>%
-  filter(NumFeatures=="featNum12")%>%
-  slice_max(order_by = frequency, n = 12)%>%
+  filter(NumFeatures=="featNum10")%>%
+  slice_max(order_by = frequency, n = 10)%>%
   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
 write.csv(per_training_participation_selectedFactors, "results/per/indirect/per_training_participation_selectedFactors.csv")
