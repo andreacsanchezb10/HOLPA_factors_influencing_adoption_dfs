@@ -8,12 +8,12 @@ library(ggplot2)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-factors_list_analysis<-read_excel("factors_list.prueba.xlsx",sheet = "factors_list_analysis")
+factors_list_analysis<-read_excel("factors_list.pruebaNEW.xlsx",sheet = "factors_list_analysis")
 
-per_structural_model_afterAssess<-read_excel("factors_list.prueba.xlsx",sheet = "structural_model_afterAssess")%>%
+per_structural_model_afterAssess<-read_excel("factors_list.pruebaNEW.xlsx",sheet = "structural_model_afterAssess")%>%
   filter(country=="peru")
 
-per_measurement_model_afterAssess<- read_excel("factors_list.prueba.xlsx",sheet = "measurement_model_afterAssess")%>%
+per_measurement_model_afterAssess<- read_excel("factors_list.pruebaNEW.xlsx",sheet = "measurement_model_afterAssess")%>%
   select(category_1,path,constructs, column_name_new,constructs,factor, constructs_type,weights,country)%>%
   filter(country=="peru")
 
@@ -516,7 +516,7 @@ per_reflective_constructs_list<-c(per_composite_mode_A)#,reflective_constructs)
 per_reflective_constructs_list
 
 per_observed_vars<-per_data_analysis%>%
-  select(all_of(per_reflective_constructs_list),"human_wellbeing_11")
+  select(all_of(per_reflective_constructs_list))
 names(per_observed_vars)
 
 #Extract the latent constructs
@@ -535,7 +535,7 @@ library(broom)
 per_direct_dfs_adoption<-per_data_logistic_regression_direct%>%
   select(all_of(per_structural_model_afterAssess%>%
                   filter(country=="peru",to=="dfs_adoption_binary",from!="environmental_quality")%>%
-                  pull(from)),"human_wellbeing_11",dfs_adoption_binary)
+                  pull(from)),dfs_adoption_binary)
 
 names(per_direct_dfs_adoption)
 per_direct_dfs_adoption$dfs_adoption_binary<- as.factor(per_direct_dfs_adoption$dfs_adoption_binary)

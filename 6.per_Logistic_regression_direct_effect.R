@@ -14,9 +14,7 @@ factors_list_analysis<-read_excel("factors_list.pruebaNEW.xlsx",sheet = "factors
 #per_structural_model<-read_excel("factors_list.xlsx",sheet = "structural_model")
 
 per_direct_predictors<- read.csv("results/per/direct/per_adoption_binary_selectedFactors.csv")
-  select(path,category_1,constructs, column_name_new,constructs,factor, constructs_type,weights,country)%>%
-  filter(country=="peru")%>%
-  filter(str_detect(path, "^direct"))
+
 
 sort(unique(per_direct_predictors$constructs))
 
@@ -33,7 +31,7 @@ per_data_analysis<- per_data_analysis%>%
 
 names(per_data_analysis)
 str(per_data_analysis)
-dim(per_data_analysis)#[1] 200   14
+dim(per_data_analysis)#[1] 200   15
 summary(per_data_analysis)
 describe(per_data_analysis)
 
@@ -123,6 +121,8 @@ plot_correlation_betw_category(per_data_analysis_cor, factors_list_analysis)
 ## Apply the logistic regression model ====
 #https://stats.oarc.ucla.edu/r/dae/logit-regression/
 str(per_data_analysis$dfs_adoption_binary)
+per_data_analysis<-per_data_analysis%>%
+  select(-support_provider.cooperatives)
 per_data_analysis$dfs_adoption_binary<- as.factor(per_data_analysis$dfs_adoption_binary)
 
 per_logit_model <- glm(dfs_adoption_binary ~ ., 

@@ -16,7 +16,7 @@ rownames(per_data_analysis) <- per_data_analysis$X
 per_data_analysis<- per_data_analysis%>%
   dplyr::select(-X)%>%
   select(all_of(per_measurement_model_afterAssess$column_name_new),
-         nr_management_opinion,perception_associations_effectiveness)%>%
+         nr_management_opinion,perception_associations_effectiveness,sales_channel_crops.cooperative)%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))%>%
   mutate(crop_type= case_when(
     crop_type.cacao==1~"cacao",
@@ -228,3 +228,4 @@ per_summary_selected<-bind_rows(per_summary_categorical,per_summary_numerical)
   
   
 write.csv(per_summary_selected,"results/per/per_summary_selected_factors.csv",row.names=FALSE)
+

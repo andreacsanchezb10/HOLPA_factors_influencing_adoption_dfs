@@ -8,12 +8,12 @@ library(ggplot2)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-factors_list_analysis<-read_excel("factors_list.prueba.xlsx",sheet = "factors_list_analysis")
+factors_list_analysis<-read_excel("factors_list.pruebaNEW.xlsx",sheet = "factors_list_analysis")
 
-per_structural_model<-read_excel("factors_list.prueba.xlsx",sheet = "structural_model")%>%
+per_structural_model<-read_excel("factors_list.pruebaNEW.xlsx",sheet = "structural_model")%>%
   filter(country=="peru")
 
-per_measurement_model<- read_excel("factors_list.prueba.xlsx",sheet = "measurement_model")%>%
+per_measurement_model<- read_excel("factors_list.pruebaNEW.xlsx",sheet = "measurement_model")%>%
   select(category_1,path,constructs, column_name_new,constructs,factor, constructs_type,weights,country)%>%
   filter(country=="peru")
 
@@ -22,7 +22,8 @@ sort(unique(per_measurement_model$constructs))
 #############################################################    
 ########## SELECTED FACTORS #####-----
 #############################################################
-per_data_analysis<-  read.csv("per_data_Binary.csv",sep=",")
+per_data_analysis<-  read.csv("per_data_Binary.csv",sep=",")%>%
+  filter(crop_type.camucamu==0)
 rownames(per_data_analysis) <- per_data_analysis$X
 per_data_analysis<- per_data_analysis%>%
   dplyr::select(-X)%>%
@@ -31,7 +32,7 @@ per_data_analysis<- per_data_analysis%>%
 
 sort(names(per_data_analysis))
 str(per_data_analysis)
-dim(per_data_analysis)#[1] 200   33
+dim(per_data_analysis)#[1] 130   22
 summary(per_data_analysis)
 describe(per_data_analysis)
 
@@ -491,7 +492,7 @@ per_reflective_constructs_list<-c(per_composite_mode_A)#,reflective_constructs)
 per_reflective_constructs_list
 
 per_observed_vars<-per_data_analysis%>%
-  select(all_of(per_reflective_constructs_list),"human_wellbeing_11")
+  select(all_of(per_reflective_constructs_list))
 names(per_observed_vars)
 
 #Extract the latent constructs
@@ -509,7 +510,8 @@ write.csv(per_data_logistic_regression_direct, "results/per/per_data_logistic_re
 per_direct_dfs_adoption<-per_data_logistic_regression_direct%>%
   select(all_of(per_structural_model%>%
                   filter(country=="peru",to=="dfs_adoption_binary",from!="environmental_quality")%>%
-           pull(from)),"human_wellbeing_11",dfs_adoption_binary)
+           pull(from)),dfs_adoption_binary)
+  select(-sales_channel_crops.cooperative,-crop_type.cacao)
 
 names(per_direct_dfs_adoption)
 per_direct_dfs_adoption$dfs_adoption_binary<- as.factor(per_direct_dfs_adoption$dfs_adoption_binary)
