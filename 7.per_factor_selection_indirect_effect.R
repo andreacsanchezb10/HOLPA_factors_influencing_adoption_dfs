@@ -11,26 +11,31 @@ library(tibble)
 factors_list_analysis<-read_excel("factors_list.pruebaNEW.xlsx",sheet = "factors_list_analysis")
 sort(unique(factors_list_analysis$category_1))
 
-per_data_indirect<-read.csv("per_data_logistic_regression_direct.csv",sep=",")
-rownames(per_data_indirect) <- per_data_indirect$X
-per_data_indirect<-per_data_indirect
+per_data_logistic_regression_direct2<-read.csv("results/per/per_data_logistic_regression_direct.csv",sep=",")
+rownames(per_data_logistic_regression_direct2) <- per_data_logistic_regression_direct2$X
+per_data_logistic_regression_direct2<-per_data_logistic_regression_direct2%>%
+  select(X,governance_involvement)
 
 per_data_analysis<-  read.csv("per_data_Binary.csv",sep=",")%>%
   filter(crop_type.camucamu==0)
 rownames(per_data_analysis) <- per_data_analysis$X
+
+per_data_analysis2<-per_data_analysis%>%
+  left_join(per_data_logistic_regression_direct2,by="X")%>%
+  dplyr::select(-X)%>%
+  mutate(across(everything(), ~ as.numeric(as.character(.))))
+  
 per_data_analysis<- per_data_analysis%>%
   dplyr::select(-X)%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))
 
 dim(per_data_analysis) #130 farmers; 18 outcomes; 269 factors
 #[1] 130 287
-per_data_analysis%>%
-  select(crop_type.camucamu)
 
-per_data_analysis<-per_data_analysis
-  cbind(per_data_indirect)
-dim(per_data_analysis) #130 farmers; 18 outcomes; 269 factors
-#[1] 130 287
+
+dim(per_data_analysis2) #130 farmers; 18 outcomes; 269 factors
+#[1] 130 288
+
 
 #############################################################    
 ########### FACTOR SELECTION ----
@@ -74,24 +79,26 @@ feature_selection <- function(factors_list_analysis,remove_colum, data_analysis)
   return(data_redundantFiltered)
   
   }
-##=== Run household_shock_recover_capacity ----
-per_household_shock_recover_capacity_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_household_shock_recover_capacity",per_data_analysis )
-dim(per_household_shock_recover_capacity_redundantFiltered)#200 farmers; 1 outcomes, 104 factors retained
-#[1] 200 105
-names(per_household_shock_recover_capacity_redundantFiltered)
 
 ##=== Run for training_participation ====
 per_training_participation_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_training_participation",per_data_analysis )
 dim(per_training_participation_redundantFiltered)#200 farmers; 1 outcomes, 29 factors retained
 #[1] 200  35
 names(per_training_participation_redundantFiltered)
-##=== Run for influence_nr_frequency ====
-per_influence_nr_frequency_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_influence_nr_frequency",
-                                                             per_data_analysis )
-dim(per_influence_nr_frequency_redundantFiltered)#200 farmers; 1 outcomes, 58 factors retained
-#[1] 130  61
-names(per_influence_nr_frequency_redundantFiltered)
 
+##=== Run for governance_involvement ====
+per_governance_involvement_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_governance_involvement",
+                                                             per_data_analysis2 )
+dim(per_governance_involvement_redundantFiltered)#130 farmers; 1 outcomes, 59 factors retained
+#[1] 130  60
+
+names(per_governance_involvement_redundantFiltered)
+
+##=== Run household_shock_recover_capacity ----
+per_household_shock_recover_capacity_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_household_shock_recover_capacity",per_data_analysis )
+dim(per_household_shock_recover_capacity_redundantFiltered)#200 farmers; 1 outcomes, 104 factors retained
+#[1] 200 105
+names(per_household_shock_recover_capacity_redundantFiltered)
 
 ##=== STEP 4: CHECK FOR CORRELATION ACROSS FACTORS ======
 # Function to calculate Spearman's correlation
@@ -149,18 +156,6 @@ plot_correlation_betw_category <- function(cor_df) {
   return(plots)
 }
 
-##--- Run for household_shock_recover_capacity----
-per_household_shock_recover_capacity_factors_list <- as.data.frame(colnames(per_household_shock_recover_capacity_redundantFiltered))%>%
-  rename("column_name_new"= "colnames(per_household_shock_recover_capacity_redundantFiltered)")%>%
-  left_join(factors_list_analysis%>%select(column_name_new, category_1),by="column_name_new")%>%
-  filter(category_1!="outcome")
-
-per_household_shock_recover_capacity_redundantFiltered_cor<-create_cor_df(per_household_shock_recover_capacity_redundantFiltered,per_household_shock_recover_capacity_factors_list)
-str(per_household_shock_recover_capacity_redundantFiltered_cor)
-
-plot_correlation_betw_category(per_household_shock_recover_capacity_redundantFiltered_cor)
-
-
 ##--- Run for training_participation ====
 per_training_participation_factors_list <- as.data.frame(colnames(per_training_participation_redundantFiltered))%>%
   rename("column_name_new"= "colnames(per_training_participation_redundantFiltered)")%>%
@@ -172,16 +167,27 @@ str(per_training_participation_redundantFiltered_cor)
 
 plot_correlation_betw_category(per_training_participation_redundantFiltered_cor)
 
-##--- Run for influence_nr_frequency----
-per_influence_nr_frequency_factors_list <- as.data.frame(colnames(per_influence_nr_frequency_redundantFiltered))%>%
-  rename("column_name_new"= "colnames(per_influence_nr_frequency_redundantFiltered)")%>%
+##--- Run for governance_involvement----
+per_governance_involvement_factors_list <- as.data.frame(colnames(per_governance_involvement_redundantFiltered))%>%
+  rename("column_name_new"= "colnames(per_governance_involvement_redundantFiltered)")%>%
   left_join(factors_list_analysis%>%select(column_name_new, category_1),by="column_name_new")%>%
   filter(category_1!="outcome")
 
-per_influence_nr_frequency_redundantFiltered_cor<-create_cor_df(per_influence_nr_frequency_redundantFiltered,per_influence_nr_frequency_factors_list)
-str(per_influence_nr_frequency_redundantFiltered_cor)
+per_governance_involvement_redundantFiltered_cor<-create_cor_df(per_governance_involvement_redundantFiltered,per_governance_involvement_factors_list)
+str(per_governance_involvement_redundantFiltered_cor)
 
-plot_correlation_betw_category(per_influence_nr_frequency_redundantFiltered_cor)
+plot_correlation_betw_category(per_governance_involvement_redundantFiltered_cor)
+
+##--- Run for household_shock_recover_capacity----
+per_household_shock_recover_capacity_factors_list <- as.data.frame(colnames(per_household_shock_recover_capacity_redundantFiltered))%>%
+  rename("column_name_new"= "colnames(per_household_shock_recover_capacity_redundantFiltered)")%>%
+  left_join(factors_list_analysis%>%select(column_name_new, category_1),by="column_name_new")%>%
+  filter(category_1!="outcome")
+
+per_household_shock_recover_capacity_redundantFiltered_cor<-create_cor_df(per_household_shock_recover_capacity_redundantFiltered,per_household_shock_recover_capacity_factors_list)
+str(per_household_shock_recover_capacity_redundantFiltered_cor)
+
+plot_correlation_betw_category(per_household_shock_recover_capacity_redundantFiltered_cor)
 
 
 ##=== STEP 5: FUZZY FOREST FACTOR SELECTION ======
@@ -263,7 +269,7 @@ feature_selection_continuous_algorithms <- function( factors, Outcome, picked_po
   library(tibble)
   library(Metrics)
   
-  feature_nums <- c(1:20)
+  feature_nums <- c(1:15)
   times <- 20 #number of runs
   
   acc_ff <- matrix(0, nrow = times, ncol = length(feature_nums))
@@ -384,7 +390,7 @@ feature_selection_binary_algorithms <- function(factors, Outcome, picked_power, 
   library(tidyr)
   library(tibble)
   
-  feature_nums <- c(1:20)
+  feature_nums <- c(1:15)
   times <- 20 #number of runs
   
   acc_ff <- matrix(0, nrow = times, ncol = length(feature_nums))
@@ -501,7 +507,7 @@ feature_selection_binary_algorithms <- function(factors, Outcome, picked_power, 
 plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,method_name = "Model",xmax,xmin) {
   process_df <- function(df, algo_name) {
     df %>%
-      select(-featNum16,-featNum17,-featNum18,-featNum19,-featNum20)%>%
+      #select(-featNum16,-featNum17,-featNum18,-featNum19,-featNum20)%>%
       rename("Run"="X")%>%
       filter(Run == "acc_mean") %>%
       tidyr::pivot_longer(-Run, names_to = "NumFeatures", values_to = "Accuracy") %>%
@@ -586,75 +592,6 @@ selected_factors_freq <- function(select_factors_cf,
   
 }
 
-##=== Run for household_shock_recover_capacity ====
-per_data_household_shock_recover_capacity_numeric <- prepare_numeric_matrix(per_household_shock_recover_capacity_redundantFiltered)
-sft_data_household_shock_recover_capacity <- run_soft_threshold(per_data_household_shock_recover_capacity_numeric, dataset_name = "per_data_nzvFiltered")
-per_data_household_shock_recover_capacity_picked_power <- 7  # Optionally automate this later
-
-per_household_shock_recover_capacity <- per_household_shock_recover_capacity_redundantFiltered$household_shock_recover_capacity
-per_household_shock_recover_capacity
-per_household_shock_recover_capacity_factors <- per_household_shock_recover_capacity_redundantFiltered %>% select(-household_shock_recover_capacity)
-per_household_shock_recover_capacity_factors
-
-per_household_shock_recover_capacity_results <- feature_selection_continuous_algorithms(
-  per_household_shock_recover_capacity_factors, per_household_shock_recover_capacity,
-  per_data_household_shock_recover_capacity_picked_power, file_name = "per/indirect/per_household_shock_recover_capacity")
-
-# Plot accuracy vs number of selected factors
-per_household_shock_recover_capacity_acc_ff<- read.csv("results/per/indirect/per_household_shock_recover_capacity_accValAllFuzzyForest.csv",sep=",") 
-per_household_shock_recover_capacity_acc_rf<- read.csv("results/per/indirect/per_household_shock_recover_capacity_accValAllRandomForest.csv",sep=",") 
-per_household_shock_recover_capacity_acc_cf<- read.csv("results/per/indirect/per_household_shock_recover_capacity_accValAllCForest.csv",sep=",") 
-
-plot_accuracy_vs_features(per_household_shock_recover_capacity_acc_ff,
-                          per_household_shock_recover_capacity_acc_rf, 
-                          per_household_shock_recover_capacity_acc_cf,
-                          method_name = "Dependent variable: Household recovery recovery capacity from shocks",13,12)
-#11.5*7.5 pdf landscape
-
-per_household_shock_recover_capacity_selectFactors_cf<- read.csv("results/per/indirect/per_household_shock_recover_capacity_featureSelectedCForest.csv",sep=",") 
-per_household_shock_recover_capacity_selectFactors_ff<- read.csv("results/per/indirect/per_household_shock_recover_capacity_featureSelectedFuzzyForest.csv",sep=",") 
-per_household_shock_recover_capacity_selectFactors_rf<- read.csv("results/per/indirect/per_household_shock_recover_capacity_featureSelectedRandomForest.csv",sep=",") 
-
-per_household_shock_recover_capacity_selectedFactors_freq<-selected_factors_freq(per_household_shock_recover_capacity_selectFactors_cf,
-                                                                                 per_household_shock_recover_capacity_selectFactors_ff,
-                                                                                 per_household_shock_recover_capacity_selectFactors_rf)
-write.csv(per_household_shock_recover_capacity_selectedFactors_freq, "results/per/indirect/per_household_shock_recover_capacity_selectedFactors_freq.csv")
-
-## Extract the best 13 factors
-per_household_shock_recover_capacity_selectedFactors<-per_household_shock_recover_capacity_selectedFactors_freq%>%
-  filter(NumFeatures=="featNum13")%>%
-  slice_max(order_by = frequency, n = 13)%>%
-  left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
-
-write.csv(per_household_shock_recover_capacity_selectedFactors, "results/per/indirect/per_household_shock_recover_capacity_selectedFactors.csv")
-
-# Select only the selected factors from database
-
-per_data_household_shock_recover_capacity_selectedFactors<- per_data_analysis%>%
-  select(dfs_adoption_binary,
-         all_of(per_household_shock_recover_capacity_selectedFactors$selected_factors))
-
-dim(per_data_household_shock_recover_capacity_selectedFactors)#[1] 200   18; 17 factors
-
-write.csv(per_household_shock_recover_capacity_selectedFactors, "results/per/indirect/per_data_household_shock_recover_capacity_selectedFactors.csv")
-
-create_cor_df <- function(data,selected_factors) {
-  data_num<-data %>% 
-    mutate(across(everything(), as.numeric))%>%
-    select(all_of(per_household_shock_recover_capacity_selectedFactors$selected_factors))
-  
-  cor_matrix <- cor(data_num,
-                    method = "spearman", use = "pairwise.complete.obs")
-  
-  cor_df <- as.data.frame(cor_matrix) %>%
-    rownames_to_column("factor1") %>%
-    tidyr::pivot_longer(-factor1, names_to = "factor2", values_to = "spearman_correlation")
-  
-  return(cor_df)
-}
-per_data_household_shock_recover_capacity_selected_factors_cor<-create_cor_df(per_household_shock_recover_capacity_redundantFiltered,per_household_shock_recover_capacity_selectedFactors)
-
-
 ##=== Run for training_participation ====
 per_data_training_participation_numeric <- prepare_numeric_matrix(per_training_participation_redundantFiltered)
 sft_data_training_participation <- run_soft_threshold(per_data_training_participation_numeric, dataset_name = "per_data_nzvFiltered")
@@ -726,46 +663,46 @@ per_data_selected_factors_cor<-create_cor_df(per_data_analysis,per_training_part
 fills <- c("#f0c602","#F09319", "#ea6044","#d896ff","#6a57b8",  "#87CEEB", "#496491", "#92c46d", "#92c46d","#92c46d","#297d7d") #
  "#602058"
 
-##=== Run for influence_nr_frequency ====
-per_data_influence_nr_frequency_numeric <- prepare_numeric_matrix(per_influence_nr_frequency_redundantFiltered)
-sft_data_influence_nr_frequency <- run_soft_threshold(per_data_influence_nr_frequency_numeric, dataset_name = "per_data_nzvFiltered")
-per_data_influence_nr_frequency_picked_power <- 7  # Optionally automate this later
+##=== Run for governance_involvement ====
+per_data_governance_involvement_numeric <- prepare_numeric_matrix(per_governance_involvement_redundantFiltered)
+sft_data_governance_involvement <- run_soft_threshold(per_data_governance_involvement_numeric, dataset_name = "per_data_nzvFiltered")
+per_data_governance_involvement_picked_power <- 7  # Optionally automate this later
 
-per_influence_nr_frequency <- per_influence_nr_frequency_redundantFiltered$influence_nr_frequency
-per_influence_nr_frequency
-per_influence_nr_frequency_factors <- per_influence_nr_frequency_redundantFiltered %>% select(-influence_nr_frequency)
-per_influence_nr_frequency_factors
+per_governance_involvement <- per_governance_involvement_redundantFiltered$governance_involvement
+per_governance_involvement
+per_governance_involvement_factors <- per_governance_involvement_redundantFiltered %>% select(-governance_involvement)
+per_governance_involvement_factors
 
-per_influence_nr_frequency_results <- feature_selection_continuous_algorithms(
-  per_influence_nr_frequency_factors, per_influence_nr_frequency,
-  per_data_influence_nr_frequency_picked_power, file_name = "per/indirect/per_influence_nr_frequency")
+per_governance_involvement_results <- feature_selection_continuous_algorithms(
+  per_governance_involvement_factors, per_governance_involvement,
+  per_data_governance_involvement_picked_power, file_name = "per/indirect/per_governance_involvement")
  
 # Plot accuracy vs number of selected factors
-per_influence_nr_frequency_acc_ff<- read.csv("results/per/indirect/per_influence_nr_frequency_accValAllFuzzyForest.csv",sep=",") 
-per_influence_nr_frequency_acc_rf<- read.csv("results/per/indirect/per_influence_nr_frequency_accValAllRandomForest.csv",sep=",") 
-per_influence_nr_frequency_acc_cf<- read.csv("results/per/indirect/per_influence_nr_frequency_accValAllCForest.csv",sep=",") 
+per_governance_involvement_acc_ff<- read.csv("results/per/indirect/per_governance_involvement_accValAllFuzzyForest.csv",sep=",") 
+per_governance_involvement_acc_rf<- read.csv("results/per/indirect/per_governance_involvement_accValAllRandomForest.csv",sep=",") 
+per_governance_involvement_acc_cf<- read.csv("results/per/indirect/per_governance_involvement_accValAllCForest.csv",sep=",") 
  
 
-plot_accuracy_vs_features(per_influence_nr_frequency_acc_ff,per_influence_nr_frequency_acc_rf, per_influence_nr_frequency_acc_cf,
-                           method_name = "Dependent variable: influence_nr_frequency",9,8)
+plot_accuracy_vs_features(per_governance_involvement_acc_ff,per_governance_involvement_acc_rf, per_governance_involvement_acc_cf,
+                           method_name = "Dependent variable: governance_involvement",9,8)
 #11.5*7.5 pdf landscape
  
-per_influence_nr_frequency_selectFactors_cf<- read.csv("results/per/indirect/per_influence_nr_frequency_featureSelectedCForest.csv",sep=",") 
-per_influence_nr_frequency_selectFactors_ff<- read.csv("results/per/indirect/per_influence_nr_frequency_featureSelectedFuzzyForest.csv",sep=",") 
-per_influence_nr_frequency_selectFactors_rf<- read.csv("results/per/indirect/per_influence_nr_frequency_featureSelectedRandomForest.csv",sep=",") 
+per_governance_involvement_selectFactors_cf<- read.csv("results/per/indirect/per_governance_involvement_featureSelectedCForest.csv",sep=",") 
+per_governance_involvement_selectFactors_ff<- read.csv("results/per/indirect/per_governance_involvement_featureSelectedFuzzyForest.csv",sep=",") 
+per_governance_involvement_selectFactors_rf<- read.csv("results/per/indirect/per_governance_involvement_featureSelectedRandomForest.csv",sep=",") 
  
-per_influence_nr_frequency_selectedFactors_freq<-selected_factors_freq(per_influence_nr_frequency_selectFactors_cf,
-                                                                     per_influence_nr_frequency_selectFactors_ff,
-                                                                     per_influence_nr_frequency_selectFactors_rf)
-write.csv(per_influence_nr_frequency_selectedFactors_freq, "results/per/indirect/per_influence_nr_selectedFactors_freq.csv")
+per_governance_involvement_selectedFactors_freq<-selected_factors_freq(per_governance_involvement_selectFactors_cf,
+                                                                     per_governance_involvement_selectFactors_ff,
+                                                                     per_governance_involvement_selectFactors_rf)
+write.csv(per_governance_involvement_selectedFactors_freq, "results/per/indirect/per_governance_involvement_selectedFactors_freq.csv")
  
 ## Extract the best 11 factors
-per_influence_nr_frequency_selectedFactors<-per_influence_nr_frequency_selectedFactors_freq%>%
+per_governance_involvement_selectedFactors<-per_governance_involvement_selectedFactors_freq%>%
    filter(NumFeatures=="featNum9")%>%
    slice_max(order_by = frequency, n =9)%>%
    left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
  
-write.csv(per_influence_nr_frequency_selectedFactors, "results/per/indirect/per_influence_nr_frequency_selectedFactors.csv")
+write.csv(per_governance_involvement_selectedFactors, "results/per/indirect/per_governance_involvement_selectedFactors.csv")
  
  # Select only the selected factors from database
 
@@ -785,5 +722,74 @@ write.csv(per_influence_nr_frequency_selectedFactors, "results/per/indirect/per_
    return(cor_df)
  }
  per_data_selected_factors_cor<-create_cor_df(per_data_redundantFiltered,per_adoptionBinary_selectedFactors)
+ 
+##=== Run for household_shock_recover_capacity ====
+ per_data_household_shock_recover_capacity_numeric <- prepare_numeric_matrix(per_household_shock_recover_capacity_redundantFiltered)
+ sft_data_household_shock_recover_capacity <- run_soft_threshold(per_data_household_shock_recover_capacity_numeric, dataset_name = "per_data_nzvFiltered")
+ per_data_household_shock_recover_capacity_picked_power <- 7  # Optionally automate this later
+ 
+ per_household_shock_recover_capacity <- per_household_shock_recover_capacity_redundantFiltered$household_shock_recover_capacity
+ per_household_shock_recover_capacity
+ per_household_shock_recover_capacity_factors <- per_household_shock_recover_capacity_redundantFiltered %>% select(-household_shock_recover_capacity)
+ per_household_shock_recover_capacity_factors
+ 
+ per_household_shock_recover_capacity_results <- feature_selection_continuous_algorithms(
+   per_household_shock_recover_capacity_factors, per_household_shock_recover_capacity,
+   per_data_household_shock_recover_capacity_picked_power, file_name = "per/indirect/per_household_shock_recover_capacity")
+ 
+ # Plot accuracy vs number of selected factors
+ per_household_shock_recover_capacity_acc_ff<- read.csv("results/per/indirect/per_household_shock_recover_capacity_accValAllFuzzyForest.csv",sep=",") 
+ per_household_shock_recover_capacity_acc_rf<- read.csv("results/per/indirect/per_household_shock_recover_capacity_accValAllRandomForest.csv",sep=",") 
+ per_household_shock_recover_capacity_acc_cf<- read.csv("results/per/indirect/per_household_shock_recover_capacity_accValAllCForest.csv",sep=",") 
+ 
+ plot_accuracy_vs_features(per_household_shock_recover_capacity_acc_ff,
+                           per_household_shock_recover_capacity_acc_rf, 
+                           per_household_shock_recover_capacity_acc_cf,
+                           method_name = "Dependent variable: Household recovery recovery capacity from shocks",13,12)
+ #11.5*7.5 pdf landscape
+ 
+ per_household_shock_recover_capacity_selectFactors_cf<- read.csv("results/per/indirect/per_household_shock_recover_capacity_featureSelectedCForest.csv",sep=",") 
+ per_household_shock_recover_capacity_selectFactors_ff<- read.csv("results/per/indirect/per_household_shock_recover_capacity_featureSelectedFuzzyForest.csv",sep=",") 
+ per_household_shock_recover_capacity_selectFactors_rf<- read.csv("results/per/indirect/per_household_shock_recover_capacity_featureSelectedRandomForest.csv",sep=",") 
+ 
+ per_household_shock_recover_capacity_selectedFactors_freq<-selected_factors_freq(per_household_shock_recover_capacity_selectFactors_cf,
+                                                                                  per_household_shock_recover_capacity_selectFactors_ff,
+                                                                                  per_household_shock_recover_capacity_selectFactors_rf)
+ write.csv(per_household_shock_recover_capacity_selectedFactors_freq, "results/per/indirect/per_household_shock_recover_capacity_selectedFactors_freq.csv")
+ 
+ ## Extract the best 13 factors
+ per_household_shock_recover_capacity_selectedFactors<-per_household_shock_recover_capacity_selectedFactors_freq%>%
+   filter(NumFeatures=="featNum13")%>%
+   slice_max(order_by = frequency, n = 13)%>%
+   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
+ 
+ write.csv(per_household_shock_recover_capacity_selectedFactors, "results/per/indirect/per_household_shock_recover_capacity_selectedFactors.csv")
+ 
+ # Select only the selected factors from database
+ 
+ per_data_household_shock_recover_capacity_selectedFactors<- per_data_analysis%>%
+   select(dfs_adoption_binary,
+          all_of(per_household_shock_recover_capacity_selectedFactors$selected_factors))
+ 
+ dim(per_data_household_shock_recover_capacity_selectedFactors)#[1] 200   18; 17 factors
+ 
+ write.csv(per_household_shock_recover_capacity_selectedFactors, "results/per/indirect/per_data_household_shock_recover_capacity_selectedFactors.csv")
+ 
+ create_cor_df <- function(data,selected_factors) {
+   data_num<-data %>% 
+     mutate(across(everything(), as.numeric))%>%
+     select(all_of(per_household_shock_recover_capacity_selectedFactors$selected_factors))
+   
+   cor_matrix <- cor(data_num,
+                     method = "spearman", use = "pairwise.complete.obs")
+   
+   cor_df <- as.data.frame(cor_matrix) %>%
+     rownames_to_column("factor1") %>%
+     tidyr::pivot_longer(-factor1, names_to = "factor2", values_to = "spearman_correlation")
+   
+   return(cor_df)
+ }
+ per_data_household_shock_recover_capacity_selected_factors_cor<-create_cor_df(per_household_shock_recover_capacity_redundantFiltered,per_household_shock_recover_capacity_selectedFactors)
+ 
  
  
