@@ -32,7 +32,7 @@ per_data_analysis<- per_data_analysis%>%
 
 sort(names(per_data_analysis))
 str(per_data_analysis)
-dim(per_data_analysis)#[1] 130   22
+dim(per_data_analysis)#[1] 130   20
 summary(per_data_analysis)
 describe(per_data_analysis)
 
@@ -492,7 +492,7 @@ per_reflective_constructs_list<-c(per_composite_mode_A)#,reflective_constructs)
 per_reflective_constructs_list
 
 per_observed_vars<-per_data_analysis%>%
-  select(all_of(per_reflective_constructs_list))
+  select(all_of(per_reflective_constructs_list),human_wellbeing_11)
 names(per_observed_vars)
 
 #Extract the latent constructs
@@ -510,8 +510,8 @@ write.csv(per_data_logistic_regression_direct, "results/per/per_data_logistic_re
 per_direct_dfs_adoption<-per_data_logistic_regression_direct%>%
   select(all_of(per_structural_model%>%
                   filter(country=="peru",to=="dfs_adoption_binary",from!="environmental_quality")%>%
-           pull(from)),dfs_adoption_binary)
-  select(-sales_channel_crops.cooperative,-crop_type.cacao)
+           pull(from)),dfs_adoption_binary,human_wellbeing_11,-crop_type.cacao)
+  select(-sales_channel_crops.cooperative)
 
 names(per_direct_dfs_adoption)
 per_direct_dfs_adoption$dfs_adoption_binary<- as.factor(per_direct_dfs_adoption$dfs_adoption_binary)

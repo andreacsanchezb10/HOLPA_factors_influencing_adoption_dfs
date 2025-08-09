@@ -19,7 +19,7 @@ per_data_analysis<- per_data_analysis%>%
   filter(crop_type.camucamu==0)
 
 dim(per_data_analysis) #130 farmers; 18 outcomes; 269 factors
-#[1] 200 287
+#[1] 130 287
 
 
 #############################################################    
@@ -50,7 +50,7 @@ nzv_factors
 per_data_nzvFiltered<- per_data_analysis[, -nzv_list]
 per_data_nzvFiltered
 
-dim(per_data_nzvFiltered) #200 farmers; 192 variables retained
+dim(per_data_nzvFiltered) #130 farmers; 192 variables retained
 
 c<-as.data.frame(c(colnames(per_data_nzvFiltered)))%>%
   rename("column_name_new"="c(colnames(per_data_nzvFiltered))")%>%
@@ -68,8 +68,8 @@ ggplot(data=c, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_nzvFiltered) #200 farmers; 5 outcomes, 189 factors retained
-#[1] 200 192
+dim(per_data_nzvFiltered) #130 farmers; 5 outcomes, 189 factors retained
+#[1] 130 192
 
 ##=== STEP 2: REMOVE IRRELEVANT FACTORS ======
 sort(unique(factors_list_analysis$peru_remove_adoption_status))
@@ -79,7 +79,7 @@ per_irrelevant_list
 per_data_irrelevantFiltered<- per_data_nzvFiltered%>%
   dplyr::select(-all_of(per_irrelevant_list))
 
-dim(per_data_irrelevantFiltered) #200 farmers; 168 variables retained
+dim(per_data_irrelevantFiltered) #130 farmers; 164 variables retained
 names(per_data_irrelevantFiltered)
 
 b<-as.data.frame(c(colnames(per_data_irrelevantFiltered)))%>%
@@ -98,8 +98,8 @@ ggplot(data=b, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_irrelevantFiltered) #200 farmers; 5 outcomes, 162 factors retained
-#[1] 200 167
+dim(per_data_irrelevantFiltered) #130 farmers; 7 outcomes, 159 factors retained
+#[1] 130 164
 
 ##=== STEP 3: CHECK FOR CORRELATION ACROSS FACTORS ======
 # Function to calculate Spearman's correlation
@@ -175,7 +175,7 @@ per_redundant_list
 per_data_redundantFiltered<- per_data_irrelevantFiltered%>%
   dplyr::select(-all_of(per_redundant_list))
 
-dim(per_data_redundantFiltered) #200 farmers; 136 variables
+dim(per_data_redundantFiltered) #130 farmers; 130 variables
 names(per_data_redundantFiltered)
 
 d<-as.data.frame(c(colnames(per_data_redundantFiltered)))%>%
@@ -199,8 +199,8 @@ ggplot(data=d, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_redundantFiltered)#200 farmers; 1 outcomes, 135 factors retained
-#[1] 200 136
+dim(per_data_redundantFiltered)#200 farmers; 1 outcomes, 129 factors retained
+#[1] 200 130
 
 ##=== STEP 5: CHECK FOR CORRELATION ACROSS RETAINED FACTORS ======
 per_factors_list_analysis2 <- as.data.frame(colnames(per_data_redundantFiltered))%>%
@@ -291,7 +291,7 @@ feature_selection_algorithms <- function(factors, adoptionOutcome, picked_power,
   library(tidyr)
   library(tibble)
   
-  feature_nums <- c(1:20)
+  feature_nums <- c(1:15)
   times <- 20 #number of runs
   
   acc_ff <- matrix(0, nrow = times, ncol = length(feature_nums))
@@ -490,7 +490,7 @@ selected_factors_freq <- function(select_factors_cf,select_factors_ff, select_fa
 ##=== Run for Ucayali (Peru) ====
 per_data_numeric <- prepare_numeric_matrix(per_data_redundantFiltered)
 sft <- run_soft_threshold(per_data_numeric, dataset_name = "per_data_redundantFiltered")
-per_picked_power <- 8  # Optionally automate this later
+per_picked_power <- 7 # Optionally automate this later
 
 per_adoptionBinary <- per_data_redundantFiltered$dfs_adoption_binary
 per_factors <- per_data_redundantFiltered %>% select(-dfs_adoption_binary)
@@ -507,7 +507,7 @@ per_adoptionBinary_acc_rf<- read.csv("results/per/direct/per_adoption_binary_acc
 per_adoptionBinary_acc_cf<- read.csv("results/per/direct/per_adoption_binary_accValAllCForest.csv",sep=",") 
 
 plot_accuracy_vs_features(per_adoptionBinary_acc_ff,per_adoptionBinary_acc_rf, per_adoptionBinary_acc_cf,
-                          method_name = "A) Ucayali Peru: Dependent variable = Adoption Binary",14,13)
+                          method_name = "A) Ucayali Peru: Dependent variable = Adoption Binary",13,13)
 #9.5*11.5 pdf landscape
 
 per_adoptionBinary_selectFactors_cf<- read.csv("results/per/direct/per_adoption_binary_featureSelectedCForest.csv",sep=",") 
@@ -521,8 +521,8 @@ write.csv(per_adoptionBinary_selectedFactors_freq, "results/per/direct/per_adopt
 
 ## Extract the best 14 factors
 per_adoptionBinary_selectedFactors<-per_adoptionBinary_selectedFactors_freq%>%
-  filter(NumFeatures=="featNum14")%>%
-  slice_max(order_by = frequency, n = 14)%>%
+  filter(NumFeatures=="featNum13")%>%
+  slice_max(order_by = frequency, n = 13)%>%
   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
 write.csv(per_adoptionBinary_selectedFactors, "results/per/direct/per_adoption_binary_selectedFactors.csv")

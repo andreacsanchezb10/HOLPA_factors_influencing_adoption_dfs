@@ -26,12 +26,17 @@ per_data_analysis<-read.csv("per_data_Binary.csv",sep=",")%>%
 rownames(per_data_analysis) <- per_data_analysis$X
 per_data_analysis<- per_data_analysis%>%
   dplyr::select(-X)%>%
-  dplyr::select(dfs_adoption_binary,all_of(per_direct_predictors$selected_factors))%>%
+  dplyr::select(dfs_adoption_binary,all_of(per_direct_predictors$selected_factors),
+                support_provider.cooperatives,sales_channel_crops.cooperative,
+                human_wellbeing_11,household_shock_recover_capacity
+
+
+  )%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))
 
 names(per_data_analysis)
 str(per_data_analysis)
-dim(per_data_analysis)#[1] 200   15
+dim(per_data_analysis)#[1] 200   14
 summary(per_data_analysis)
 describe(per_data_analysis)
 
@@ -121,12 +126,29 @@ plot_correlation_betw_category(per_data_analysis_cor, factors_list_analysis)
 ## Apply the logistic regression model ====
 #https://stats.oarc.ucla.edu/r/dae/logit-regression/
 str(per_data_analysis$dfs_adoption_binary)
-per_data_analysis<-per_data_analysis%>%
-  select(-support_provider.cooperatives)
-per_data_analysis$dfs_adoption_binary<- as.factor(per_data_analysis$dfs_adoption_binary)
+c<-per_data_analysis%>%
+  select(dfs_adoption_binary,
+         soil_pH_mean,
+   sfs_monoculture_perennial_area,
+   crop_type.cacao,
+   nearest_farmer_adopted,
+   years_farming_land,
+   num_info_exchange_extension,
+   training_participation,
+   #desde aca
+   influence_nr_frequency,
+   perception_associations_effectiveness,
+   support_provider.ind_different_community,
+   #support_provider.cooperatives,
+   agroecol_perspective_3,
+   human_wellbeing_11,
+   sales_channel_crops.cooperative)
+
+
+c$dfs_adoption_binary<- as.factor(c$dfs_adoption_binary)
 
 per_logit_model <- glm(dfs_adoption_binary ~ ., 
-                       data = per_data_analysis, 
+                       data = c, 
                        family = binomial(link = "logit"))
 
 summary(per_logit_model)
