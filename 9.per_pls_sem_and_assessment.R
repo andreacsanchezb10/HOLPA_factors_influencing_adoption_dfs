@@ -510,8 +510,9 @@ write.csv(per_data_logistic_regression_direct, "results/per/per_data_logistic_re
 per_direct_dfs_adoption<-per_data_logistic_regression_direct%>%
   select(all_of(per_structural_model%>%
                   filter(country=="peru",to=="dfs_adoption_binary",from!="environmental_quality")%>%
-           pull(from)),dfs_adoption_binary,human_wellbeing_11,-crop_type.cacao)
-  select(-sales_channel_crops.cooperative)
+           pull(from)),dfs_adoption_binary,human_wellbeing_11)
+
+  select(-sales_channel_crops.cooperative,-crop_type.cacao)
 
 names(per_direct_dfs_adoption)
 per_direct_dfs_adoption$dfs_adoption_binary<- as.factor(per_direct_dfs_adoption$dfs_adoption_binary)
