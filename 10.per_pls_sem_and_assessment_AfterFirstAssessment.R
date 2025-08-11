@@ -32,7 +32,7 @@ per_data_analysis<- per_data_analysis%>%
 
 names(per_data_analysis)
 str(per_data_analysis)
-dim(per_data_analysis)#[1] 130   33
+dim(per_data_analysis)#[1] 130   25
 summary(per_data_analysis)
 describe(per_data_analysis)
 
@@ -517,7 +517,7 @@ per_reflective_constructs_list<-c(per_composite_mode_A)#,reflective_constructs)
 per_reflective_constructs_list
 
 per_observed_vars<-per_data_analysis%>%
-  select(all_of(per_reflective_constructs_list))
+  select(all_of(per_reflective_constructs_list),human_wellbeing_11)
 names(per_observed_vars)
 
 #Extract the latent constructs

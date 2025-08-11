@@ -5,7 +5,7 @@ library(readxl)
 #############################################################
 factors_list_analysis<-read_excel("factors_list.pruebaNEW.xlsx",sheet = "factors_list_analysis")
 
-per_measurement_model_afterAssess<- read_excel("factors_list.prueba.xlsx",sheet = "measurement_model_afterAssess")%>%
+per_measurement_model_afterAssess<- read_excel("factors_list.pruebaNEW.xlsx",sheet = "measurement_model_afterAssess")%>%
   select(category_1,path,constructs, column_name_new,constructs,factor, constructs_type,weights,country)%>%
   filter(country=="peru")
 
@@ -16,6 +16,7 @@ rownames(per_data_analysis) <- per_data_analysis$X
 per_data_analysis<- per_data_analysis%>%
   dplyr::select(-X)%>%
   select(all_of(per_measurement_model_afterAssess$column_name_new),
+         age,
          nr_management_opinion,perception_associations_effectiveness,sales_channel_crops.cooperative)%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))%>%
   mutate(crop_type= case_when(
@@ -23,8 +24,8 @@ per_data_analysis<- per_data_analysis%>%
     TRUE~"fruittrees"  ))
 
 table(per_data_analysis$crop_type)
-#cacao   camucamu fruittrees 
-#70         70         60
+#cacao    fruittrees 
+#70         60
 
 table(per_data_analysis$dfs_adoption_binary)
 #0   1 
@@ -181,7 +182,8 @@ print(columns_continuous)  # Check if it holds expected values
 columns_categorical_ordinal <- intersect(factors_list_analysis$column_name_new[factors_list_analysis$metric_type == "categorical"&factors_list_analysis$categorical_type=="ordinal"], colnames(per_data_analysis))
 print(columns_categorical_ordinal)  # Check if it holds expected values
 
-columns_numeric<-c(columns_continuous, columns_categorical_ordinal)
+columns_numeric<-c(columns_continuous, columns_categorical_ordinal,
+                   "age")
 print(columns_numeric)
 
 per_summary_numerical <- create_continuous_summary_table(per_data_analysis, columns_numeric)%>%

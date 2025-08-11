@@ -684,7 +684,7 @@ per_governance_involvement_acc_cf<- read.csv("results/per/indirect/per_governanc
  
 
 plot_accuracy_vs_features(per_governance_involvement_acc_ff,per_governance_involvement_acc_rf, per_governance_involvement_acc_cf,
-                           method_name = "Dependent variable: governance_involvement",9,8)
+                           method_name = "Dependent variable: governance_involvement",8,8)
 #11.5*7.5 pdf landscape
  
 per_governance_involvement_selectFactors_cf<- read.csv("results/per/indirect/per_governance_involvement_featureSelectedCForest.csv",sep=",") 
@@ -698,8 +698,8 @@ write.csv(per_governance_involvement_selectedFactors_freq, "results/per/indirect
  
 ## Extract the best 11 factors
 per_governance_involvement_selectedFactors<-per_governance_involvement_selectedFactors_freq%>%
-   filter(NumFeatures=="featNum9")%>%
-   slice_max(order_by = frequency, n =9)%>%
+   filter(NumFeatures=="featNum8")%>%
+   slice_max(order_by = frequency, n =8)%>%
    left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
  
 write.csv(per_governance_involvement_selectedFactors, "results/per/indirect/per_governance_involvement_selectedFactors.csv")
@@ -710,7 +710,7 @@ write.csv(per_governance_involvement_selectedFactors, "results/per/indirect/per_
  create_cor_df <- function(data,selected_factors) {
    data_num<-data %>% 
      mutate(across(everything(), as.numeric))%>%
-     select(all_of(per_adoptionBinary_selectedFactors$selected_factors))
+     select(all_of(per_governance_involvement_selectedFactors$selected_factors))
    
    cor_matrix <- cor(data_num,
                      method = "spearman", use = "pairwise.complete.obs")
@@ -721,8 +721,10 @@ write.csv(per_governance_involvement_selectedFactors, "results/per/indirect/per_
    
    return(cor_df)
  }
- per_data_selected_factors_cor<-create_cor_df(per_data_redundantFiltered,per_adoptionBinary_selectedFactors)
- 
+
+per_data_governance_involvement_selected_factors_cor<-create_cor_df(per_governance_involvement_redundantFiltered,per_governance_involvement_selectedFactors)
+
+
 ##=== Run for household_shock_recover_capacity ====
  per_data_household_shock_recover_capacity_numeric <- prepare_numeric_matrix(per_household_shock_recover_capacity_redundantFiltered)
  sft_data_household_shock_recover_capacity <- run_soft_threshold(per_data_household_shock_recover_capacity_numeric, dataset_name = "per_data_nzvFiltered")
