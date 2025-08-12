@@ -435,7 +435,7 @@ plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,method_name
   
   ggplot(acc_long_mean, aes(x = NumFeatures, y = Accuracy, color = algorithm)) +
     geom_vline(xintercept = xmin,  color = "grey", size = 2) +
-    geom_vline(xintercept = 20,  color = "grey", size = 2) +
+    geom_vline(xintercept = 15,  color = "grey", size = 2) +
     geom_line(size = 1) +
     geom_point(size = 3) +
     scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
@@ -444,7 +444,7 @@ plot_accuracy_vs_features <- function(acc_ff_df, acc_rf_df,acc_cf_df,method_name
     
     geom_vline(xintercept = xmax, linetype = "dotted", color = "black", size = 1) +
     
-    scale_x_continuous(limits = c(1, 20),breaks = pretty(1:20, n = 5),expand = c(0.01, 0))+
+    scale_x_continuous(limits = c(1, 15),breaks = pretty(1:15, n = 5),expand = c(0.01, 0))+
       labs(
       title = method_name,
       x = "Number of selected factors",
@@ -508,7 +508,7 @@ per_adoptionBinary_acc_cf<- read.csv("results/per/direct/per_adoption_binary_acc
 
 plot_accuracy_vs_features(per_adoptionBinary_acc_ff,per_adoptionBinary_acc_rf, per_adoptionBinary_acc_cf,
                           method_name = "A) Ucayali Peru: Dependent variable = Adoption Binary",13,13)
-#9.5*11.5 pdf landscape
+#11.5*7.5 pdf landscape
 
 per_adoptionBinary_selectFactors_cf<- read.csv("results/per/direct/per_adoption_binary_featureSelectedCForest.csv",sep=",") 
 per_adoptionBinary_selectFactors_ff<- read.csv("results/per/direct/per_adoption_binary_featureSelectedFuzzyForest.csv",sep=",") 
