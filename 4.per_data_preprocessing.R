@@ -8,13 +8,13 @@ library(caret)
 #############################################################    
 ########## UPLOAD DATA #####-----
 #############################################################
-factors_list<-read_excel("factors_list.xlsx",sheet = "factors_list")
+factors_list<-read_excel("factors_list.pruebaNEW.xlsx",sheet = "factors_list")
 sort(unique(factors_list$category_1))
 
 per_data_clean<- read.csv("per_data_clean.csv",sep=",")
 sort(unique(per_data_clean$soil_erosion_perception))
-per_summary_categorical<-read.csv("per_summary_categorical.csv",sep=",") #541
-per_summary_numerical<-read.csv("per_summary_numerical.csv",sep=",")  #80 factors
+per_summary_categorical<-read.csv("per_summary_categorical.csv",sep=",") #534
+per_summary_numerical<-read.csv("per_summary_numerical.csv",sep=",")  #79 factors
 
 factors_category<-per_summary_numerical%>%dplyr::select(column_name_new, category_1,sub_category)%>%
   rbind(per_summary_categorical%>%dplyr::select(column_name_new,category_1,sub_category))%>%
@@ -40,7 +40,7 @@ rownames(per_data_analysis) <- per_data_analysis$kobo_farmer_id
 per_data_analysis<- per_data_analysis%>%
   dplyr::select(-kobo_farmer_id)
 
-dim(per_data_analysis) #200 farmers; 274 variables evaluated
+dim(per_data_analysis) #200 farmers; 276 variables evaluated
 
 a<-as.data.frame(c(colnames(per_data_analysis)))%>%
   rename("column_name_new"="c(colnames(per_data_analysis))")%>%
@@ -58,8 +58,8 @@ ggplot(data=a, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_analysis) #200 farmers; 18 outcomes; 255 factors; 
-#[1] 200 273
+dim(per_data_analysis) #200 farmers; 18 outcomes; 258 factors; 
+#[1] 200 276
 
 
 #############################################################    
@@ -161,7 +161,7 @@ ggplot(data=b, aes(x=n, y=category_1, fill= category_1)) +
   theme(legend.position = "none")
 
 dim(per_data_Binary) #200 farmers; 18 outcomes; 269 factors
-#[1] 200 287
+#[1] 200 290
 
 write.csv(per_data_Binary,"per_data_Binary.csv",row.names=TRUE)
 
