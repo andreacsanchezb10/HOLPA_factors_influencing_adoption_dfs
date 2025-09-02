@@ -40,7 +40,8 @@ rownames(per_data_analysis) <- per_data_analysis$kobo_farmer_id
 per_data_analysis<- per_data_analysis%>%
   dplyr::select(-kobo_farmer_id)
 
-dim(per_data_analysis) #200 farmers; 276 variables evaluated
+
+dim(per_data_analysis) #130 farmers; 276 variables evaluated
 
 a<-as.data.frame(c(colnames(per_data_analysis)))%>%
   rename("column_name_new"="c(colnames(per_data_analysis))")%>%
