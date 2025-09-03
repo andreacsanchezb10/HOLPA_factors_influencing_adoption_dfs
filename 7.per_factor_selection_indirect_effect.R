@@ -94,12 +94,6 @@ dim(per_governance_involvement_redundantFiltered)#130 farmers; 1 outcomes, 59 fa
 
 names(per_governance_involvement_redundantFiltered)
 
-##=== Run household_shock_recover_capacity ----
-per_household_shock_recover_capacity_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_household_shock_recover_capacity",per_data_analysis )
-dim(per_household_shock_recover_capacity_redundantFiltered)#200 farmers; 1 outcomes, 104 factors retained
-#[1] 200 105
-names(per_household_shock_recover_capacity_redundantFiltered)
-
 ##=== STEP 4: CHECK FOR CORRELATION ACROSS FACTORS ======
 # Function to calculate Spearman's correlation
 create_cor_df <- function(data, factors_list_analysis) {
@@ -177,17 +171,6 @@ per_governance_involvement_redundantFiltered_cor<-create_cor_df(per_governance_i
 str(per_governance_involvement_redundantFiltered_cor)
 
 plot_correlation_betw_category(per_governance_involvement_redundantFiltered_cor)
-
-##--- Run for household_shock_recover_capacity----
-per_household_shock_recover_capacity_factors_list <- as.data.frame(colnames(per_household_shock_recover_capacity_redundantFiltered))%>%
-  rename("column_name_new"= "colnames(per_household_shock_recover_capacity_redundantFiltered)")%>%
-  left_join(factors_list_analysis%>%select(column_name_new, category_1),by="column_name_new")%>%
-  filter(category_1!="outcome")
-
-per_household_shock_recover_capacity_redundantFiltered_cor<-create_cor_df(per_household_shock_recover_capacity_redundantFiltered,per_household_shock_recover_capacity_factors_list)
-str(per_household_shock_recover_capacity_redundantFiltered_cor)
-
-plot_correlation_betw_category(per_household_shock_recover_capacity_redundantFiltered_cor)
 
 
 ##=== STEP 5: FUZZY FOREST FACTOR SELECTION ======

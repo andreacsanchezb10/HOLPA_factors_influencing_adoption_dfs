@@ -19,8 +19,8 @@ per_data_analysis<- per_data_analysis%>%
   filter(crop_type.camucamu==0)%>%
   select(-crop_type.camucamu)
 
-dim(per_data_analysis) #130 farmers; 18 outcomes; 271 factors
-#[1] 130 289
+dim(per_data_analysis) #130 farmers; 18 outcomes; 269 factors
+#[1] 130 287
 
 
 #############################################################    
@@ -501,9 +501,8 @@ sft <- run_soft_threshold(per_data_numeric, dataset_name = "per_data_redundantFi
 per_picked_power <- 7 # Optionally automate this later
 
 per_adoptionBinary <- per_data_redundantFiltered$dfs_adoption_binary
-per_factors <- per_data_redundantFiltered %>% select(-dfs_adoption_binary)%>%
-  select(education_level_female)
-  
+per_factors <- per_data_redundantFiltered %>% select(-dfs_adoption_binary)
+
 per_factors
 time_taken <- system.time({
   per_adoption_binary_results <- feature_selection_algorithms(per_factors, per_adoptionBinary, per_picked_power, 
@@ -517,7 +516,7 @@ per_adoptionBinary_acc_rf<- read.csv("results/per/direct/per_adoption_binary_acc
 per_adoptionBinary_acc_cf<- read.csv("results/per/direct/per_adoption_binary_accValAllCForest.csv",sep=",") 
 
 plot_accuracy_vs_features(per_adoptionBinary_acc_ff,per_adoptionBinary_acc_rf, per_adoptionBinary_acc_cf,
-                          method_name = "A) Ucayali Peru: Dependent variable = Adoption Binary",13,13)
+                          method_name = "A) Ucayali Peru: Dependent variable = Adoption Binary",14,13)
 #11.5*7.5 pdf landscape
 
 per_adoptionBinary_selectFactors_cf<- read.csv("results/per/direct/per_adoption_binary_featureSelectedCForest.csv",sep=",") 
@@ -531,8 +530,8 @@ write.csv(per_adoptionBinary_selectedFactors_freq, "results/per/direct/per_adopt
 
 ## Extract the best 14 factors
 per_adoptionBinary_selectedFactors<-per_adoptionBinary_selectedFactors_freq%>%
-  filter(NumFeatures=="featNum13")%>%
-  slice_max(order_by = frequency, n = 13)%>%
+  filter(NumFeatures=="featNum14")%>%
+  slice_max(order_by = frequency, n = 14)%>%
   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
 write.csv(per_adoptionBinary_selectedFactors, "results/per/direct/per_adoption_binary_selectedFactors.csv")
