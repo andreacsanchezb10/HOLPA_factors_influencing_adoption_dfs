@@ -94,7 +94,7 @@ plot_correlation_betw_category <- function(cor_df, factor_info_df) {
   # Step 4: Plot
   ggplot(cor_df, aes(x = factor1, y = factor2, fill = spearman_correlation)) +
     geom_tile(color = "white") +
-    geom_text(aes(label = round(spearman_correlation, 1)), size =5) +
+    geom_text(aes(label = round(spearman_correlation, 2)), size =5) +
     scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0,
                          limits = c(-1, 1), name = "Spearman\nCorrelation") +
     theme_minimal() +
@@ -127,7 +127,7 @@ plot_correlation_betw_category(per_data_analysis_cor, factors_list_analysis)
 ## Apply the logistic regression model ====
 #https://stats.oarc.ucla.edu/r/dae/logit-regression/
 str(per_data_analysis$dfs_adoption_binary)
-c<-per_data_analysis%>%
+c<-per_data_analysis
   select(-crop_type.cacao)
   dfs_adoption_binary,
          soil_pH_mean,
