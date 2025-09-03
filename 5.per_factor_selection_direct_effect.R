@@ -16,10 +16,11 @@ per_data_analysis<-  read.csv("per_data_Binary.csv",sep=",")
 rownames(per_data_analysis) <- per_data_analysis$X
 per_data_analysis<- per_data_analysis%>%
   dplyr::select(-X)%>%
-  filter(crop_type.camucamu==0)
+  filter(crop_type.camucamu==0)%>%
+  select(-crop_type.camucamu)
 
-dim(per_data_analysis) #130 farmers; 18 outcomes; 269 factors
-#[1] 130 287
+dim(per_data_analysis) #130 farmers; 18 outcomes; 271 factors
+#[1] 130 289
 
 
 #############################################################    
@@ -35,12 +36,18 @@ dim(per_data_analysis) #130 farmers; 18 outcomes; 269 factors
 #that approaches zero as the granularity of the data increases
 nzv <- caret::nearZeroVar(per_data_analysis, saveMetrics= TRUE) 
 nzv # the variables with nzv== TRUE should be remove
+nzv
+nzv$rownames <- rownames(nzv)
+#write.csv(nzv, "results/per/direct/nzv.csv")
+
+sum(nzv$zeroVar == "TRUE") #21
+sum(nzv$nzv == "TRUE") #95
 
 nzv_list <- nearZeroVar(per_data_analysis)
 nzv_list
 nzv_factors<- per_data_analysis[, nzv_list]
 nzv_factors
-view(dfSummary(nzv_factors))
+#view(dfSummary(nzv_factors))
 
 nzv_factors<-as.data.frame(c(colnames(nzv_factors)))%>%
   rename("column_name_new"="c(colnames(nzv_factors))")%>%
@@ -50,7 +57,7 @@ nzv_factors
 per_data_nzvFiltered<- per_data_analysis[, -nzv_list]
 per_data_nzvFiltered
 
-dim(per_data_nzvFiltered) #130 farmers; 192 variables retained
+dim(per_data_nzvFiltered) #130 farmers; 194 variables retained
 
 c<-as.data.frame(c(colnames(per_data_nzvFiltered)))%>%
   rename("column_name_new"="c(colnames(per_data_nzvFiltered))")%>%
@@ -68,8 +75,8 @@ ggplot(data=c, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_nzvFiltered) #130 farmers; 5 outcomes, 189 factors retained
-#[1] 130 192
+dim(per_data_nzvFiltered) #130 farmers; 7 outcomes, 187 factors retained
+#[1] 130 194
 
 ##=== STEP 2: REMOVE IRRELEVANT FACTORS ======
 sort(unique(factors_list_analysis$peru_remove_adoption_status))
@@ -79,7 +86,7 @@ per_irrelevant_list
 per_data_irrelevantFiltered<- per_data_nzvFiltered%>%
   dplyr::select(-all_of(per_irrelevant_list))
 
-dim(per_data_irrelevantFiltered) #130 farmers; 164 variables retained
+dim(per_data_irrelevantFiltered) #130 farmers; 155 variables retained
 names(per_data_irrelevantFiltered)
 
 b<-as.data.frame(c(colnames(per_data_irrelevantFiltered)))%>%
@@ -98,8 +105,8 @@ ggplot(data=b, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_irrelevantFiltered) #130 farmers; 7 outcomes, 159 factors retained
-#[1] 130 164
+dim(per_data_irrelevantFiltered) #130 farmers; 1 outcomes, 154 factors retained
+#[1] 130 155
 
 ##=== STEP 3: CHECK FOR CORRELATION ACROSS FACTORS ======
 # Function to calculate Spearman's correlation
@@ -175,7 +182,7 @@ per_redundant_list
 per_data_redundantFiltered<- per_data_irrelevantFiltered%>%
   dplyr::select(-all_of(per_redundant_list))
 
-dim(per_data_redundantFiltered) #130 farmers; 130 variables
+dim(per_data_redundantFiltered) #130 farmers; 126 variables
 names(per_data_redundantFiltered)
 
 d<-as.data.frame(c(colnames(per_data_redundantFiltered)))%>%
@@ -199,8 +206,8 @@ ggplot(data=d, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_redundantFiltered)#200 farmers; 1 outcomes, 129 factors retained
-#[1] 200 130
+dim(per_data_redundantFiltered)#200 farmers; 1 outcomes, 125 factors retained
+#[1] 200 126
 
 ##=== STEP 5: CHECK FOR CORRELATION ACROSS RETAINED FACTORS ======
 per_factors_list_analysis2 <- as.data.frame(colnames(per_data_redundantFiltered))%>%
@@ -214,6 +221,7 @@ str(per_data_redundantFiltered_cor)
 plot_correlation_betw_category(per_data_redundantFiltered_cor)
 sort(unique(per_data_redundantFiltered$district))
 sort(unique(per_data_redundantFiltered$crop_type))
+names(which(colSums(is.na(per_data_redundantFiltered)) > 0))
 
 ##=== STEP 6: FUZZY FOREST FACTOR SELECTION ======
 ## Advantages
@@ -493,8 +501,10 @@ sft <- run_soft_threshold(per_data_numeric, dataset_name = "per_data_redundantFi
 per_picked_power <- 7 # Optionally automate this later
 
 per_adoptionBinary <- per_data_redundantFiltered$dfs_adoption_binary
-per_factors <- per_data_redundantFiltered %>% select(-dfs_adoption_binary)
-
+per_factors <- per_data_redundantFiltered %>% select(-dfs_adoption_binary)%>%
+  select(education_level_female)
+  
+per_factors
 time_taken <- system.time({
   per_adoption_binary_results <- feature_selection_algorithms(per_factors, per_adoptionBinary, per_picked_power, 
                                                               file_name = "results/per/direct/per_adoption_binary")
