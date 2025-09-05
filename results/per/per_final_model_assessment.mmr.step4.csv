@@ -15,7 +15,6 @@
 "soil_pH_mean","num_membership",NA
 "soil_pH_mean","perception_associations_effectiveness",NA
 "soil_pH_mean","project_participation",NA
-"soil_pH_mean","sales_channel_crops.cooperative",NA
 "soil_pH_mean","sfs_monoculture_perennial_area",NA
 "soil_pH_mean","soil_pH_mean",NA
 "soil_pH_mean","support_provider.cooperatives",NA
@@ -38,7 +37,6 @@
 "sfs_monoculture_perennial_area","num_membership",NA
 "sfs_monoculture_perennial_area","perception_associations_effectiveness",NA
 "sfs_monoculture_perennial_area","project_participation",NA
-"sfs_monoculture_perennial_area","sales_channel_crops.cooperative",NA
 "sfs_monoculture_perennial_area","sfs_monoculture_perennial_area",NA
 "sfs_monoculture_perennial_area","soil_pH_mean",0.324449334846753
 "sfs_monoculture_perennial_area","support_provider.cooperatives",NA
@@ -61,7 +59,6 @@
 "agroecol_perspective_3","num_membership",NA
 "agroecol_perspective_3","perception_associations_effectiveness",NA
 "agroecol_perspective_3","project_participation",NA
-"agroecol_perspective_3","sales_channel_crops.cooperative",NA
 "agroecol_perspective_3","sfs_monoculture_perennial_area",0.324182733382784
 "agroecol_perspective_3","soil_pH_mean",0.55973984158193
 "agroecol_perspective_3","support_provider.cooperatives",NA
@@ -84,7 +81,6 @@
 "nearest_farmer_adopted","num_membership",NA
 "nearest_farmer_adopted","perception_associations_effectiveness",NA
 "nearest_farmer_adopted","project_participation",NA
-"nearest_farmer_adopted","sales_channel_crops.cooperative",NA
 "nearest_farmer_adopted","sfs_monoculture_perennial_area",0.118705324501723
 "nearest_farmer_adopted","soil_pH_mean",0.515939115398374
 "nearest_farmer_adopted","support_provider.cooperatives",NA
@@ -107,7 +103,6 @@
 "environmental_quality","num_membership",NA
 "environmental_quality","perception_associations_effectiveness",NA
 "environmental_quality","project_participation",NA
-"environmental_quality","sales_channel_crops.cooperative",NA
 "environmental_quality","sfs_monoculture_perennial_area",0.285560781776149
 "environmental_quality","soil_pH_mean",0.536760871616503
 "environmental_quality","support_provider.cooperatives",NA
@@ -130,7 +125,6 @@
 "years_farming_land","num_membership",NA
 "years_farming_land","perception_associations_effectiveness",NA
 "years_farming_land","project_participation",NA
-"years_farming_land","sales_channel_crops.cooperative",NA
 "years_farming_land","sfs_monoculture_perennial_area",0.0230919848499688
 "years_farming_land","soil_pH_mean",0.270697837495998
 "years_farming_land","support_provider.cooperatives",NA
@@ -153,7 +147,6 @@
 "num_info_exchange_extension","num_membership",NA
 "num_info_exchange_extension","perception_associations_effectiveness",NA
 "num_info_exchange_extension","project_participation",NA
-"num_info_exchange_extension","sales_channel_crops.cooperative",NA
 "num_info_exchange_extension","sfs_monoculture_perennial_area",0.0117232789027557
 "num_info_exchange_extension","soil_pH_mean",0.430507741046457
 "num_info_exchange_extension","support_provider.cooperatives",NA
@@ -176,36 +169,12 @@
 "training_participation","num_membership",NA
 "training_participation","perception_associations_effectiveness",NA
 "training_participation","project_participation",NA
-"training_participation","sales_channel_crops.cooperative",NA
 "training_participation","sfs_monoculture_perennial_area",0.0962561231192284
 "training_participation","soil_pH_mean",0.495224599889555
 "training_participation","support_provider.cooperatives",NA
 "training_participation","support_provider.ind_different_community",NA
 "training_participation","training_participation",NA
 "training_participation","years_farming_land",0.372706361108983
-"sales_channel_crops.cooperative","agroecol_perspective_1",NA
-"sales_channel_crops.cooperative","agroecol_perspective_3",0.366602648603762
-"sales_channel_crops.cooperative","agroecol_perspective_7",NA
-"sales_channel_crops.cooperative","crop_type.cacao",NA
-"sales_channel_crops.cooperative","dfs_adoption_binary",NA
-"sales_channel_crops.cooperative","distance_main_road",NA
-"sales_channel_crops.cooperative","environmental_quality",0.396603246952117
-"sales_channel_crops.cooperative","income_stability",NA
-"sales_channel_crops.cooperative","membership",NA
-"sales_channel_crops.cooperative","nearest_farmer_adopted",0.571291198708849
-"sales_channel_crops.cooperative","num_children",NA
-"sales_channel_crops.cooperative","num_info_exchange_extension",0.664358658764993
-"sales_channel_crops.cooperative","num_info_exchange_sources",NA
-"sales_channel_crops.cooperative","num_membership",NA
-"sales_channel_crops.cooperative","perception_associations_effectiveness",NA
-"sales_channel_crops.cooperative","project_participation",NA
-"sales_channel_crops.cooperative","sales_channel_crops.cooperative",NA
-"sales_channel_crops.cooperative","sfs_monoculture_perennial_area",0.0885078942185731
-"sales_channel_crops.cooperative","soil_pH_mean",0.525981215805528
-"sales_channel_crops.cooperative","support_provider.cooperatives",NA
-"sales_channel_crops.cooperative","support_provider.ind_different_community",NA
-"sales_channel_crops.cooperative","training_participation",0.764034570986531
-"sales_channel_crops.cooperative","years_farming_land",0.400647573590634
 "perception_associations_effectiveness","agroecol_perspective_1",NA
 "perception_associations_effectiveness","agroecol_perspective_3",0.453186590396982
 "perception_associations_effectiveness","agroecol_perspective_7",NA
@@ -222,7 +191,6 @@
 "perception_associations_effectiveness","num_membership",NA
 "perception_associations_effectiveness","perception_associations_effectiveness",NA
 "perception_associations_effectiveness","project_participation",NA
-"perception_associations_effectiveness","sales_channel_crops.cooperative",0.79149597057677
 "perception_associations_effectiveness","sfs_monoculture_perennial_area",0.163248399789153
 "perception_associations_effectiveness","soil_pH_mean",0.664173401987824
 "perception_associations_effectiveness","support_provider.cooperatives",NA
@@ -245,7 +213,6 @@
 "support_provider.ind_different_community","num_membership",NA
 "support_provider.ind_different_community","perception_associations_effectiveness",0.486227661616854
 "support_provider.ind_different_community","project_participation",NA
-"support_provider.ind_different_community","sales_channel_crops.cooperative",0.39466596383713
 "support_provider.ind_different_community","sfs_monoculture_perennial_area",0.230872249931985
 "support_provider.ind_different_community","soil_pH_mean",0.504517436776943
 "support_provider.ind_different_community","support_provider.cooperatives",NA
@@ -268,7 +235,6 @@
 "agroecol_perspective_7","num_membership",NA
 "agroecol_perspective_7","perception_associations_effectiveness",0.312925225194651
 "agroecol_perspective_7","project_participation",NA
-"agroecol_perspective_7","sales_channel_crops.cooperative",0.285420899645243
 "agroecol_perspective_7","sfs_monoculture_perennial_area",0.147693607997682
 "agroecol_perspective_7","soil_pH_mean",0.530141620921728
 "agroecol_perspective_7","support_provider.cooperatives",NA
@@ -291,7 +257,6 @@
 "agroecol_perspective_1","num_membership",NA
 "agroecol_perspective_1","perception_associations_effectiveness",0.267534384268695
 "agroecol_perspective_1","project_participation",NA
-"agroecol_perspective_1","sales_channel_crops.cooperative",0.204089517576215
 "agroecol_perspective_1","sfs_monoculture_perennial_area",0.0894576180440128
 "agroecol_perspective_1","soil_pH_mean",0.394739840860367
 "agroecol_perspective_1","support_provider.cooperatives",NA
@@ -314,7 +279,6 @@
 "income_stability","num_membership",NA
 "income_stability","perception_associations_effectiveness",0.517690673398906
 "income_stability","project_participation",NA
-"income_stability","sales_channel_crops.cooperative",0.439732401038166
 "income_stability","sfs_monoculture_perennial_area",0.277568752771758
 "income_stability","soil_pH_mean",0.587876604785081
 "income_stability","support_provider.cooperatives",NA
@@ -337,7 +301,6 @@
 "support_provider.cooperatives","num_membership",NA
 "support_provider.cooperatives","perception_associations_effectiveness",0.756834713870615
 "support_provider.cooperatives","project_participation",NA
-"support_provider.cooperatives","sales_channel_crops.cooperative",0.840578254881732
 "support_provider.cooperatives","sfs_monoculture_perennial_area",0.0708431628739498
 "support_provider.cooperatives","soil_pH_mean",0.610000611495933
 "support_provider.cooperatives","support_provider.cooperatives",NA
@@ -360,7 +323,6 @@
 "crop_type.cacao","num_membership",NA
 "crop_type.cacao","perception_associations_effectiveness",0.741951148219313
 "crop_type.cacao","project_participation",NA
-"crop_type.cacao","sales_channel_crops.cooperative",0.673901248068501
 "crop_type.cacao","sfs_monoculture_perennial_area",0.252778858222912
 "crop_type.cacao","soil_pH_mean",0.746684079229822
 "crop_type.cacao","support_provider.cooperatives",0.688241926021394
@@ -383,7 +345,6 @@
 "num_children","num_membership",NA
 "num_children","perception_associations_effectiveness",0.223213108124564
 "num_children","project_participation",NA
-"num_children","sales_channel_crops.cooperative",0.224379015255771
 "num_children","sfs_monoculture_perennial_area",0.103429326340223
 "num_children","soil_pH_mean",0.238704944320604
 "num_children","support_provider.cooperatives",0.158044960697695
@@ -406,7 +367,6 @@
 "num_info_exchange_sources","num_membership",NA
 "num_info_exchange_sources","perception_associations_effectiveness",0.426633492733232
 "num_info_exchange_sources","project_participation",NA
-"num_info_exchange_sources","sales_channel_crops.cooperative",0.538404442285434
 "num_info_exchange_sources","sfs_monoculture_perennial_area",0.0258086941801548
 "num_info_exchange_sources","soil_pH_mean",0.221459660852189
 "num_info_exchange_sources","support_provider.cooperatives",0.349252764408493
@@ -429,7 +389,6 @@
 "distance_main_road","num_membership",NA
 "distance_main_road","perception_associations_effectiveness",0.54805260946939
 "distance_main_road","project_participation",NA
-"distance_main_road","sales_channel_crops.cooperative",0.547299663374935
 "distance_main_road","sfs_monoculture_perennial_area",0.251033157101541
 "distance_main_road","soil_pH_mean",0.565558976794907
 "distance_main_road","support_provider.cooperatives",0.537336784328253
@@ -452,7 +411,6 @@
 "membership","num_membership",NA
 "membership","perception_associations_effectiveness",0.256135158376549
 "membership","project_participation",NA
-"membership","sales_channel_crops.cooperative",0.464254179092305
 "membership","sfs_monoculture_perennial_area",0.157564830023003
 "membership","soil_pH_mean",0.0651193766949573
 "membership","support_provider.cooperatives",0.397981836789218
@@ -475,7 +433,6 @@
 "num_membership","num_membership",NA
 "num_membership","perception_associations_effectiveness",0.368341908884007
 "num_membership","project_participation",NA
-"num_membership","sales_channel_crops.cooperative",0.490068433681038
 "num_membership","sfs_monoculture_perennial_area",0.107401129922941
 "num_membership","soil_pH_mean",0.0801603220040115
 "num_membership","support_provider.cooperatives",0.368344714591747
@@ -498,7 +455,6 @@
 "project_participation","num_membership",0.434934428664082
 "project_participation","perception_associations_effectiveness",0.476756159079837
 "project_participation","project_participation",NA
-"project_participation","sales_channel_crops.cooperative",0.517283112346705
 "project_participation","sfs_monoculture_perennial_area",0.108376734810164
 "project_participation","soil_pH_mean",0.317275349931772
 "project_participation","support_provider.cooperatives",0.441960320867023
@@ -521,7 +477,6 @@
 "dfs_adoption_binary","num_membership",0.251680991404725
 "dfs_adoption_binary","perception_associations_effectiveness",0.506989971175719
 "dfs_adoption_binary","project_participation",0.384576597914987
-"dfs_adoption_binary","sales_channel_crops.cooperative",0.49354840611818
 "dfs_adoption_binary","sfs_monoculture_perennial_area",0.218785082259136
 "dfs_adoption_binary","soil_pH_mean",0.458040540814904
 "dfs_adoption_binary","support_provider.cooperatives",0.554834961791308
