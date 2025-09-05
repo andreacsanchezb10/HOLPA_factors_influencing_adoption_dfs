@@ -13,7 +13,7 @@ sort(unique(factors_list_analysis$category_1))
 
 per_data_logistic_regression_direct2<-read.csv("results/per/per_data_logistic_regression_direct.csv",sep=",")
 rownames(per_data_logistic_regression_direct2) <- per_data_logistic_regression_direct2$X
-per_data_logistic_regression_direct2<-per_data_logistic_regression_direct2%>%
+per_data_logistic_regression_direct2<-per_data_logistic_regression_direct2
   select(X,governance_involvement)
 
 per_data_analysis<-  read.csv("per_data_Binary.csv",sep=",")%>%
@@ -29,12 +29,12 @@ per_data_analysis<- per_data_analysis%>%
   dplyr::select(-X)%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))
 
-dim(per_data_analysis) #130 farmers; 18 outcomes; 269 factors
-#[1] 130 287
+dim(per_data_analysis) #130 farmers; 18 outcomes; 270 factors
+#[1] 130 288
 
 
 dim(per_data_analysis2) #130 farmers; 18 outcomes; 269 factors
-#[1] 130 288
+#[1] 130 310
 
 
 #############################################################    
@@ -82,9 +82,16 @@ feature_selection <- function(factors_list_analysis,remove_colum, data_analysis)
 
 ##=== Run for training_participation ====
 per_training_participation_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_training_participation",per_data_analysis )
-dim(per_training_participation_redundantFiltered)#200 farmers; 1 outcomes, 29 factors retained
-#[1] 200  35
+dim(per_training_participation_redundantFiltered)#200 farmers; 1 outcomes, 43 factors retained
+#[1] 200  40
 names(per_training_participation_redundantFiltered)
+
+##=== Run for agroecol_perspective_13 ====
+per_agroecol_perspective_13_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_agroecol_perspective_13",per_data_analysis )
+dim(per_agroecol_perspective_13_redundantFiltered)#200 farmers; 1 outcomes, 43 factors retained
+#[1] 200  135
+names(per_agroecol_perspective_13_redundantFiltered)
+
 
 ##=== Run for governance_involvement ====
 per_governance_involvement_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_governance_involvement",
@@ -160,6 +167,17 @@ per_training_participation_redundantFiltered_cor<-create_cor_df(per_training_par
 str(per_training_participation_redundantFiltered_cor)
 
 plot_correlation_betw_category(per_training_participation_redundantFiltered_cor)
+
+##=== Run for agroecol_perspective_13 ====
+per_agroecol_perspective_13_factors_list <- as.data.frame(colnames(per_agroecol_perspective_13_redundantFiltered))%>%
+  rename("column_name_new"= "colnames(per_agroecol_perspective_13_redundantFiltered)")%>%
+  left_join(factors_list_analysis%>%select(column_name_new, category_1),by="column_name_new")%>%
+  filter(category_1!="outcome")
+
+per_agroecol_perspective_13_redundantFiltered_cor<-create_cor_df(per_agroecol_perspective_13_redundantFiltered,per_agroecol_perspective_13_factors_list)
+str(per_agroecol_perspective_13_redundantFiltered_cor)
+
+plot_correlation_betw_category(per_agroecol_perspective_13_redundantFiltered_cor)
 
 ##--- Run for governance_involvement----
 per_governance_involvement_factors_list <- as.data.frame(colnames(per_governance_involvement_redundantFiltered))%>%
@@ -597,7 +615,7 @@ per_training_participation_acc_rf<- read.csv("results/per/indirect/per_training_
 per_training_participation_acc_cf<- read.csv("results/per/indirect/per_training_participation_accValAllCForest.csv",sep=",") 
 names(per_training_participation_acc_ff)
 plot_accuracy_vs_features(per_training_participation_acc_ff,per_training_participation_acc_rf, per_training_participation_acc_cf,
-                          method_name = "A) Dependent variable: training participation",10,5)
+                          method_name = "A) Dependent variable: training participation",10,10)
 #11.5*7.5 pdf landscape
 
 per_training_participation_selectFactors_cf<- read.csv("results/per/indirect/per_training_participation_featureSelectedCForest.csv",sep=",") 
@@ -646,6 +664,71 @@ per_data_selected_factors_cor<-create_cor_df(per_data_analysis,per_training_part
 fills <- c("#f0c602","#F09319", "#ea6044","#d896ff","#6a57b8",  "#87CEEB", "#496491", "#92c46d", "#92c46d","#92c46d","#297d7d") #
  "#602058"
 
+ ##=== Run for agroecol_perspective_13 ====
+ per_data_agroecol_perspective_13_numeric <- prepare_numeric_matrix(per_agroecol_perspective_13_redundantFiltered)
+ sft_data_agroecol_perspective_13 <- run_soft_threshold(per_data_agroecol_perspective_13_numeric, dataset_name = "per_data_nzvFiltered")
+ per_data_agroecol_perspective_13_picked_power <- 7  # Optionally automate this later
+ 
+ per_agroecol_perspective_13 <- per_agroecol_perspective_13_redundantFiltered$agroecol_perspective_13
+ per_agroecol_perspective_13
+ per_agroecol_perspective_13_factors <- per_agroecol_perspective_13_redundantFiltered %>% select(-agroecol_perspective_13)
+ per_agroecol_perspective_13_factors
+ 
+ per_agroecol_perspective_13_results <- feature_selection_continuous_algorithms(
+   per_agroecol_perspective_13_factors, per_agroecol_perspective_13,
+   per_data_agroecol_perspective_13_picked_power, file_name = "per/indirect/per_agroecol_perspective_13")
+ 
+ # Plot accuracy vs number of selected factors
+ per_agroecol_perspective_13_acc_ff<- read.csv("results/per/indirect/per_agroecol_perspective_13_accValAllFuzzyForest.csv",sep=",") 
+ per_agroecol_perspective_13_acc_rf<- read.csv("results/per/indirect/per_agroecol_perspective_13_accValAllRandomForest.csv",sep=",") 
+ per_agroecol_perspective_13_acc_cf<- read.csv("results/per/indirect/per_agroecol_perspective_13_accValAllCForest.csv",sep=",") 
+ 
+ 
+ plot_accuracy_vs_features(per_agroecol_perspective_13_acc_ff,per_agroecol_perspective_13_acc_rf, per_agroecol_perspective_13_acc_cf,
+                           method_name = "Dependent variable: agroecol_perspective_13",14,13)
+ #11.5*7.5 pdf landscape
+ 
+ per_agroecol_perspective_13_selectFactors_cf<- read.csv("results/per/indirect/per_agroecol_perspective_13_featureSelectedCForest.csv",sep=",") 
+ per_agroecol_perspective_13_selectFactors_ff<- read.csv("results/per/indirect/per_agroecol_perspective_13_featureSelectedFuzzyForest.csv",sep=",") 
+ per_agroecol_perspective_13_selectFactors_rf<- read.csv("results/per/indirect/per_agroecol_perspective_13_featureSelectedRandomForest.csv",sep=",") 
+ 
+ per_agroecol_perspective_13_selectedFactors_freq<-selected_factors_freq(per_agroecol_perspective_13_selectFactors_cf,
+                                                                        per_agroecol_perspective_13_selectFactors_ff,
+                                                                        per_agroecol_perspective_13_selectFactors_rf)
+ write.csv(per_agroecol_perspective_13_selectedFactors_freq, "results/per/indirect/per_agroecol_perspective_13_selectedFactors_freq.csv")
+ 
+ ## Extract the best 11 factors
+ per_agroecol_perspective_13_selectedFactors<-per_agroecol_perspective_13_selectedFactors_freq%>%
+   filter(NumFeatures=="featNum14")%>%
+   slice_max(order_by = frequency, n =14)%>%
+   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
+ 
+ write.csv(per_agroecol_perspective_13_selectedFactors, "results/per/indirect/per_agroecol_perspective_13_selectedFactors.csv")
+ 
+ # Select only the selected factors from database
+ 
+ 
+ create_cor_df <- function(data,selected_factors) {
+   data_num<-data %>% 
+     mutate(across(everything(), as.numeric))%>%
+     select(all_of(per_agroecol_perspective_13_selectedFactors$selected_factors))
+   
+   cor_matrix <- cor(data_num,
+                     method = "spearman", use = "pairwise.complete.obs")
+   
+   cor_df <- as.data.frame(cor_matrix) %>%
+     rownames_to_column("factor1") %>%
+     tidyr::pivot_longer(-factor1, names_to = "factor2", values_to = "spearman_correlation")
+   
+   return(cor_df)
+ }
+ 
+ per_data_agroecol_perspective_13_selected_factors_cor<-create_cor_df(per_agroecol_perspective_13_redundantFiltered,per_agroecol_perspective_13_selectedFactors)
+ 
+ 
+ 
+ 
+ 
 ##=== Run for governance_involvement ====
 per_data_governance_involvement_numeric <- prepare_numeric_matrix(per_governance_involvement_redundantFiltered)
 sft_data_governance_involvement <- run_soft_threshold(per_data_governance_involvement_numeric, dataset_name = "per_data_nzvFiltered")
