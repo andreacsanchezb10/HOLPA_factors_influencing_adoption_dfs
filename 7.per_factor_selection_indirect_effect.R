@@ -89,7 +89,7 @@ names(per_training_participation_redundantFiltered)
 ##=== Run for agroecol_perspective_13 ====
 per_agroecol_perspective_13_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_agroecol_perspective_13",per_data_analysis )
 dim(per_agroecol_perspective_13_redundantFiltered)#200 farmers; 1 outcomes, 43 factors retained
-#[1] 200  135
+#[1] 200  44
 names(per_agroecol_perspective_13_redundantFiltered)
 
 
@@ -664,38 +664,38 @@ per_data_selected_factors_cor<-create_cor_df(per_data_analysis,per_training_part
 fills <- c("#f0c602","#F09319", "#ea6044","#d896ff","#6a57b8",  "#87CEEB", "#496491", "#92c46d", "#92c46d","#92c46d","#297d7d") #
  "#602058"
 
- ##=== Run for agroecol_perspective_13 ====
- per_data_agroecol_perspective_13_numeric <- prepare_numeric_matrix(per_agroecol_perspective_13_redundantFiltered)
- sft_data_agroecol_perspective_13 <- run_soft_threshold(per_data_agroecol_perspective_13_numeric, dataset_name = "per_data_nzvFiltered")
- per_data_agroecol_perspective_13_picked_power <- 7  # Optionally automate this later
+##=== Run for agroecol_perspective_13 ====
+per_data_agroecol_perspective_13_numeric <- prepare_numeric_matrix(per_agroecol_perspective_13_redundantFiltered)
+sft_data_agroecol_perspective_13 <- run_soft_threshold(per_data_agroecol_perspective_13_numeric, dataset_name = "per_data_nzvFiltered")
+per_data_agroecol_perspective_13_picked_power <- 7  # Optionally automate this later
  
- per_agroecol_perspective_13 <- per_agroecol_perspective_13_redundantFiltered$agroecol_perspective_13
- per_agroecol_perspective_13
- per_agroecol_perspective_13_factors <- per_agroecol_perspective_13_redundantFiltered %>% select(-agroecol_perspective_13)
- per_agroecol_perspective_13_factors
+per_agroecol_perspective_13 <- per_agroecol_perspective_13_redundantFiltered$agroecol_perspective_13
+per_agroecol_perspective_13
+per_agroecol_perspective_13_factors <- per_agroecol_perspective_13_redundantFiltered %>% select(-agroecol_perspective_13)
+per_agroecol_perspective_13_factors
  
- per_agroecol_perspective_13_results <- feature_selection_continuous_algorithms(
-   per_agroecol_perspective_13_factors, per_agroecol_perspective_13,
-   per_data_agroecol_perspective_13_picked_power, file_name = "per/indirect/per_agroecol_perspective_13")
+per_agroecol_perspective_13_results <- feature_selection_continuous_algorithms(
+per_agroecol_perspective_13_factors, per_agroecol_perspective_13,
+per_data_agroecol_perspective_13_picked_power, file_name = "per/indirect/per_agroecol_perspective_13")
  
- # Plot accuracy vs number of selected factors
- per_agroecol_perspective_13_acc_ff<- read.csv("results/per/indirect/per_agroecol_perspective_13_accValAllFuzzyForest.csv",sep=",") 
- per_agroecol_perspective_13_acc_rf<- read.csv("results/per/indirect/per_agroecol_perspective_13_accValAllRandomForest.csv",sep=",") 
- per_agroecol_perspective_13_acc_cf<- read.csv("results/per/indirect/per_agroecol_perspective_13_accValAllCForest.csv",sep=",") 
+# Plot accuracy vs number of selected factors
+per_agroecol_perspective_13_acc_ff<- read.csv("results/per/indirect/per_agroecol_perspective_13_accValAllFuzzyForest.csv",sep=",") 
+per_agroecol_perspective_13_acc_rf<- read.csv("results/per/indirect/per_agroecol_perspective_13_accValAllRandomForest.csv",sep=",") 
+per_agroecol_perspective_13_acc_cf<- read.csv("results/per/indirect/per_agroecol_perspective_13_accValAllCForest.csv",sep=",") 
  
  
- plot_accuracy_vs_features(per_agroecol_perspective_13_acc_ff,per_agroecol_perspective_13_acc_rf, per_agroecol_perspective_13_acc_cf,
-                           method_name = "Dependent variable: agroecol_perspective_13",14,13)
- #11.5*7.5 pdf landscape
+plot_accuracy_vs_features(per_agroecol_perspective_13_acc_ff,per_agroecol_perspective_13_acc_rf, per_agroecol_perspective_13_acc_cf,
+                           method_name = "Dependent variable: agroecol_perspective_13",14,12)
+#11.5*7.5 pdf landscape
  
- per_agroecol_perspective_13_selectFactors_cf<- read.csv("results/per/indirect/per_agroecol_perspective_13_featureSelectedCForest.csv",sep=",") 
- per_agroecol_perspective_13_selectFactors_ff<- read.csv("results/per/indirect/per_agroecol_perspective_13_featureSelectedFuzzyForest.csv",sep=",") 
- per_agroecol_perspective_13_selectFactors_rf<- read.csv("results/per/indirect/per_agroecol_perspective_13_featureSelectedRandomForest.csv",sep=",") 
+per_agroecol_perspective_13_selectFactors_cf<- read.csv("results/per/indirect/per_agroecol_perspective_13_featureSelectedCForest.csv",sep=",") 
+per_agroecol_perspective_13_selectFactors_ff<- read.csv("results/per/indirect/per_agroecol_perspective_13_featureSelectedFuzzyForest.csv",sep=",") 
+per_agroecol_perspective_13_selectFactors_rf<- read.csv("results/per/indirect/per_agroecol_perspective_13_featureSelectedRandomForest.csv",sep=",") 
  
- per_agroecol_perspective_13_selectedFactors_freq<-selected_factors_freq(per_agroecol_perspective_13_selectFactors_cf,
+per_agroecol_perspective_13_selectedFactors_freq<-selected_factors_freq(per_agroecol_perspective_13_selectFactors_cf,
                                                                         per_agroecol_perspective_13_selectFactors_ff,
                                                                         per_agroecol_perspective_13_selectFactors_rf)
- write.csv(per_agroecol_perspective_13_selectedFactors_freq, "results/per/indirect/per_agroecol_perspective_13_selectedFactors_freq.csv")
+write.csv(per_agroecol_perspective_13_selectedFactors_freq, "results/per/indirect/per_agroecol_perspective_13_selectedFactors_freq.csv")
  
  ## Extract the best 11 factors
  per_agroecol_perspective_13_selectedFactors<-per_agroecol_perspective_13_selectedFactors_freq%>%
