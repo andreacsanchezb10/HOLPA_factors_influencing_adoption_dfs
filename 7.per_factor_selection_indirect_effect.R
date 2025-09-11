@@ -83,7 +83,7 @@ feature_selection <- function(factors_list_analysis,remove_colum, data_analysis)
 ##=== Run for training_participation ====
 per_training_participation_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_training_participation",per_data_analysis )
 dim(per_training_participation_redundantFiltered)#200 farmers; 1 outcomes, 43 factors retained
-#[1] 200  40
+#[1] 200  36
 names(per_training_participation_redundantFiltered)
 
 ##=== Run for agroecol_perspective_13 ====
@@ -615,7 +615,7 @@ per_training_participation_acc_rf<- read.csv("results/per/indirect/per_training_
 per_training_participation_acc_cf<- read.csv("results/per/indirect/per_training_participation_accValAllCForest.csv",sep=",") 
 names(per_training_participation_acc_ff)
 plot_accuracy_vs_features(per_training_participation_acc_ff,per_training_participation_acc_rf, per_training_participation_acc_cf,
-                          method_name = "A) Dependent variable: training participation",10,10)
+                          method_name = "A) Dependent variable: training participation",11,10)
 #11.5*7.5 pdf landscape
 
 per_training_participation_selectFactors_cf<- read.csv("results/per/indirect/per_training_participation_featureSelectedCForest.csv",sep=",") 
@@ -629,8 +629,8 @@ write.csv(per_training_participation_selectedFactors_freq, "results/per/indirect
 
 ## Extract the best 10 factors
 per_training_participation_selectedFactors<-per_training_participation_selectedFactors_freq%>%
-  filter(NumFeatures=="featNum10")%>%
-  slice_max(order_by = frequency, n = 10)%>%
+  filter(NumFeatures=="featNum11")%>%
+  slice_max(order_by = frequency, n = 11)%>%
   left_join(factors_list_analysis%>%select(category_1,factor,description,column_name_new),by=c("selected_factors"="column_name_new"))
 
 write.csv(per_training_participation_selectedFactors, "results/per/indirect/per_training_participation_selectedFactors.csv")

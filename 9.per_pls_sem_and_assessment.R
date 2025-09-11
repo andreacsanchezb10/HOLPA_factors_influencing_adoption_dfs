@@ -492,7 +492,7 @@ per_reflective_constructs_list<-c(per_composite_mode_A)#,reflective_constructs)
 per_reflective_constructs_list
 
 per_observed_vars<-per_data_analysis%>%
-  select(all_of(per_reflective_constructs_list))#,human_wellbeing_11)
+  select(all_of(per_reflective_constructs_list),human_wellbeing_11)
 names(per_observed_vars)
 
 #Extract the latent constructs
@@ -528,7 +528,8 @@ per_logit_model_dfs_adoption.results<-as.data.frame(exp(cbind(OR = coef(per_logi
 per_direct_training_participation<-per_data_logistic_regression_direct%>%
   select(all_of(per_structural_model%>%
                   filter(country=="peru",to=="training_participation",from!="environmental_quality")%>%
-                  pull(from)),training_participation)
+                  pull(from)),training_participation)%>%
+  select(-crop_type.cacao)
 
 names(per_direct_training_participation)
 per_direct_training_participation$dfs_adoption_binary<- as.factor(per_direct_training_participation$dfs_adoption_binary)

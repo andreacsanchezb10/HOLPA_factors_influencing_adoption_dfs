@@ -32,7 +32,7 @@ per_data_analysis<- per_data_analysis%>%
 
 names(per_data_analysis)
 str(per_data_analysis)
-dim(per_data_analysis)#[1] 130   24
+dim(per_data_analysis)#[1] 130   28
 summary(per_data_analysis)
 describe(per_data_analysis)
 
@@ -536,7 +536,7 @@ library(broom)
 per_direct_dfs_adoption<-per_data_logistic_regression_direct%>%
   select(all_of(per_structural_model_afterAssess%>%
                   filter(country=="peru",to=="dfs_adoption_binary",from!="environmental_quality")%>%
-                  pull(from)),dfs_adoption_binary,human_wellbeing_11)
+                  pull(from)),dfs_adoption_binary)
 
 names(per_direct_dfs_adoption)
 per_direct_dfs_adoption$dfs_adoption_binary<- as.factor(per_direct_dfs_adoption$dfs_adoption_binary)
