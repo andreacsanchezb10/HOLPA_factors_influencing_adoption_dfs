@@ -165,3 +165,4 @@ dim(per_data_Binary) #200 farmers; 18 outcomes; 270 factors
 #[1] 200 288
 
 write.csv(per_data_Binary,"per_data_Binary.csv",row.names=TRUE)
+

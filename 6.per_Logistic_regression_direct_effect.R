@@ -26,13 +26,11 @@ per_data_analysis<-read.csv("per_data_Binary.csv",sep=",")%>%
 rownames(per_data_analysis) <- per_data_analysis$X
 per_data_analysis<- per_data_analysis%>%
   dplyr::select(-X)%>%
-  dplyr::select(dfs_adoption_binary,all_of(per_direct_predictors$selected_factors))
-                -numHA_nhlabour_seasonal_total,
-                -support_provider.cooperatives,sales_channel_crops.cooperative,
-                human_wellbeing_11,-household_shock_recover_capacity
+  dplyr::select(dfs_adoption_binary,all_of(per_direct_predictors$selected_factors))%>%
+                
 
 
-  )%>%
+
   mutate(across(everything(), ~ as.numeric(as.character(.))))
 
 names(per_data_analysis)

@@ -11,30 +11,18 @@ library(tibble)
 factors_list_analysis<-read_excel("factors_list.pruebaNEW.xlsx",sheet = "factors_list_analysis")
 sort(unique(factors_list_analysis$category_1))
 
-per_data_logistic_regression_direct2<-read.csv("results/per/per_data_logistic_regression_direct.csv",sep=",")
-rownames(per_data_logistic_regression_direct2) <- per_data_logistic_regression_direct2$X
-per_data_logistic_regression_direct2<-per_data_logistic_regression_direct2
-  select(X,governance_involvement)
-
 per_data_analysis<-  read.csv("per_data_Binary.csv",sep=",")%>%
-  filter(crop_type.camucamu==0)
+  filter(crop_type.camucamu==0)%>%
+  select(-crop_type.camucamu)
+
 rownames(per_data_analysis) <- per_data_analysis$X
 
-per_data_analysis2<-per_data_analysis%>%
-  left_join(per_data_logistic_regression_direct2,by="X")%>%
-  dplyr::select(-X)%>%
-  mutate(across(everything(), ~ as.numeric(as.character(.))))
-  
 per_data_analysis<- per_data_analysis%>%
   dplyr::select(-X)%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))
 
-dim(per_data_analysis) #130 farmers; 18 outcomes; 270 factors
-#[1] 130 288
-
-
-dim(per_data_analysis2) #130 farmers; 18 outcomes; 269 factors
-#[1] 130 310
+dim(per_data_analysis) #130 farmers; 18 outcomes; 269 factors
+#[1] 130 287
 
 
 #############################################################    
@@ -83,7 +71,7 @@ feature_selection <- function(factors_list_analysis,remove_colum, data_analysis)
 ##=== Run for training_participation ====
 per_training_participation_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_training_participation",per_data_analysis )
 dim(per_training_participation_redundantFiltered)#200 farmers; 1 outcomes, 43 factors retained
-#[1] 200  36
+#[1] 200  37
 names(per_training_participation_redundantFiltered)
 
 ##=== Run for agroecol_perspective_13 ====
@@ -92,14 +80,6 @@ dim(per_agroecol_perspective_13_redundantFiltered)#200 farmers; 1 outcomes, 43 f
 #[1] 200  44
 names(per_agroecol_perspective_13_redundantFiltered)
 
-
-##=== Run for governance_involvement ====
-per_governance_involvement_redundantFiltered<-feature_selection(factors_list_analysis, "peru_remove_governance_involvement",
-                                                             per_data_analysis2 )
-dim(per_governance_involvement_redundantFiltered)#130 farmers; 1 outcomes, 59 factors retained
-#[1] 130  60
-
-names(per_governance_involvement_redundantFiltered)
 
 ##=== STEP 4: CHECK FOR CORRELATION ACROSS FACTORS ======
 # Function to calculate Spearman's correlation

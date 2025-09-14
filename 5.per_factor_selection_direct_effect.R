@@ -38,7 +38,7 @@ nzv <- caret::nearZeroVar(per_data_analysis, saveMetrics= TRUE)
 nzv # the variables with nzv== TRUE should be remove
 nzv
 nzv$rownames <- rownames(nzv)
-#write.csv(nzv, "results/per/direct/nzv.csv")
+write.csv(nzv, "results/per/direct/nzv.csv")
 
 sum(nzv$zeroVar == "TRUE") #21
 sum(nzv$nzv == "TRUE") #95
@@ -105,7 +105,7 @@ ggplot(data=b, aes(x=n, y=category_1, fill= category_1)) +
   labs(x = "Number of factors", y = "Category") +
   theme(legend.position = "none")
 
-dim(per_data_irrelevantFiltered) #130 farmers; 1 outcomes, 151 factors retained
+dim(per_data_irrelevantFiltered) #130 farmers; 1 outcomes, 150 factors retained
 #[1] 130 151
 
 ##=== STEP 3: CHECK FOR CORRELATION ACROSS FACTORS ======
@@ -561,3 +561,4 @@ create_cor_df <- function(data,selected_factors) {
 }
 per_data_selected_factors_cor<-create_cor_df(per_data_redundantFiltered,per_adoptionBinary_selectedFactors)
 per_data_selected_factors_cor
+
