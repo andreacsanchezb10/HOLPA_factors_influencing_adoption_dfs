@@ -1,5 +1,5 @@
 "","NumFeatures","selected_factors","frequency","category_1","factor","description"
-"1","featNum13","agroecol_perspective_13",60,"farmers_behaviour","Perception of current farming systems","How far does the farmer agree with the statement: I think current farming systems are working well and do not need changing."
+"1","featNum13","agroecol_perspective_13",60,"farmers_behaviour","Perceived effectiveness of current farming systems","How far does the farmer agree with the statement: I think current farming systems are working well and do not need changing."
 "2","featNum13","household_shock_recover_capacity",60,"vulnerability_context","Household recovery capacity from shocks","Capacity of the household’s income and agricultural production to recover from shocks or perturbations."
 "3","featNum13","income_stability",54,"financial_capital","Income stability","How would the farmer rate the stability of the household income over time?"
 "4","featNum13","training_participation",51,"P&I_context_knowledge","Training participation","Has any household member received training in the last 12 months?"
