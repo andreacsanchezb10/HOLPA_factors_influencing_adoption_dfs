@@ -15,15 +15,15 @@ rownames(per_data_analysis) <- per_data_analysis$X
 
 per_data_analysis<- per_data_analysis%>%
   dplyr::select(-X)%>%
-  select(all_of(per_measurement_model_afterAssess$column_name_new),
-         age,
-         nr_management_opinion,perception_associations_effectiveness,sales_channel_crops.cooperative)%>%
+  select(all_of(per_measurement_model_afterAssess$column_name_new),crop_type.cacao)%>%#,
+         #age,
+         #nr_management_opinion,perception_associations_effectiveness,sales_channel_crops.cooperative)%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))%>%
   mutate(crop_type= case_when(
     crop_type.cacao==1~"cacao",
     TRUE~"fruittrees"  ))
 
-table(per_data_analysis$crop_type)
+table(per_data_analysis$crop_type.cacao)
 #cacao    fruittrees 
 #70         60
 
@@ -182,8 +182,8 @@ print(columns_continuous)  # Check if it holds expected values
 columns_categorical_ordinal <- intersect(factors_list_analysis$column_name_new[factors_list_analysis$metric_type == "categorical"&factors_list_analysis$categorical_type=="ordinal"], colnames(per_data_analysis))
 print(columns_categorical_ordinal)  # Check if it holds expected values
 
-columns_numeric<-c(columns_continuous, columns_categorical_ordinal,
-                   "age")
+columns_numeric<-c(columns_continuous, columns_categorical_ordinal)
+                   #"age")
 print(columns_numeric)
 
 per_summary_numerical <- create_continuous_summary_table(per_data_analysis, columns_numeric)%>%
