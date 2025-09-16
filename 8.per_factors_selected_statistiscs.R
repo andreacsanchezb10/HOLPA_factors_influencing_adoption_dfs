@@ -15,8 +15,8 @@ rownames(per_data_analysis) <- per_data_analysis$X
 
 per_data_analysis<- per_data_analysis%>%
   dplyr::select(-X)%>%
-  select(all_of(per_measurement_model_afterAssess$column_name_new),crop_type.cacao)%>%#,
-         #age,
+  select(all_of(per_measurement_model_afterAssess$column_name_new),crop_type.cacao, 
+         age,farm_size,"income_amount_total","education_level_finished")%>%
          #nr_management_opinion,perception_associations_effectiveness,sales_channel_crops.cooperative)%>%
   mutate(across(everything(), ~ as.numeric(as.character(.))))%>%
   mutate(crop_type= case_when(
@@ -182,8 +182,8 @@ print(columns_continuous)  # Check if it holds expected values
 columns_categorical_ordinal <- intersect(factors_list_analysis$column_name_new[factors_list_analysis$metric_type == "categorical"&factors_list_analysis$categorical_type=="ordinal"], colnames(per_data_analysis))
 print(columns_categorical_ordinal)  # Check if it holds expected values
 
-columns_numeric<-c(columns_continuous, columns_categorical_ordinal)
-                   #"age")
+columns_numeric<-c(columns_continuous, columns_categorical_ordinal,
+                   "age","farm_size","income_amount_total")
 print(columns_numeric)
 
 per_summary_numerical <- create_continuous_summary_table(per_data_analysis, columns_numeric)%>%
@@ -205,7 +205,7 @@ print(columns_binary)  # Check if it holds expected values
 columns_categorical_nominal <- intersect(factors_list_analysis$column_name_new[factors_list_analysis$metric_type %in%c("categorical")&factors_list_analysis$categorical_type=="nominal"], colnames(per_data_analysis))
 print(columns_categorical_nominal)  # Check if it holds expected values
 
-columns_factor<-c(columns_binary, columns_categorical_nominal)
+columns_factor<-c(columns_binary, columns_categorical_nominal,"education_level_finished")
 print(columns_factor)  # Check if it holds expected values
 
 per_summary_categorical <- create_custom_summary_table(per_data_analysis, columns_factor)%>%
